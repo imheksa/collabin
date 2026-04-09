@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "assetHair.schema.json",
+  "title": "Hair Asset",
+  "description": "A Ready Player Me glTF binary validation schema for hair.",
+  "type": "object",
+  "properties": {
+    "scenes": { "$ref": "scene.schema.json#/$defs/singleMeshScene" },
+    "meshes": {
+      "type": "object",
+      "properties": {
+        "totalTriangleCount": {
+          "$ref": "meshTriangleCount.schema.json#/properties/hair"
+        },
+        "properties": {
+          "$comment": "inspect() creates a 'properties' object. Do not confuse with the 'properties' keyword.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "description": "Name of the mesh.",
+                "$ref": "meshNames.schema.json#/properties/hair"
+              },
+              "attributes": {
+                "$ref": "meshAttributes.schema.json#/properties/unskinned"
+              }
+            },
+            "allOf": [{ "$ref": "commonMesh.schema.json" }],
+            "required": [
+              "name",
+              "mode",
+              "primitives",
+              "glPrimitives",
+              "vertices",
+              "indices",
+              "attributes",
+              "instances",
+              "size"
+            ]
+          }
+        }
+      }
+    },
+    "materials": {
+      "type": "object",
+      "properties": {
+        "properties": {
+          "$comment": "inspect() creates a 'properties' object. Do not confuse with the 'properties' keyword.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "description": "Name of the material.",
+                "$ref": "materialNames.schema.json#/properties/hair"
+              },
+              "textures": {
+                "$ref": "commonMaterial.schema.json#/$defs/normalOnlyTextureChannels"
+              },
+              "doubleSided": {
+                "$ref": "commonMaterial.schema.json#/$defs/singleSided"
+              },
+              "alphaMode": {
+                "$ref": "commonMaterial.schema.json#/$defs/anyAlphaMode"
+              }
+            },
+            "allOf": [{ "$ref": "commonMaterial.schema.json" }],
+            "required": [
+              "name",
+              "instances",
+              "textures",
+              "alphaMode",
+              "doubleSided"
+            ]
+          },
+          "minItems": 1,
+          "maxItems": 1,
+          "errorMessage": {
+            "minItems": "Missing material! Hair asset must have exactly one material.",
+            "maxItems": "Too many materials! Hair asset must have exactly one material."
+          }
+        }
+      }
+    },
+    "textures": { "$ref": "commonTexture.schema.json#/$defs/normalMap" },
+    "animations": { "$ref": "animation.schema.json#/properties/noAnimation" }
+  },
+  "required": ["scenes", "meshes", "materials"]
+}

@@ -1,0 +1,179 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "assetOutfit.schema.json",
+  "title": "Fullbody Outfit Asset",
+  "description": "A Ready Player Me glTF binary validation schema for a fullbody outfit.",
+  "type": "object",
+  "properties": {
+    "scenes": { "$ref": "scene.schema.json#/$defs/fullbodyOutfitScene" },
+    "meshes": {
+      "type": "object",
+      "properties": {
+        "totalTriangleCount": {
+          "$ref": "meshTriangleCount.schema.json#/properties/outfit"
+        },
+        "properties": {
+          "$comment": "inspect() creates a 'properties' object. Do not confuse with the 'properties' keyword.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "description": "Name of the mesh.",
+                "$ref": "meshNames.schema.json#/properties/outfit"
+              },
+              "attributes": {
+                "$ref": "meshAttributes.schema.json#/properties/skinned"
+              }
+            },
+            "allOf": [
+              {
+                "$ref": "commonMesh.schema.json"
+              }
+            ],
+            "required": [
+              "name",
+              "mode",
+              "primitives",
+              "glPrimitives",
+              "vertices",
+              "indices",
+              "attributes",
+              "instances",
+              "size"
+            ]
+          },
+          "minItems": 1,
+          "maxItems": 4,
+          "errorMessage": {
+            "minItems": "Missing mesh! Full-body outfit asset must have at least 1 mesh.",
+            "maxItems": "Too many meshes! Full-body outfit asset must have no more than 4 meshes."
+          }
+        }
+      }
+    },
+    "materials": {
+      "type": "object",
+      "properties": {
+        "properties": {
+          "$comment": "inspect() creates a 'properties' object. Do not confuse with the 'properties' keyword.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "description": "Name of the material.",
+                "$ref": "materialNames.schema.json#/properties/outfit"
+              },
+              "textures": {
+                "description": "Textures used by the outfit materials. The 'Wolf3D_Body' material uses only the 'normalTexture'. All other materials can use all channels."
+              }
+            },
+            "allOf": [
+              { "$ref": "commonMaterial.schema.json" },
+              {
+                "if": {
+                  "properties": {
+                    "name": {
+                      "const": "Wolf3D_Body"
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "textures": {
+                      "$ref": "commonMaterial.schema.json#/$defs/normalOnlyTextureChannels"
+                    },
+                    "doubleSided": {
+                      "$ref": "commonMaterial.schema.json#/$defs/singleSided"
+                    },
+                    "alphaMode": {
+                      "$ref": "commonMaterial.schema.json#/$defs/opaqueAlphaMode"
+                    }
+                  }
+                },
+                "else": {
+                  "properties": {
+                    "textures": {
+                      "$ref": "commonMaterial.schema.json#/$defs/allTextureChannels"
+                    },
+                    "doubleSided": {
+                      "$ref": "commonMaterial.schema.json#/$defs/anySided"
+                    },
+                    "alphaMode": {
+                      "$ref": "commonMaterial.schema.json#/$defs/anyAlphaMode"
+                    }
+                  }
+                }
+              }
+            ],
+            "required": [
+              "name",
+              "instances",
+              "textures",
+              "alphaMode",
+              "doubleSided"
+            ]
+          },
+          "uniqueItems": true,
+          "minItems": { "$data": "/meshes/properties/length" },
+          "maxItems": { "$data": "/meshes/properties/length" },
+          "errorMessage": {
+            "minItems": "Missing material! This outfit asset must have ${/meshes/properties/length} materials, one for each mesh. Found ${/materials/properties/length}.",
+            "maxItems": "Too many materials! This outfit asset must have ${/meshes/properties/length} materials, one for each mesh. Found ${/materials/properties/length}."
+          }
+        }
+      }
+    },
+    "textures": { "$ref": "commonTexture.schema.json#/$defs/fullPBR" },
+    "animations": { "$ref": "animation.schema.json#/properties/noAnimation" },
+    "joints": {
+      "anyOf": [
+        {
+          "allOf": [
+            {
+              "$ref": "joints.schema.json#/$defs/skeletonV2"
+            },
+            {
+              "$ref": "joints.schema.json#/$defs/skeletonV2/$defs/maxJoints"
+            }
+          ]
+        },
+        {
+          "$ref": "joints.schema.json#/$defs/skeletonV2WithEyes"
+        },
+        {
+          "allOf": [
+            {
+              "$ref": "joints.schema.json#/$defs/skeletonXr"
+            },
+            {
+              "$ref": "joints.schema.json#/$defs/skeletonXr/$defs/maxJoints"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "required": ["scenes", "meshes", "materials", "joints"],
+  "$defs": {
+    "outfitTextureCount": {
+      "type": "object",
+      "properties": {
+        "textures": {
+          "type": "object",
+          "properties": {
+            "properties": {
+              "type": "array",
+              "maxItems": 16,
+              "$comment": "A full-body outfit asset supports up to 3 materials with up to 5 maps each and 1 body normal map, totalling 16 maps.",
+              "errorMessage": {
+                "maxItems": "Too many texture maps (${0/length})! This Asset type ${/assetType} must have 16 maps at most."
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

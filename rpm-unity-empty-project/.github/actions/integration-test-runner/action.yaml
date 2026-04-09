@@ -1,0 +1,42 @@
+name: Empty Project Integration
+
+inputs:
+  targetBranch:
+    description: 'Branch - release/v1.0.0, develop, main'
+    required: true
+    default: 'develop'
+
+runs:
+  using: "composite"
+  steps:
+    - name: Checkout Unity-SDK Repository
+      uses: actions/checkout@v3
+    - name: Cache Project
+      uses: actions/cache@v3
+      with:
+        path: Library
+        key: Library-${{ hashFiles('Assets/**', 'Packages/**', 'ProjectSettings/**') }}
+        restore-keys: |
+          Library-
+    - name: Get npm
+      uses: actions/setup-node@v3
+      with:
+        node-version: 18
+    - name: Install openupm-cli
+      run: npm install -g openupm-cli
+    - run: pwd
+    - name: Add core as package
+      run: openupm add com.readyplayerme.core@https://github.com/readyplayerme/rpm-unity-sdk-core.git#${{ github.event.inputs.targetBranch }}
+    - name: Run Tests
+      uses: game-ci/unity-test-runner@v2
+      env:
+        UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+        UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
+      with:
+        unityVersion: 2020.3.0f1
+        testMode: editmode
+        projectPath: ./
+        checkName: 2020.3.0f1 editmode tests result
+        githubToken: ${{ secrets.GITHUB_TOKEN }}
+        coverageOptions: "generateAdditionalMetrics;generateHtmlReport;generateBadgeReport;assemblyFilters:+my.assembly.*"

@@ -1,0 +1,147 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "assetCostume.schema.json",
+  "title": "Costume Asset",
+  "description": "A Ready Player Me glTF binary validation schema for a costume.",
+  "type": "object",
+  "properties": {
+    "scenes": { "$ref": "scene.schema.json#/$defs/fullbodyOutfitScene" },
+    "meshes": {
+      "type": "object",
+      "properties": {
+        "totalTriangleCount": {
+          "$ref": "meshTriangleCount.schema.json#/properties/costume"
+        },
+        "properties": {
+          "$comment": "inspect() creates a 'properties' object. Do not confuse with the 'properties' keyword.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "description": "Name of the mesh.",
+                "$ref": "meshNames.schema.json#/properties/costume"
+              },
+              "attributes": {
+                "$ref": "meshAttributes.schema.json#/properties/skinned"
+              }
+            },
+            "allOf": [
+              { "$ref": "commonMesh.schema.json" }
+            ],
+            "required": [
+              "name",
+              "mode",
+              "primitives",
+              "glPrimitives",
+              "vertices",
+              "indices",
+              "attributes",
+              "instances",
+              "size"
+            ]
+          },
+          "minItems": 1,
+          "maxItems": 13,
+          "errorMessage": {
+            "minItems": "Missing mesh! This asset must have at least 1 mesh.",
+            "maxItems": "Too many meshes! This asset must have no more than 13 meshes."
+          }
+        }
+      }
+    },
+    "materials": {
+      "type": "object",
+      "properties": {
+        "properties": {
+          "$comment": "inspect() creates a 'properties' object. Do not confuse with the 'properties' keyword.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "description": "Name of the material.",
+                "$ref": "materialNames.schema.json#/properties/costume"
+              },
+              "textures": {
+                "$ref": "commonMaterial.schema.json#/$defs/allTextureChannels"
+              },
+              "doubleSided": {
+                "$ref": "commonMaterial.schema.json#/$defs/anySided"
+              },
+              "alphaMode": {
+                "$ref": "commonMaterial.schema.json#/$defs/anyAlphaMode"
+              }
+            },
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "name": { "const": "Wolf3D_Eye" }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "instances": {
+                      "$comment": "Sub-schema properties can't seem to be overridden, so we replicate the structure and reference individual properties.",
+                      "description": "Eyes can use the same material.",
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 2,
+                      "errorMessage": "Material ${1/name} must have 1 or 2 instances."
+                    },
+                    "baseColorFactor": {
+                      "$ref": "commonMaterial.schema.json#/properties/baseColorFactor"
+                    },
+                    "emissiveFactor": {
+                      "$ref": "commonMaterial.schema.json#/properties/emissiveFactor"
+                    },
+                    "metallicFactor": {
+                      "$ref": "commonMaterial.schema.json#/properties/metallicFactor"
+                    },
+                    "roughnessFactor": {
+                      "$ref": "commonMaterial.schema.json#/properties/roughnessFactor"
+                    }
+                  }
+                },
+                "else": {
+                  "$ref": "commonMaterial.schema.json"
+                }
+              }
+            ],
+            "required": [
+              "name",
+              "instances",
+              "textures",
+              "alphaMode",
+              "doubleSided"
+            ]
+          },
+          "uniqueItems": true,
+          "minItems": 1,
+          "maxItems": 12,
+          "errorMessage": {
+            "minItems": "Missing material! This asset must have at least 1 material. Found ${/materials/properties/length}.",
+            "maxItems": "Too many materials! This asset only supports up to 12 materials (eyes share a material). Found ${/materials/properties/length}."
+          }
+        }
+      }
+    },
+    "textures": { "$ref": "commonTexture.schema.json#/$defs/fullPBR" },
+    "animations": { "$ref": "animation.schema.json#/properties/noAnimation" },
+    "joints": {
+      "anyOf": [
+        {
+          "$ref": "joints.schema.json#/$defs/skeletonV2WithEyes"
+        },
+        {
+          "allOf": [
+            { "$ref": "joints.schema.json#/$defs/skeletonXr" },
+            { "$ref": "joints.schema.json#/$defs/skeletonXr/$defs/maxJoints" }
+          ]
+        }
+      ]
+    }
+  },
+  "required": ["scenes", "meshes", "materials", "textures", "joints"]
+}

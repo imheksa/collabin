@@ -1,0 +1,107 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "assetCustom.schema.json",
+  "title": "Custom Asset",
+  "description": "A Ready Player Me glTF binary validation schema for a custom asset.",
+  "type": "object",
+  "properties": {
+    "meshes": {
+      "type": "object",
+      "properties": {
+        "totalTriangleCount": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 80000,
+          "errorMessage": {
+            "minimum": "Too few triangles! This asset must have at least 1 triangle.",
+            "maximum": "Too many triangles! This asset must not have more than 80000 triangles. Found: ${0}."
+          }
+        },
+        "properties": {
+          "$comment": "inspect() creates a 'properties' object. Do not confuse with the 'properties' keyword.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "mode": {
+                "description": "The rendering mode of the mesh. Only TRIANGLES are supported.",
+                "type": "array",
+                "prefixItems": [{ "const": "TRIANGLES" }],
+                "minItems": 1,
+                "maxItems": 1,
+                "errorMessage": "Rendering mode must be TRIANGLES."
+              }
+            },
+            "required": ["mode"]
+          },
+          "minItems": 1,
+          "maxItems": 20,
+          "errorMessage": {
+            "minItems": "Missing mesh! Asset must have at least 1 mesh.",
+            "maxItems": "Too many meshes! Asset must have no more than 20 meshes."
+          }
+        }
+      }
+    },
+    "textures": {
+      "type": "object",
+      "properties": {
+        "properties": {
+          "$comment": "inspect() creates a 'properties' object. Do not confuse with the 'properties' keyword.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "uri": {
+                "type": "string"
+              },
+              "mimeType": {
+                "type": "string",
+                "oneOf": [
+                  {
+                    "const": "image/png"
+                  },
+                  {
+                    "const": "image/jpeg"
+                  }
+                ],
+                "errorMessage": {
+                  "oneOf": "Texture map ${1/name} must be encoded as PNG or JPEG. Found ${0} instead."
+                }
+              },
+              "compression": {
+                "type": "string"
+              },
+              "size": {
+                "type": "integer",
+                "maximum": 8388608,
+                "errorMessage": {
+                  "maximum": "Texture map ${1/name} exceeds maximum allowed storage size of 8 MB."
+                }
+              },
+              "gpuSize": {
+                "type": "integer",
+                "maximum": 94371840,
+                "errorMessage": {
+                  "maximum": "Texture map ${1/name} exceeds maximum allowed GPU size of 90 MB when fully decompressed."
+                }
+              }
+            },
+            "required": [
+              "name",
+              "uri",
+              "mimeType",
+              "compression",
+              "size",
+              "gpuSize"
+            ]
+          }
+        }
+      }
+    }
+  },
+  "required": ["meshes", "textures"]
+}

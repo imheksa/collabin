@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "meshAttributes.schema.json",
+  "title": "Mesh Attributes",
+  "description": "Data attributes for mesh vertices. Includes the vertex position, normal, tangent, texture coordinates, influencing joints, and skin weights.",
+  "type": "object",
+  "properties": {
+    "unskinned": {
+      "description": "Attributes for unskinned meshes. Optional tangents.",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["NORMAL:f32", "POSITION:f32", "TEXCOORD_0:f32", "TANGENT:f32"],
+        "errorMessage": "Mesh ${2/name} error! Allowed attributes are: NORMAL, POSITION, TEXCOORD_0, TANGENT. Found ${0}."
+      },
+      "contains": {
+        "type": "string",
+        "pattern": "NORMAL:f32|POSITION:f32|TEXCOORD_0:f32",
+        "errorMessage": "Mesh ${2/name} requires at least 3 vertex attributes: position, normal and 1 UV set. Found ${1/length} attributes: ${1}."
+      },
+      "minContains": 3,
+      "uniqueItems": true,
+      "errorMessage": "Mesh ${1/name} requires at least 3 vertex attributes: position, normal and 1 UV set. Found ${0/length} attributes: ${0}."
+    },
+    "skinned": {
+      "description": "Attributes for skinned meshes. Optional tangents.",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "JOINTS_0:u8",
+          "JOINTS_0:u16",
+          "NORMAL:f32",
+          "POSITION:f32",
+          "TEXCOORD_0:f32",
+          "TANGENT:f32",
+          "WEIGHTS_0:f32"
+        ],
+        "errorMessage": "Mesh ${2/name} error! Allowed attributes are: JOINTS_0, NORMAL, POSITION, TEXCOORD_0, TANGENT, WEIGHTS_0. Found ${0}."
+      },
+      "contains": {
+        "type": "string",
+        "pattern": "JOINTS_0:u8|JOINTS_0:u16|NORMAL:f32|POSITION:f32|TEXCOORD_0:f32|WEIGHTS_0:f32",
+        "errorMessage": "Mesh ${2/name} requires at least 5 vertex attributes: position, normal, 1 UV set, joint influences, and weights. Found ${1/length} attributes: ${1}."
+      },
+      "minContains": 5,
+      "uniqueItems": true,
+      "errorMessage": "Mesh ${1/name} requires at least 5 vertex attributes: position, normal, 1 UV set, joint influences, and weights. Found ${0/length} attributes: ${0}."
+    }
+  }
+}

@@ -1,0 +1,245 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "gltf-asset.schema.json",
+  "title": "Ready Player Me GLTF Asset Validation",
+  "description": "A Ready Player Me glTF binary asset validation schema. Validates augmented output of @gltf-transform/functions::inspect().",
+  "type": "object",
+  "properties": {
+    "assetType": {
+      "description": "The type of asset.",
+      "type": "string",
+      "default": "custom",
+      "errorMessage": {
+        "type": "Asset type should be a string."
+      }
+    },
+    "bodyType": {
+      "description": "The bodyType of asset.",
+      "type": "string",
+      "errorMessage": {
+        "type": "Body type should be a string."
+      }
+    },
+    "gltfErrors": {
+      "description": "The errors encountered during glTF validation.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 0,
+      "errorMessage": {
+        "maxItems": "Encountered errors codes from gltf-validator: ${0}."
+      }
+    }
+  },
+  "required": ["gltfErrors"],
+  "$comment": "Below are the asset type specific schemas defined. Some asset share a material definition, but differ in the number of supported textures.",
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "bodyType": {
+            "const": "cage-mesh-based"
+          }
+        },
+        "required": ["bodyType"]
+      },
+      "then": {
+        "allOf": [{ "$ref": "assetCustom.schema.json" }]
+      },
+      "else": {
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "assetType": {
+                  "enum": [
+                    "outfit",
+                    "beard",
+                    "bottom",
+                    "facewear",
+                    "footwear",
+                    "glasses",
+                    "hair",
+                    "headwear",
+                    "costume",
+                    "shirt",
+                    "top"
+                  ]
+                }
+              }
+            },
+            "then": {
+              "allOf": [{ "$ref": "commonTransforms.schema.json" }]
+            }
+          },
+          {
+            "if": {
+              "not": {
+                "properties": {
+                  "assetType": {
+                    "enum": [
+                      "outfit",
+                      "beard",
+                      "bottom",
+                      "facewear",
+                      "footwear",
+                      "glasses",
+                      "hair",
+                      "headwear",
+                      "costume",
+                      "shirt",
+                      "top"
+                    ]
+                  }
+                }
+              }
+            },
+            "then": {
+              "allOf": [{ "$ref": "assetCustom.schema.json" }]
+            }
+          },
+          {
+            "if": {
+              "properties": { "assetType": { "const": "outfit" } },
+              "required": ["assetType"]
+            },
+            "then": {
+              "allOf": [
+                { "$ref": "assetOutfit.schema.json" },
+                { "$ref": "assetOutfit.schema.json#/$defs/outfitTextureCount" }
+              ]
+            },
+            "$comment": "Outfit is the default asset type if no assetType is set in the data."
+          },
+          {
+            "if": {
+              "properties": { "assetType": { "const": "beard" } },
+              "required": ["assetType"]
+            },
+            "then": { "$ref": "assetBeard.schema.json" }
+          },
+          {
+            "if": {
+              "properties": { "assetType": { "const": "bottom" } },
+              "required": ["assetType"]
+            },
+            "then": {
+              "allOf": [
+                { "$ref": "assetBottom.schema.json" },
+                {
+                  "$ref": "commonTexture.schema.json#/$defs/singleMaterialTextureCount"
+                }
+              ]
+            }
+          },
+          {
+            "if": {
+              "properties": { "assetType": { "const": "facewear" } },
+              "required": ["assetType"]
+            },
+            "then": {
+              "allOf": [
+                { "$ref": "assetFacewear.schema.json" },
+                {
+                  "$ref": "commonTexture.schema.json#/$defs/dualMaterialTextureCount"
+                }
+              ]
+            }
+          },
+          {
+            "if": {
+              "properties": { "assetType": { "const": "footwear" } },
+              "required": ["assetType"]
+            },
+            "then": {
+              "allOf": [
+                { "$ref": "assetFootwear.schema.json" },
+                {
+                  "$ref": "commonTexture.schema.json#/$defs/singleMaterialTextureCount"
+                }
+              ]
+            }
+          },
+          {
+            "if": {
+              "properties": { "assetType": { "const": "glasses" } },
+              "required": ["assetType"]
+            },
+            "then": {
+              "allOf": [
+                { "$ref": "assetGlasses.schema.json" },
+                {
+                  "$ref": "commonTexture.schema.json#/$defs/dualMaterialTextureCount"
+                }
+              ]
+            }
+          },
+          {
+            "if": {
+              "properties": { "assetType": { "const": "hair" } },
+              "required": ["assetType"]
+            },
+            "then": { "$ref": "assetHair.schema.json" }
+          },
+          {
+            "if": {
+              "properties": { "assetType": { "const": "headwear" } },
+              "required": ["assetType"]
+            },
+            "then": {
+              "allOf": [
+                { "$ref": "assetHeadwear.schema.json" },
+                {
+                  "$ref": "commonTexture.schema.json#/$defs/dualMaterialTextureCount"
+                }
+              ]
+            }
+          },
+          {
+            "if": {
+              "properties": { "assetType": { "const": "costume" } },
+              "required": ["assetType"]
+            },
+            "then": { "$ref": "assetCostume.schema.json" }
+          },
+          {
+            "if": {
+              "properties": { "assetType": { "const": "shirt" } },
+              "required": ["assetType"]
+            },
+            "then": {
+              "allOf": [
+                { "$ref": "assetShirt.schema.json" },
+                {
+                  "$ref": "commonTexture.schema.json#/$defs/singleMaterialTextureCount"
+                }
+              ]
+            }
+          },
+          {
+            "if": {
+              "properties": { "assetType": { "const": "top" } },
+              "required": ["assetType"]
+            },
+            "then": {
+              "allOf": [
+                { "$ref": "assetTop.schema.json" },
+                {
+                  "$ref": "commonTexture.schema.json#/$defs/singleMaterialTextureCount"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  ],
+
+  "errorMessage": {
+    "type": "Validation data should be a JSON object.",
+    "required": {
+      "transforms": "Validation data should have a 'transforms' property."
+    }
+  }
+}

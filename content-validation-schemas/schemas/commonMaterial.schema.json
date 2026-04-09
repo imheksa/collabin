@@ -1,0 +1,130 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "commonMaterial.schema.json",
+  "title": "Common Material Properties",
+  "description": "Validation schema for common properties of materials.",
+  "type": "object",
+  "properties": {
+    "instances": {
+      "description": "Number of instances of this material.",
+      "type": "integer",
+      "const": 1,
+      "errorMessage": "Material ${1/name} must have exactly one instance."
+    },
+    "baseColorFactor": {
+      "type": "array",
+      "items": {
+        "type": "number",
+        "minimum": 1.0,
+        "maximum": 1.0,
+        "errorMessage": "Base color factors other than 1.0 are not supported. Found ${0} in material ${1/name}."
+      },
+      "description": "The factors for the base color of the material.",
+      "default": [1.0, 1.0, 1.0, 1.0],
+      "minItems": 4,
+      "maxItems": 4,
+      "errorMessage": "The factors for the base color of the material ${1/name} must be [1.0, 1.0, 1.0, 1.0]. Found ${0}."
+    },
+    "emissiveFactor": {
+      "type": "array",
+      "items": {
+        "type": "number",
+        "minimum": 0.0
+      },
+      "description": "The factors for the emissive color of the material.",
+      "default": [0.0, 0.0, 0.0],
+      "minItems": 3,
+      "maxItems": 3,
+      "errorMessage": "The factors for the emissive color of the material ${1/name} must be an array of 3 numbers. Found ${0}."
+    },
+    "metallicFactor": {
+      "type": "number",
+      "description": "The factor for the metalness of the material.",
+      "default": 1.0,
+      "minimum": 0.0,
+      "maximum": 1.0
+    },
+    "roughnessFactor": {
+      "type": "number",
+      "description": "The factor for the roughness of the material.",
+      "default": 1.0,
+      "minimum": 0.0,
+      "maximum": 1.0
+    }
+  },
+  "$defs": {
+    "normalOnlyTextureChannels": {
+      "description": "Texture map channels used by this material. This material only allows the use of a normal map.",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "const": "normalTexture",
+        "errorMessage": "Material ${2/name} must only use the normal map channel. Found ${0} instead."
+      },
+      "minItems": 0,
+      "maxItems": 1,
+      "errorMessage": {
+        "maxItems": "Material ${1/name} can only use the optional normal map channel. Found ${0} instead."
+      }
+    },
+    "allTextureChannels": {
+      "description": "Texture map channels used by this material. This material supports base color, emissive, metallicRoughness, normal, and occlusion.",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["baseColorTexture", "emissiveTexture", "metallicRoughnessTexture", "normalTexture", "occlusionTexture"],
+        "errorMessage": "Material ${2/name} uses unsupported texture slot ${0}! Supported slots are baseColorTexture, emissiveTexture, metallicRoughnessTexture, normalTexture, and occlusionTexture."
+      },
+      "contains": {
+        "type": "string",
+        "const": "baseColorTexture"
+      },
+      "minContains": 1,
+      "uniqueItems": true,
+      "minItems": 1,
+      "maxItems": 5,
+      "errorMessage": {
+        "contains": "Material ${1/name} must use a baseColorTexture.",
+        "minItems": "Material ${1/name} must use at least a baseColorTexture. Found ${0/length} texture maps: ${0}.",
+        "maxItems": "Material ${1/name} uses too many texture slots. 5 are supported. Found ${0}."
+      }
+    },
+    "singleSided": {
+      "description": "Double sided rendering of the material.",
+      "type": "boolean",
+      "const": false,
+      "errorMessage": "Material ${1/name} must be single-sided (have backface culling enabled)."
+    },
+    "anySided": {
+      "description": "Double sided rendering of the material.",
+      "type": "boolean"
+    },
+    "opaqueAlphaMode": {
+      "description": "Opaque material alpha mode.",
+      "type": "string",
+      "const": "OPAQUE",
+      "errorMessage": "Material ${1/name} must be opaque."
+    },
+    "anyAlphaMode": {
+      "default": "OPAQUE",
+      "description": "The alpha rendering mode of the material.",
+      "anyOf": [
+        {
+          "const": "OPAQUE",
+          "description": "The alpha value is ignored, and the rendered output is fully opaque."
+        },
+        {
+          "const": "MASK",
+          "description": "The rendered output is either fully opaque or fully transparent depending on the alpha value and the specified `alphaCutoff` value; the exact appearance of the edges **MAY** be subject to implementation-specific techniques such as \"`Alpha-to-Coverage`\"."
+        },
+        {
+          "const": "BLEND",
+          "description": "The alpha value is used to composite the source and destination areas. The rendered output is combined with the background using the normal painting operation (i.e. the Porter and Duff over operator)."
+        },
+        {
+          "type": "string"
+        }
+      ]
+    }
+  }
+}

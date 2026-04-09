@@ -1,0 +1,112 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "assetFootwear.schema.json",
+  "title": "Modular Footwear Outfit Asset",
+  "description": "A Ready Player Me glTF binary validation schema for a footwear module of an outfit.",
+  "type": "object",
+  "properties": {
+    "scenes": { "$ref": "scene.schema.json#/$defs/fullbodyOutfitScene" },
+    "meshes": {
+      "type": "object",
+      "properties": {
+        "totalTriangleCount": {
+          "$ref": "meshTriangleCount.schema.json#/properties/outfitFootwear"
+        },
+        "properties": {
+          "$comment": "inspect() creates a 'properties' object. Do not confuse with the 'properties' keyword.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "description": "Name of the mesh.",
+                "$ref": "meshNames.schema.json#/properties/modularFootwear"
+              },
+              "attributes": {
+                "$ref": "meshAttributes.schema.json#/properties/skinned"
+              }
+            },
+            "allOf": [{ "$ref": "commonMesh.schema.json" }],
+            "required": [
+              "name",
+              "mode",
+              "primitives",
+              "glPrimitives",
+              "vertices",
+              "indices",
+              "attributes",
+              "instances",
+              "size"
+            ]
+          },
+          "minItems": 1,
+          "maxItems": 1,
+          "errorMessage": {
+            "minItems": "Missing mesh! Footwear asset must have 1 mesh.",
+            "maxItems": "Too many meshes! Footwear asset must have 1 mesh only."
+          }
+        }
+      }
+    },
+    "materials": {
+      "type": "object",
+      "properties": {
+        "properties": {
+          "$comment": "inspect() creates a 'properties' object. Do not confuse with the 'properties' keyword.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "description": "Name of the material.",
+                "$ref": "materialNames.schema.json#/properties/modularFootwear"
+              },
+              "textures": {
+                "$ref": "commonMaterial.schema.json#/$defs/allTextureChannels"
+              },
+              "doubleSided": {
+                "$ref": "commonMaterial.schema.json#/$defs/anySided"
+              },
+              "alphaMode": {
+                "$ref": "commonMaterial.schema.json#/$defs/anyAlphaMode"
+              }
+            },
+            "allOf": [{ "$ref": "commonMaterial.schema.json" }],
+            "required": [
+              "name",
+              "instances",
+              "textures",
+              "alphaMode",
+              "doubleSided"
+            ]
+          },
+          "minItems": 1,
+          "maxItems": 1,
+          "errorMessage": {
+            "minItems": "Missing material! This footwear asset must have 1 material. Found ${/materials/properties/length}.",
+            "maxItems": "Too many materials! This footwear asset must have 1 material. Found ${/materials/properties/length}."
+          }
+        }
+      }
+    },
+    "textures": { "$ref": "commonTexture.schema.json#/$defs/fullPBR" },
+    "animations": { "$ref": "animation.schema.json#/properties/noAnimation" },
+    "joints": {
+      "anyOf": [
+        {
+          "allOf": [
+            { "$ref": "joints.schema.json#/$defs/skeletonV2" },
+            { "$ref": "joints.schema.json#/$defs/skeletonV2/$defs/maxJoints" }
+          ]
+        },
+        {
+          "allOf": [
+            { "$ref": "joints.schema.json#/$defs/skeletonXr" },
+            { "$ref": "joints.schema.json#/$defs/skeletonXr/$defs/maxJoints" }
+          ]
+        }
+      ]
+    }
+  },
+  "required": ["scenes", "meshes", "materials", "textures", "joints"]
+}

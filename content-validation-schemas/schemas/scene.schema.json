@@ -1,0 +1,176 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "scene.schema.json",
+  "title": "Scene",
+  "description": "Scenes of the gltf file.",
+  "type": "object",
+  "$defs": {
+    "hasDefaultScene": {
+      "description": "Whether the gltf file has a default scene.",
+      "type": "boolean",
+      "const": true,
+      "errorMessage": "The gltf file should have a default scene."
+    },
+    "singleMeshScene": {
+      "type": "object",
+      "properties": {
+        "hasDefaultScene": { "$ref": "#/$defs/hasDefaultScene" },
+        "properties": {
+          "$comment": "inspect() creates a 'properties' object. Do not confuse with the 'properties' keyword.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "description": "Name of the scene.", "type": "string" },
+              "rootName": {
+                "description": "Name of the root node in the scene.",
+                "type": "string",
+                "if": {
+                  "const": { "$data": "/meshes/properties/0/name" }
+                },
+                "then": {
+                  "const": { "$data": "/meshes/properties/0/name" }
+                },
+                "else": {
+                  "const": "Armature"
+                },
+                "errorMessage": "The root node should either be the mesh, or a skeleton named 'Armature' if the mesh is skinned. Mesh name is ${/meshes/properties/0/name}. Found root ${0} instead."
+              }
+            },
+            "allOf": [{ "$ref": "#/$defs/headBbox" }],
+            "required": ["rootName"],
+            "errorMessage": {
+              "required": {
+                "rootName": "Missing root node property in the scene ${0/name}."
+              }
+            }
+          },
+          "minItems": 1,
+          "maxItems": 1,
+          "errorMessage": {
+            "minItems": "There must be one scene. Found ${0/length}.",
+            "maxItems": "There must be only one scene. Found ${0/length}."
+          }
+        }
+      },
+      "required": ["hasDefaultScene", "properties"]
+    },
+    "fullbodyOutfitScene": {
+      "type": "object",
+      "properties": {
+        "hasDefaultScene": { "$ref": "#/$defs/hasDefaultScene" },
+        "properties": {
+          "$comment": "inspect() creates a 'properties' object. Do not confuse with the 'properties' keyword.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "description": "Name of the scene.", "type": "string" },
+              "rootName": {
+                "description": "Name of the root node in the scene.",
+                "type": "string",
+                "const": "Armature",
+                "errorMessage": "The 'Armature' should be the root node. Found root ${0} instead."
+              }
+            },
+            "allOf": [{ "$ref": "#/$defs/bodyBbox" }]
+          },
+          "minItems": 1,
+          "maxItems": 1,
+          "errorMessage": {
+            "minItems": "There must be one scene. Found ${0/length}.",
+            "maxItems": "There must be only one scene. Found ${0/length}."
+          }
+        }
+      },
+      "required": ["hasDefaultScene", "properties"]
+    },
+    "headBbox": {
+      "type": "object",
+      "properties": {
+        "bboxMin": {
+          "type": "array",
+          "items": { "type": "number" },
+          "minItems": 3,
+          "maxItems": 3,
+          "errorMessage": "Minimum bounds (${0#}) must be an array of 3 numbers (x, y, z). Found ${0}."
+        },
+        "bboxMax": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "maximum": 1.0,
+            "errorMessage": {
+              "maximum": "The bounding box maximum (${1#}) is 1.0. Found maximum bounds: ${1}. Error at index ${0#}.",
+              "_": "Bounding box error"
+            }
+          },
+          "minItems": 3,
+          "maxItems": 3,
+          "errorMessage": "Maximum bounds (${0#}) must be an array of 3 numbers (x, y, z). Found ${0}."
+        }
+      },
+      "required": ["bboxMin", "bboxMax"]
+    },
+    "bodyBbox": {
+      "type": "object",
+      "properties": {
+        "bboxMin": {
+          "type": "array",
+          "prefixItems": [
+            {
+              "type": "number",
+              "minimum": -1.5,
+              "maximum": 0.0,
+              "errorMessage": "Bounding Box X minimum for body area must be between -1.5 and 0.0. Found ${0} for index ${0#}"
+            },
+            {
+              "type": "number",
+              "minimum": -0.1,
+              "maximum": 1.5,
+              "errorMessage": "Bounding Box Y minimum for body area must be between -0.1 and 0.5. Found ${0} for index ${0#}"
+            },
+            {
+              "type": "number",
+              "minimum": -1.5,
+              "maximum": 0.0,
+              "errorMessage": "Bounding Box Z minimum for body area must be between -1.5 and 0.0. Found ${0} for index ${0#}"
+            }
+          ],
+          "items": false,
+          "minItems": 3,
+          "maxItems": 3,
+          "errorMessage": "Minimum bounds (${0#}) must be an array of 3 numbers (x, y, z). Found ${0}."
+        },
+        "bboxMax": {
+          "type": "array",
+          "prefixItems": [
+            {
+              "type": "number",
+              "minimum": 0.0,
+              "maximum": 1.5,
+              "errorMessage": "Bounding Box Z maximum for body area must be between 0.0 and 1.5. Found ${0} for index ${0#}"
+            },
+            {
+              "type": "number",
+              "minimum": 0.0,
+              "maximum": 3.0,
+              "errorMessage": "Bounding Box Z maximum for body area must be between 0.0 and 3.0. Found ${0} for index ${0#}"
+            },
+            {
+              "type": "number",
+              "minimum": 0.0,
+              "maximum": 1.5,
+              "errorMessage": "Bounding Box Z maximum for body area must be between 0.0 and 1.5. Found ${0} for index ${0#}"
+            }
+          ],
+          "items": false,
+          "minItems": 3,
+          "maxItems": 3,
+          "errorMessage": "Maximum bounds (${0#}) must be an array of 3 numbers (x, y, z). Found ${0}."
+        }
+      },
+      "required": ["bboxMin", "bboxMax"]
+    }
+  }
+}

@@ -1,0 +1,106 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "meshTriangleCount.schema.json",
+  "title": "Triangle Count",
+  "description": "Triangle count budgets for meshes.",
+  "type": "object",
+  "properties": {
+    "beard": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 1000,
+      "errorMessage": {
+        "minimum": "Too few triangles! This asset must have at least 1 triangle.",
+        "maximum": "Too many triangles! This asset must not have more than 1000 triangles. Found: ${0}."
+      }
+    },
+    "costume": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 30000,
+      "errorMessage": {
+        "minimum": "Too few triangles! This asset must have at least 1 triangle.",
+        "maximum": "Too many triangles! This asset must not have more than 30000 triangles. Found: ${0}."
+      }
+    },
+    "facewear": {
+      "type": "integer",
+      "maximum": 2000,
+      "errorMessage": {
+        "minimum": "Too few triangles! This asset must have at least 1 triangle.",
+        "maximum": "Too many triangles! This asset must not have more than 2000 triangles. Found: ${0}."
+      }
+    },
+    "glasses": {
+      "type": "integer",
+      "maximum": 1000,
+      "errorMessage": {
+        "minimum": "Too few triangles! This asset must have at least 1 triangle.",
+        "maximum": "Too many triangles! This asset must not have more than 1000 triangles. Found: ${0}."
+      }
+    },
+    "hair": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 5000,
+      "errorMessage": {
+        "minimum": "Too few triangles! This asset must have at least 1 triangle.",
+        "maximum": "Too many triangles! This asset must not have more than 5000 triangles. Found: ${0}."
+      }
+    },
+    "halfbodyShirt": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 1000,
+      "errorMessage": {
+        "minimum": "Too few triangles! This asset must have at least 1 triangle.",
+        "maximum": "Too many triangles! This asset must not have more than 1000 triangles. Found: ${0}."
+      }
+    },
+    "headwear": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 2500,
+      "errorMessage": {
+        "minimum": "Too few triangles! This asset must have at least 1 triangle.",
+        "maximum": "Too many triangles! This asset must not have more than 2500 triangles. Found: ${0}."
+      }
+    },
+    "outfit": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 20000,
+      "errorMessage": {
+        "minimum": "Too few triangles! This asset must have at least 1 triangle.",
+        "maximum": "Too many triangles! This asset must not have more than 20000 triangles. Found: ${0}."
+      }
+    },
+    "outfitBottom": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 7500,
+      "errorMessage": {
+        "minimum": "Too few triangles! This asset must have at least 1 triangle.",
+        "maximum": "Too many triangles! This asset must not have more than 7500 triangles. Found: ${0}."
+      }
+    },
+    "outfitTop": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9000,
+      "errorMessage": {
+        "minimum": "Too few triangles! This asset must have at least 1 triangle.",
+        "maximum": "Too many triangles! This asset must not have more than 9000 triangles. Found: ${0}."
+      }
+    },
+    "outfitFootwear": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 2000,
+      "errorMessage": {
+        "minimum": "Too few triangles! This asset must have at least 1 triangle.",
+        "maximum": "Too many triangles! This asset must not have more than 2000 triangles. Found: ${0}."
+      }
+    }
+  }
+}

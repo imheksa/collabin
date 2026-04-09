@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "commonMesh.schema.json",
+  "title": "Common Mesh Properties",
+  "description": "Validation schema for common properties of meshes.",
+  "type": "object",
+  "properties": {
+    "mode": {
+      "description": "The rendering mode of the mesh. Only TRIANGLES are supported.",
+      "type": "array",
+      "prefixItems": [{ "const": "TRIANGLES" }],
+      "minItems": 1,
+      "maxItems": 1,
+      "errorMessage": "Rendering mode must be TRIANGLES."
+    },
+    "primitives": {
+      "description": "Number of geometry primitives to be rendered with the given material.",
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 2,
+      "errorMessage": "Number of primitives in the mesh must be 1, or 2 when an additional transparent material is used."
+    },
+    "glPrimitives": { "type": "integer" },
+    "indices": {
+      "description": "The index of the accessor that contains the vertex indices.",
+      "type": "array",
+      "prefixItems": [{ "const": "u16" }],
+      "minItems": 1,
+      "maxItems": 1,
+      "errorMessage": "Indices must be [\"u16\"] single-item array."
+    },
+    "instances": {
+      "description": "The number of instances to render.",
+      "const": 1,
+      "errorMessage": "Only 1 instance per mesh is supported."
+    },
+    "size": {
+      "description": "Byte size. Buffers stored as GLB binary chunk have an implicit limit of (2^32)-1 bytes.",
+      "type": "integer",
+      "maximum": 2097152,
+      "errorMessage": "Maximum allowed size of each mesh in the file is 2 MB."
+    }
+  },
+  "required": ["mode", "primitives"]
+}

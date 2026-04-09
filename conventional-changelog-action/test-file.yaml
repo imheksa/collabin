@@ -1,0 +1,12 @@
+version: '1.10.50'
+
+package:
+  version: '9.4.5'
+  no-quotes-version: 9.5.50
+  double-quotes-version: "9.6.33"
+
+# Comment
+different:
+  props:
+    - one
+    - two

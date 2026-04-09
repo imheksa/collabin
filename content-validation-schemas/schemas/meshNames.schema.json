@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "meshNames.schema.json",
+  "title": "Mesh Names",
+  "description": "Allowed names of meshes for different asset types.",
+  "type": "object",
+  "properties": {
+    "beard": {
+      "type": "string",
+      "const": "Wolf3D_Beard",
+      "errorMessage": "Mesh name should be 'Wolf3D_Beard'. Found ${0} instead."
+    },
+    "facewear": {
+      "type": "string",
+      "const": "Wolf3D_Facewear",
+      "errorMessage": "Mesh name should be 'Wolf3D_Facewear'. Found ${0} instead."
+    },
+    "glasses": {
+      "type": "string",
+      "const": "Wolf3D_Glasses",
+      "errorMessage": "Mesh name should be 'Wolf3D_Glasses'. Found ${0} instead."
+    },
+    "hair": {
+      "type": "string",
+      "const": "Wolf3D_Hair",
+      "errorMessage": "Mesh name should be 'Wolf3D_Hair'. Found ${0} instead."
+    },
+    "halfbodyShirt": {
+      "type": "string",
+      "const": "Wolf3D_Shirt",
+      "errorMessage": "Mesh name should be 'Wolf3D_Shirt'. Found ${0} instead."
+    },
+    "head": {
+      "type": "string",
+      "const": "Wolf3D_Head",
+      "errorMessage": "Mesh name should be 'Wolf3D_Head'. Found ${0} instead."
+    },
+    "headwear": {
+      "type": "string",
+      "const": "Wolf3D_Headwear",
+      "errorMessage": "Mesh name should be 'Wolf3D_Headwear'. Found ${0} instead."
+    },
+    "modularBottom": {
+      "type": "string",
+      "const": "Wolf3D_Outfit_Bottom",
+      "errorMessage": "Mesh name should be 'Wolf3D_Outfit_Bottom'. Found ${0} instead."
+    },
+    "modularFootwear": {
+      "type": "string",
+      "const": "Wolf3D_Outfit_Footwear",
+      "errorMessage": "Mesh name should be 'Wolf3D_Outfit_Footwear'. Found ${0} instead."
+    },
+    "modularTop": {
+      "type": "string",
+      "const": "Wolf3D_Outfit_Top",
+      "errorMessage": "Mesh name should be 'Wolf3D_Outfit_Top'. Found ${0} instead."
+    },
+    "costume": {
+      "type": "string",
+      "enum": [
+        "EyeLeft",
+        "EyeRight",
+        "Wolf3D_Body",
+        "Wolf3D_Head",
+        "Wolf3D_Outfit_Bottom",
+        "Wolf3D_Outfit_Footwear",
+        "Wolf3D_Outfit_Top",
+        "Wolf3D_Teeth",
+        "Wolf3D_Beard",
+        "Wolf3D_Facewear",
+        "Wolf3D_Glasses",
+        "Wolf3D_Hair",
+        "Wolf3D_Headwear",
+        "Wolf3D_Body_Custom",
+        "Wolf3D_Head_Custom"
+      ],
+      "$comment": "Wolf3D_Body_Custom and Wolf3D_Head_Custom are deprecated, but allowed for backwards compatibility.",
+      "errorMessage": "Mesh name should be one of 'EyeLeft', 'EyeRight', 'Wolf3D_Body', 'Wolf3D_Head', 'Wolf3D_Outfit_Bottom', 'Wolf3D_Outfit_Footwear', 'Wolf3D_Outfit_Top', 'Wolf3D_Teeth', 'Wolf3D_Beard', 'Wolf3D_Facewear', 'Wolf3D_Glasses', 'Wolf3D_Hair', 'Wolf3D_Headwear'. Found ${0} instead."
+    },
+    "outfit": {
+      "type": "string",
+      "enum": [
+        "Wolf3D_Body",
+        "Wolf3D_Outfit_Bottom",
+        "Wolf3D_Outfit_Footwear",
+        "Wolf3D_Outfit_Top"
+      ],
+      "errorMessage": "Mesh name should be one of 'Wolf3D_Body', 'Wolf3D_Outfit_Bottom', 'Wolf3D_Outfit_Footwear', 'Wolf3D_Outfit_Top'. Found ${0} instead."
+    }
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "commonTransforms.schema.json",
+  "title": "Common Transform Validation Rules",
+  "description": "Validation schema for common properties of transforms.",
+  "type": "object",
+  "properties": {
+    "transforms": {
+      "description": "The transforms of the objects (meshes & skeleton root).",
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "minItems": 16,
+        "maxItems": 16,
+        "items": {
+          "type": "number"
+        },
+        "const": [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1],
+        "errorMessage": {
+          "const": "Transforms for ${0#} must be neutral (identity matrix: zero translation or rotation, scale of 1). Found ${0}.",
+          "_": "Transforms for ${0#} must be an array of 16 numbers (flattened 4x4 identity matrix). Found ${0/length} numbers."
+        }
+      }
+    }
+  },
+  "required": [
+    "transforms"
+  ]
+}

@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "assetGlasses.schema.json",
+  "title": "Glasses Asset",
+  "description": "A Ready Player Me glTF binary validation schema for glasses.",
+  "type": "object",
+  "properties": {
+    "scenes": { "$ref": "scene.schema.json#/$defs/singleMeshScene" },
+    "meshes": {
+      "type": "object",
+      "properties": {
+        "totalTriangleCount": {
+          "$ref": "meshTriangleCount.schema.json#/properties/glasses"
+        },
+        "properties": {
+          "$comment": "inspect() creates a 'properties' object. Do not confuse with the 'properties' keyword.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "description": "Name of the mesh.",
+                "$ref": "meshNames.schema.json#/properties/glasses"
+              },
+              "attributes": {
+                "$ref": "meshAttributes.schema.json#/properties/unskinned"
+              }
+            },
+            "allOf": [{ "$ref": "commonMesh.schema.json" }],
+            "required": [
+              "name",
+              "mode",
+              "primitives",
+              "glPrimitives",
+              "vertices",
+              "indices",
+              "attributes",
+              "instances",
+              "size"
+            ]
+          }
+        }
+      }
+    },
+    "materials": {
+      "type": "object",
+      "properties": {
+        "properties": {
+          "$comment": "inspect() creates a 'properties' object. Do not confuse with the 'properties' keyword.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "description": "Name of the material.",
+                "$ref": "materialNames.schema.json#/properties/glasses"
+              },
+              "textures": {
+                "$ref": "commonMaterial.schema.json#/$defs/allTextureChannels"
+              },
+              "doubleSided": {
+                "$ref": "commonMaterial.schema.json#/$defs/anySided"
+              },
+              "alphaMode": {
+                "$ref": "commonMaterial.schema.json#/$defs/anyAlphaMode"
+              }
+            },
+            "allOf": [{ "$ref": "commonMaterial.schema.json" }],
+            "required": [
+              "name",
+              "instances",
+              "textures",
+              "alphaMode",
+              "doubleSided"
+            ]
+          },
+          "minItems": 1,
+          "maxItems": 2,
+          "errorMessage": {
+            "minItems": "Missing material! Glasses asset must have at least 1 material.",
+            "maxItems": "Too many materials! Glasses asset must have at most 2 materials, one opaque and one transparent."
+          }
+        }
+      }
+    },
+    "textures": { "$ref": "commonTexture.schema.json#/$defs/fullPBR" },
+    "animations": { "$ref": "animation.schema.json#/properties/noAnimation" }
+  },
+  "required": ["scenes", "meshes", "materials", "textures"]
+}

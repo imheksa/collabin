@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "animation.schema.json",
+  "title": "Animation",
+  "description": "Animation data for an asset.",
+  "type": "object",
+  "properties": {
+    "noAnimation": {
+      "description": "Empty animation data.",
+      "type": "object",
+      "properties": {
+        "properties": {
+          "$comment": "inspect() creates a 'properties' object. Do not confuse with the 'properties' keyword.",
+          "type": "array",
+          "items": {},
+          "minItems": 0,
+          "maxItems": 0,
+          "errorMessage": "Animation is currently not supported."
+        }
+      },
+      "required": ["properties"]
+    }
+  }
+}

@@ -1,0 +1,23 @@
+---
+name: Lint JSON Schemas
+
+########################
+# Start the job on PRs #
+########################
+on:
+  pull_request:
+    branches: [main]
+    types: [ready_for_review, reopened]
+
+###############
+# Set the Job #
+###############
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Validate all json files using their own $schema properties
+        uses: cardinalby/schema-validator-action@v1
+        with:
+          file: "schemas/*.schema.json"

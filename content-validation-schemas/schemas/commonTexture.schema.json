@@ -1,0 +1,196 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "commonTexture.schema.json",
+  "title": "Common Texture Map Properties",
+  "description": "Validation schema for common properties of texture maps.",
+  "type": "object",
+  "properties": {
+    "name": { "type": "string" },
+    "uri": { "type": "string" },
+    "instances": {
+      "type": "integer",
+      "minimum": 1,
+      "errorMessage": {
+        "minimum": "Texture map ${1/name} must be instanced at least once."
+      }
+    },
+    "mimeType": {
+      "type": "string",
+      "oneOf": [{ "const": "image/png" }, { "const": "image/jpeg" }],
+      "errorMessage": {
+        "oneOf": "Texture map ${1/name} must be encoded as PNG or JPEG. Found ${0} instead."
+      }
+    },
+    "compression": { "type": "string" },
+    "resolution": {
+      "description": "Image resolution data used for textures. Power of 2 and square.",
+      "type": "string",
+      "oneOf": [
+        { "const": "1x1" },
+        { "const": "2x2" },
+        { "const": "4x4" },
+        { "const": "8x8" },
+        { "const": "16x16" },
+        { "const": "32x32" },
+        { "const": "64x64" },
+        { "const": "128x128" },
+        { "const": "256x256" },
+        { "const": "512x512" },
+        { "const": "1024x1024" },
+        { "const": "2048x2048" },
+        { "const": "4096x4096" }
+      ],
+      "errorMessage": "Image resolution for ${1/name} must be a power of 2 and square. Maximum 4096 x 4096. Found ${0} instead."
+    },
+    "size": {
+      "type": "integer",
+      "maximum": 4194304,
+      "errorMessage": {
+        "maximum": "Texture map ${1/name} exceeds maximum allowed storage size of 4 MB."
+      }
+    },
+    "gpuSize": {
+      "type": "integer",
+      "maximum": 94371840,
+      "errorMessage": {
+        "maximum": "Texture map ${1/name} exceeds maximum allowed GPU size of 90 MB when fully decompressed."
+      }
+    }
+  },
+  "$defs": {
+    "normalMap": {
+      "description": "For a single-mesh asset with only normal map support.",
+      "type": "object",
+      "properties": {
+        "properties": {
+          "$comment": "inspect() creates a 'properties' object. Do not confuse with the 'properties' keyword.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "slots": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "const": "normalTexture",
+                  "errorMessage": "This asset type only supports the use of a single normal map. Found ${0} instead."
+                },
+                "minItems": 0,
+                "maxItems": 1,
+                "errorMessage": {
+                  "maxItems": "Texture map ${1/name} used for too many slots. Used for ${0}."
+                }
+              }
+            },
+            "allOf": [{ "$ref": "commonTexture.schema.json" }],
+            "required": [
+              "name",
+              "uri",
+              "slots",
+              "instances",
+              "mimeType",
+              "compression",
+              "resolution",
+              "size",
+              "gpuSize"
+            ]
+          },
+          "minItems": 0,
+          "maxItems": 1,
+          "errorMessage": {
+            "maxItems": "Too many texture maps! This Asset type must have only one normal map."
+          }
+        }
+      }
+    },
+    "fullPBR": {
+      "description": "For a single- or multi-mesh asset with full PBR map support.",
+      "type": "object",
+      "properties": {
+        "properties": {
+          "$comment": "inspect() creates a 'properties' object. Do not confuse with the 'properties' keyword.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "slots": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "baseColorTexture",
+                    "emissiveTexture",
+                    "metallicRoughnessTexture",
+                    "normalTexture",
+                    "occlusionTexture"
+                  ],
+                  "errorMessage": "Texture ${2/name} uses unsupported slot ${0}! Supported slots are baseColorTexture, emissiveTexture, metallicRoughnessTexture, normalTexture, and occlusionTexture."
+                },
+                "uniqueItems": true,
+                "minItems": 1,
+                "maxItems": 5,
+                "$comment": "Usually, only the metallicRoughness map is used in 2 slots, namely metallicRoughness & occlusion.",
+                "errorMessage": {
+                  "minItems": "Texture map ${1/name} must be used in at least 1 slot.",
+                  "maxItems": "Texture map ${1/name} used for too many slots (${0/length}). Used for ${0}."
+                }
+              }
+            },
+            "allOf": [{ "$ref": "commonTexture.schema.json" }],
+            "required": [
+              "name",
+              "uri",
+              "slots",
+              "instances",
+              "mimeType",
+              "compression",
+              "resolution",
+              "size",
+              "gpuSize"
+            ]
+          },
+          "minItems": 1,
+          "errorMessage": {
+            "minItems": "Too few texture maps (${0/length})! This Asset type ${/assetType} must have at least one base color texture map."
+          }
+        }
+      }
+    },
+    "singleMaterialTextureCount": {
+      "type": "object",
+      "description": "The single-mesh asset without transparency supports only 1 material with up to 5 texture maps.",
+      "properties": {
+        "textures": {
+          "type": "object",
+          "properties": {
+            "properties": {
+              "type": "array",
+              "maxItems": 5,
+              "errorMessage": {
+                "maxItems": "Too many texture maps (${0/length})! This Asset type ${/assetType} must have 5 maps at most."
+              }
+            }
+          }
+        }
+      }
+    },
+    "dualMaterialTextureCount": {
+      "description": "The single mesh assets support up to 2 materials (opaque + transparent) with 5 maps each.",
+      "type": "object",
+      "properties": {
+        "textures": {
+          "type": "object",
+          "properties": {
+            "properties": {
+              "type": "array",
+              "maxItems": 10,
+              "errorMessage": {
+                "maxItems": "Too many texture maps (${0/length})! This Asset type ${/assetType} must have 10 maps at most."
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
