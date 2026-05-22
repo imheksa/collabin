@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useGameStore } from '../stores/gameStore';
 
 export function Landing() {
-  const setScreen = useGameStore(s => s.setScreen);
+  const { setScreen, onlinePlayers, activeMatches, setOnlinePlayers, setActiveMatches } = useGameStore();
   const [blink, setBlink] = useState(true);
   const [glitch, setGlitch] = useState(false);
 
@@ -12,8 +12,12 @@ export function Landing() {
       setGlitch(true);
       setTimeout(() => setGlitch(false), 150);
     }, 4000);
-    return () => { clearInterval(b); clearInterval(g); };
-  }, []);
+    const o = setInterval(() => {
+      setOnlinePlayers(onlinePlayers + Math.floor((Math.random() - 0.4) * 5));
+      setActiveMatches(Math.max(5, activeMatches + Math.floor((Math.random() - 0.4) * 3)));
+    }, 3000);
+    return () => { clearInterval(b); clearInterval(g); clearInterval(o); };
+  }, [onlinePlayers, activeMatches, setOnlinePlayers, setActiveMatches]);
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-arena-bg relative overflow-hidden">
@@ -80,6 +84,30 @@ export function Landing() {
         <div className="mt-4 font-mono text-sm md:text-base"
           style={{ color: '#ffff00', textShadow: '0 0 8px #ffff00' }}>
           Your social identity becomes your fighting power.
+        </div>
+
+        {/* Live online counter */}
+        <div className="flex justify-center gap-6 mt-3">
+          <div className="flex items-center gap-2">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75"
+                style={{ background: '#00ff41' }} />
+              <span className="relative inline-flex rounded-full h-2 w-2" style={{ background: '#00ff41' }} />
+            </span>
+            <span className="font-pixel" style={{ color: '#00ff41', fontSize: '8px' }}>
+              {onlinePlayers.toLocaleString()} ONLINE
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75"
+                style={{ background: '#ff6600' }} />
+              <span className="relative inline-flex rounded-full h-2 w-2" style={{ background: '#ff6600' }} />
+            </span>
+            <span className="font-pixel" style={{ color: '#ff6600', fontSize: '8px' }}>
+              {activeMatches} IN BATTLE
+            </span>
+          </div>
         </div>
 
         {/* Badges */}

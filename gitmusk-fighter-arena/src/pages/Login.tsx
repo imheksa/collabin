@@ -60,8 +60,8 @@ function ProfileRow({ profile, onSelect }: { profile: XProfile; onSelect: (p: XP
 }
 
 export function Login() {
-  const { setPlayer1, setPlayer2, setScreen, player1 } = useGameStore();
-  const [step, setStep] = useState<'p1' | 'p2'>(player1 ? 'p2' : 'p1');
+  const { setPlayer1, setScreen, player1 } = useGameStore();
+  const [step] = useState<'p1'>('p1');
   const [customUsername, setCustomUsername] = useState('');
   const [loading, setLoading] = useState(false);
   const [showCustom, setShowCustom] = useState(false);
@@ -71,13 +71,8 @@ export function Login() {
     setTimeout(() => {
       const stats = calculateFighterStats(profile);
       const fighter: Fighter = { profile, stats };
-      if (step === 'p1') {
-        setPlayer1(fighter);
-        setStep('p2');
-      } else {
-        setPlayer2(fighter);
-        setScreen('vs_screen');
-      }
+      setPlayer1(fighter);
+      setScreen('mode_select');
       setLoading(false);
       setShowCustom(false);
       setCustomUsername('');
@@ -91,8 +86,8 @@ export function Login() {
   };
 
   const isP1Step = step === 'p1';
-  const color = isP1Step ? '#00ffff' : '#ff00ff';
-  const playerLabel = isP1Step ? 'PLAYER 1' : 'PLAYER 2';
+  const color = '#00ffff';
+  const playerLabel = 'PLAYER 1';
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-arena-bg p-4">
@@ -115,13 +110,11 @@ export function Login() {
 
         {/* Progress */}
         <div className="flex gap-2 mb-6">
-          {['P1', 'P2'].map((p, i) => (
-            <div
-              key={p}
-              className="flex-1 h-1 rounded"
+          {['SELECT FIGHTER', 'CHOOSE MODE', 'FIGHT'].map((p, i) => (
+            <div key={p} className="flex-1 h-1 rounded"
               style={{
-                background: (isP1Step ? i === 0 : i <= 1) ? color : '#2a0050',
-                boxShadow: (isP1Step ? i === 0 : i <= 1) ? `0 0 8px ${color}` : 'none',
+                background: i === 0 ? color : '#2a0050',
+                boxShadow: i === 0 ? `0 0 8px ${color}` : 'none',
               }}
             />
           ))}

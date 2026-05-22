@@ -54,12 +54,14 @@ export interface Fighter {
 export type GameScreen =
   | 'landing'
   | 'login'
-  | 'character_select'
+  | 'mode_select'
+  | 'room_lobby'
   | 'vs_screen'
   | 'arena'
   | 'results';
 
 export type GameMode = 'free' | 'p2e';
+export type MatchMode = 'random' | 'friend';
 
 export interface MatchResult {
   winner: Fighter;
