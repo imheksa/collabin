@@ -102,4 +102,6 @@ export interface GameFighterState {
   comboCount: number;
   comboTimer: number;
   side: 'left' | 'right';
+  specialHitCount: number;
+  specialReady: boolean;
 }
