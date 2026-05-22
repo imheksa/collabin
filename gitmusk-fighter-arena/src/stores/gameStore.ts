@@ -11,6 +11,8 @@ interface GameStore {
   roomCode: string;
   onlinePlayers: number;
   activeMatches: number;
+  xAccessToken: string | null;
+  oauthError: string;
 
   setScreen: (screen: GameScreen) => void;
   setMode: (mode: GameMode) => void;
@@ -21,6 +23,8 @@ interface GameStore {
   setRoomCode: (code: string) => void;
   setOnlinePlayers: (n: number) => void;
   setActiveMatches: (n: number) => void;
+  setXAccessToken: (token: string | null) => void;
+  setOauthError: (err: string) => void;
   resetMatch: () => void;
 }
 
@@ -34,6 +38,8 @@ export const useGameStore = create<GameStore>((set) => ({
   roomCode: '',
   onlinePlayers: 214,
   activeMatches: 18,
+  xAccessToken: null,
+  oauthError: '',
 
   setScreen: (screen) => set({ screen }),
   setMode: (mode) => set({ mode }),
@@ -44,5 +50,7 @@ export const useGameStore = create<GameStore>((set) => ({
   setRoomCode: (roomCode) => set({ roomCode }),
   setOnlinePlayers: (onlinePlayers) => set({ onlinePlayers }),
   setActiveMatches: (activeMatches) => set({ activeMatches }),
+  setXAccessToken: (xAccessToken) => set({ xAccessToken }),
+  setOauthError: (oauthError) => set({ oauthError }),
   resetMatch: () => set({ player1: null, player2: null, matchResult: null, screen: 'mode_select' }),
 }));

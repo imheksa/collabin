@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { useGameStore } from './stores/gameStore';
 import { CRTOverlay } from './components/CRTOverlay';
 import { Landing } from './pages/Landing';
@@ -6,13 +7,88 @@ import { ModeSelect } from './pages/ModeSelect';
 import { VSScreen } from './pages/VSScreen';
 import { Arena } from './pages/Arena';
 import { Results } from './pages/Results';
+import { X_CLIENT_ID, REDIRECT_URI } from './config';
+import { exchangeCodeForToken, fetchXProfile } from './utils/xApiClient';
+import { calculateFighterStats } from './utils/statsCalculator';
+import { Fighter } from './types';
 
 export default function App() {
-  const screen = useGameStore(s => s.screen);
+  const { screen, setScreen, setPlayer1, setXAccessToken, setOauthError } = useGameStore();
+  const [oauthProcessing, setOauthProcessing] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get('code');
+    const state = params.get('state');
+    const errorParam = params.get('error');
+
+    if (errorParam) {
+      window.history.replaceState({}, '', window.location.pathname);
+      setOauthError('X login was cancelled.');
+      setScreen('login');
+      return;
+    }
+
+    if (code && state) {
+      handleOAuthCallback(code, state);
+    }
+  }, []);
+
+  async function handleOAuthCallback(code: string, state: string) {
+    const storedState = sessionStorage.getItem('oauth_state');
+    const verifier = sessionStorage.getItem('oauth_code_verifier');
+
+    window.history.replaceState({}, '', window.location.pathname);
+
+    if (!storedState || state !== storedState || !verifier || !X_CLIENT_ID) {
+      setOauthError('OAuth verification failed. Please try again.');
+      setScreen('login');
+      return;
+    }
+
+    setOauthProcessing(true);
+
+    try {
+      const token = await exchangeCodeForToken(code, verifier, X_CLIENT_ID, REDIRECT_URI);
+      const profile = await fetchXProfile(token);
+      const stats = calculateFighterStats(profile);
+      const fighter: Fighter = { profile, stats };
+
+      sessionStorage.removeItem('oauth_state');
+      sessionStorage.removeItem('oauth_code_verifier');
+
+      setXAccessToken(token);
+      setPlayer1(fighter);
+      setScreen('mode_select');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'X login failed.';
+      setOauthError(msg + ' You can still use demo mode below.');
+      setScreen('login');
+    } finally {
+      setOauthProcessing(false);
+    }
+  }
 
   return (
     <div className="relative min-h-screen bg-arena-bg font-mono">
       <CRTOverlay />
+
+      {oauthProcessing && (
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black bg-opacity-90">
+          <div className="font-pixel text-2xl mb-4 animate-pulse"
+            style={{ color: '#1d9bf0', textShadow: '0 0 20px #1d9bf0' }}>
+            AUTHENTICATING WITH X...
+          </div>
+          <div className="flex gap-2 mt-4">
+            {[0, 1, 2].map(i => (
+              <div key={i} className="w-3 h-3 rounded-full animate-bounce"
+                style={{ background: '#1d9bf0', animationDelay: `${i * 0.15}s` }} />
+            ))}
+          </div>
+          <div className="mt-6 font-mono text-gray-500 text-sm">Fetching your real stats...</div>
+        </div>
+      )}
+
       {screen === 'landing' && <Landing />}
       {screen === 'login' && <Login />}
       {screen === 'mode_select' && <ModeSelect />}
