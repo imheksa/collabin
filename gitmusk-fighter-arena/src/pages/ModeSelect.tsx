@@ -3,8 +3,8 @@ import { useGameStore } from '../stores/gameStore';
 import { DEMO_PROFILES } from '../data/mockProfiles';
 import { calculateFighterStats } from '../utils/statsCalculator';
 import { Fighter } from '../types';
-import { connectBankrKey, checkBankrExists, BankrWalletData } from '../utils/bankrClient';
-import { getWalletBalance, isValidAddress } from '../utils/baseRpc';
+import { connectBankrKey, checkBankrExists, lookupBankrUser } from '../utils/bankrClient';
+import { getWalletBalance } from '../utils/baseRpc';
 
 const P2E_MIN_USD = 5;
 
@@ -27,7 +27,17 @@ function OnlinePulse({ count, label, color = '#00ff41' }: { count: number; label
   );
 }
 
-/* ─── P2E Modal ─────────────────────────────────────────────────────── */
+/* ─── P2E Modal (fully automatic) ──────────────────────────────────── */
+
+type P2eStep = 'checking' | 'eligible' | 'insufficient' | 'not_connected' | 'manual_fallback';
+
+interface BalanceSnapshot {
+  address: string;
+  usdc: number;
+  eth: number;
+  ethPriceUsd: number;
+  totalUsd: number;
+}
 
 function P2eModal({
   username,
@@ -36,90 +46,49 @@ function P2eModal({
 }: {
   username: string;
   onClose: () => void;
-  onReady: (wallet: BankrWalletData) => void;
+  onReady: () => void;
 }) {
-  const { walletAddress, setWalletAddress } = useGameStore();
-  const [step, setStep] = useState<'check' | 'connect' | 'confirm' | 'error'>('check');
-  const [tab, setTab] = useState<'bankr' | 'manual'>('bankr');
+  const { setWalletAddress } = useGameStore();
+  const [step, setStep] = useState<P2eStep>('checking');
+  const [balance, setBalance] = useState<BalanceSnapshot | null>(null);
   const [bankrKey, setBankrKey] = useState('');
-  const [manualAddr, setManualAddr] = useState('');
-  const [walletData, setWalletData] = useState<BankrWalletData | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [keyLoading, setKeyLoading] = useState(false);
   const [errMsg, setErrMsg] = useState('');
 
-  // On mount: if wallet already stored, load balance
-  useEffect(() => {
-    if (walletAddress) {
-      loadExistingWallet(walletAddress);
-    } else {
-      setStep('connect');
-    }
-  }, []);
-
-  const loadExistingWallet = async (addr: string) => {
-    setLoading(true);
+  const runAutoCheck = useCallback(async () => {
+    setStep('checking');
+    setBalance(null);
     try {
+      const addr = await lookupBankrUser(username);
+      if (!addr) { setStep('not_connected'); return; }
       const bal = await getWalletBalance(addr);
-      const data: BankrWalletData = {
-        evmAddress: addr,
-        twitterUsername: null,
-        baseUsd: bal.totalUsd,
-        usdc: bal.usdc,
-        eth: bal.eth,
-        ethUsd: bal.eth * bal.ethPriceUsd,
-      };
-      setWalletData(data);
-      setStep('confirm');
+      setWalletAddress(addr);
+      setBalance({ address: addr, ...bal });
+      setStep(bal.totalUsd >= P2E_MIN_USD ? 'eligible' : 'insufficient');
     } catch {
-      setStep('connect');
-    } finally {
-      setLoading(false);
+      setStep('manual_fallback');
     }
-  };
+  }, [username, setWalletAddress]);
+
+  useEffect(() => { runAutoCheck(); }, [runAutoCheck]);
 
   const connectWithKey = async () => {
     const key = bankrKey.trim();
     if (!key) return;
-    setLoading(true);
+    setKeyLoading(true);
     setErrMsg('');
     try {
       const data = await connectBankrKey(key, username);
+      const bal = await getWalletBalance(data.evmAddress);
       setWalletAddress(data.evmAddress);
-      setWalletData(data);
-      setStep('confirm');
+      setBalance({ address: data.evmAddress, ...bal });
+      setStep(bal.totalUsd >= P2E_MIN_USD ? 'eligible' : 'insufficient');
     } catch (err) {
       setErrMsg(err instanceof Error ? err.message : 'Connection failed.');
     } finally {
-      setLoading(false);
+      setKeyLoading(false);
     }
   };
-
-  const connectManual = async () => {
-    const addr = manualAddr.trim();
-    if (!isValidAddress(addr)) { setErrMsg('Invalid address format (0x..., 42 chars).'); return; }
-    setLoading(true);
-    setErrMsg('');
-    try {
-      const bal = await getWalletBalance(addr);
-      setWalletAddress(addr);
-      const data: BankrWalletData = {
-        evmAddress: addr,
-        twitterUsername: null,
-        baseUsd: bal.totalUsd,
-        usdc: bal.usdc,
-        eth: bal.eth,
-        ethUsd: bal.eth * bal.ethPriceUsd,
-      };
-      setWalletData(data);
-      setStep('confirm');
-    } catch {
-      setErrMsg('Failed to read balance from Base chain.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const eligible = walletData && walletData.baseUsd >= P2E_MIN_USD;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
@@ -128,12 +97,10 @@ function P2eModal({
       <div className="w-full max-w-md rounded-lg p-6 relative"
         style={{ background: '#0d001a', border: '2px solid #ffd700', boxShadow: '0 0 40px #ffd70030' }}>
 
-        {/* Close */}
         <button onClick={onClose}
           className="absolute top-4 right-4 font-mono text-gray-600 hover:text-gray-300"
           style={{ fontSize: '18px' }}>✕</button>
 
-        {/* Title */}
         <div className="text-center mb-5">
           <div className="font-pixel text-2xl mb-1" style={{ color: '#ffd700', textShadow: '0 0 15px #ffd700' }}>
             💰 PLAY TO EARN
@@ -143,199 +110,163 @@ function P2eModal({
           </div>
         </div>
 
-        {/* LOADING */}
-        {loading && (
-          <div className="flex items-center justify-center gap-3 py-6">
+        {/* CHECKING */}
+        {step === 'checking' && (
+          <div className="flex flex-col items-center gap-3 py-8">
             <div className="flex gap-1">
               {[0, 1, 2].map(i => (
                 <div key={i} className="w-2 h-2 rounded-full animate-bounce"
                   style={{ background: '#ffd700', animationDelay: `${i * 0.15}s` }} />
               ))}
             </div>
-            <span className="font-mono text-gray-400" style={{ fontSize: '11px' }}>Checking wallet...</span>
+            <span className="font-mono text-gray-400" style={{ fontSize: '11px' }}>
+              Checking @{username}'s Bankr wallet...
+            </span>
           </div>
         )}
 
-        {/* CONNECT */}
-        {!loading && step === 'connect' && (
+        {/* ELIGIBLE */}
+        {step === 'eligible' && balance && (
           <div>
-            <div className="mb-4 p-3 rounded text-center"
-              style={{ background: '#12002a', border: '1px solid #2a0050' }}>
-              <div className="font-mono text-gray-400" style={{ fontSize: '11px' }}>
-                Connect your Bankr wallet to play P2E.
-                Bankr gives every X account a free Base wallet.
-              </div>
-              <a href="https://bankr.bot" target="_blank" rel="noopener"
-                className="font-pixel mt-2 inline-block"
-                style={{ color: '#1d9bf0', fontSize: '8px' }}>
-                → Get Bankr at bankr.bot
-              </a>
-            </div>
-
-            {/* Tabs */}
-            <div className="flex mb-4 rounded overflow-hidden" style={{ border: '1px solid #2a0050' }}>
-              {(['bankr', 'manual'] as const).map(t => (
-                <button key={t} onClick={() => setTab(t)}
-                  className="flex-1 py-2 font-pixel transition-all"
-                  style={{
-                    fontSize: '8px',
-                    background: tab === t ? '#1a0040' : 'transparent',
-                    color: tab === t ? '#ffd700' : '#444',
-                    borderBottom: tab === t ? '2px solid #ffd700' : '2px solid transparent',
-                  }}>
-                  {t === 'bankr' ? '🔑 BANKR API KEY' : '✏️ WALLET ADDRESS'}
-                </button>
-              ))}
-            </div>
-
-            {tab === 'bankr' && (
-              <div>
-                <div className="font-mono mb-2" style={{ fontSize: '10px', color: '#666' }}>
-                  DM <span style={{ color: '#1d9bf0' }}>@bankrbot</span> on X: <em style={{ color: '#aaa' }}>"my api key"</em>
-                  {' '}or visit <span style={{ color: '#1d9bf0' }}>bankr.bot/api</span>
-                </div>
-                <div className="flex gap-2 mb-1">
-                  <input
-                    className="flex-1 bg-black font-mono text-white px-3 py-2 outline-none rounded"
-                    style={{ border: '1px solid #2a0050', fontSize: '11px' }}
-                    placeholder="bk_xxxxxxxxxxxxxxxxxxxxxxxx"
-                    type="password"
-                    value={bankrKey}
-                    onChange={e => setBankrKey(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && connectWithKey()}
-                    autoFocus
-                  />
-                  <button onClick={connectWithKey}
-                    className="font-pixel px-4 py-2 rounded transition-all hover:scale-[1.02]"
-                    style={{ background: '#ffd700', color: '#000', fontSize: '8px' }}>
-                    CONNECT
-                  </button>
-                </div>
-                <div className="font-mono" style={{ fontSize: '9px', color: '#444' }}>
-                  🔒 Read-only. Verifies identity + balance only. Not stored.
-                </div>
-              </div>
-            )}
-
-            {tab === 'manual' && (
-              <div>
-                <div className="font-mono mb-2" style={{ fontSize: '10px', color: '#666' }}>
-                  Enter your Base chain wallet address (0x...)
-                </div>
-                <div className="flex gap-2">
-                  <input
-                    className="flex-1 bg-black font-mono text-white px-3 py-2 outline-none rounded"
-                    style={{ border: '1px solid #2a0050', fontSize: '11px' }}
-                    placeholder="0xabc123..."
-                    value={manualAddr}
-                    onChange={e => setManualAddr(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && connectManual()}
-                    autoFocus
-                  />
-                  <button onClick={connectManual}
-                    className="font-pixel px-4 py-2 rounded transition-all hover:scale-[1.02]"
-                    style={{ background: '#ffd700', color: '#000', fontSize: '8px' }}>
-                    CHECK
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {errMsg && (
-              <div className="mt-3 font-mono" style={{ fontSize: '10px', color: '#ff6060' }}>⚠ {errMsg}</div>
-            )}
-          </div>
-        )}
-
-        {/* CONFIRM */}
-        {!loading && step === 'confirm' && walletData && (
-          <div>
-            {/* Verified badge */}
-            {walletData.twitterUsername && (
-              <div className="flex items-center gap-2 mb-4 p-2 rounded"
-                style={{ background: '#001020', border: '1px solid #1d9bf020' }}>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="#1d9bf0">
-                  <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.746l7.73-8.835L1.254 2.25H8.08l4.261 5.635zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-                </svg>
-                <span className="font-mono" style={{ fontSize: '11px', color: '#1d9bf0' }}>
-                  @{walletData.twitterUsername}
-                </span>
-                <span className="ml-auto font-pixel" style={{ fontSize: '7px', color: '#00ff41' }}>✓ VERIFIED</span>
-              </div>
-            )}
-
-            {/* Balance */}
             <div className="grid grid-cols-3 gap-2 mb-4">
               <div className="text-center p-3 rounded" style={{ background: '#0a0018', border: '1px solid #1a0030' }}>
                 <div className="font-mono" style={{ fontSize: '9px', color: '#26a17b' }}>USDC</div>
-                <div className="font-pixel mt-1" style={{ fontSize: '13px', color: '#fff' }}>${walletData.usdc.toFixed(2)}</div>
+                <div className="font-pixel mt-1" style={{ fontSize: '13px', color: '#fff' }}>${balance.usdc.toFixed(2)}</div>
               </div>
               <div className="text-center p-3 rounded" style={{ background: '#0a0018', border: '1px solid #1a0030' }}>
                 <div className="font-mono" style={{ fontSize: '9px', color: '#627eea' }}>ETH</div>
-                <div className="font-pixel mt-1" style={{ fontSize: '13px', color: '#fff' }}>{walletData.eth.toFixed(4)}</div>
+                <div className="font-pixel mt-1" style={{ fontSize: '13px', color: '#fff' }}>{balance.eth.toFixed(4)}</div>
               </div>
-              <div className="text-center p-3 rounded"
-                style={{ background: eligible ? '#001a00' : '#1a0005', border: `1px solid ${eligible ? '#00ff4130' : '#ff003030'}` }}>
-                <div className="font-mono" style={{ fontSize: '9px', color: eligible ? '#00ff41' : '#ff4040' }}>TOTAL</div>
-                <div className="font-pixel mt-1" style={{ fontSize: '13px', color: eligible ? '#00ff41' : '#ff4040' }}>
-                  ${walletData.baseUsd.toFixed(2)}
-                </div>
+              <div className="text-center p-3 rounded" style={{ background: '#001a00', border: '1px solid #00ff4130' }}>
+                <div className="font-mono" style={{ fontSize: '9px', color: '#00ff41' }}>TOTAL</div>
+                <div className="font-pixel mt-1" style={{ fontSize: '13px', color: '#00ff41' }}>${balance.totalUsd.toFixed(2)}</div>
               </div>
             </div>
+            <div className="text-center p-3 rounded mb-4" style={{ background: '#001500', border: '1px solid #00ff4130' }}>
+              <div className="font-pixel mb-1" style={{ fontSize: '8px', color: '#00ff41' }}>✓ READY TO PLAY — $5 STAKE</div>
+              <div className="font-mono" style={{ fontSize: '10px', color: '#888' }}>Winner takes 90% · Platform fee 10%</div>
+            </div>
+            <button onClick={onReady}
+              className="w-full font-pixel py-4 rounded transition-all hover:scale-[1.02] active:scale-[0.98]"
+              style={{
+                background: 'linear-gradient(135deg, #ffd700, #ff8800)',
+                color: '#000', fontSize: '11px', letterSpacing: '1px',
+                boxShadow: '0 0 25px #ffd70050',
+              }}>
+              ⚔ ENTER P2E MATCH
+            </button>
+          </div>
+        )}
 
-            {eligible ? (
-              <>
-                <div className="text-center p-3 rounded mb-4"
-                  style={{ background: '#001500', border: '1px solid #00ff4130' }}>
-                  <div className="font-pixel mb-1" style={{ fontSize: '8px', color: '#00ff41' }}>
-                    ✓ READY TO PLAY — $5 STAKE
-                  </div>
-                  <div className="font-mono" style={{ fontSize: '10px', color: '#888' }}>
-                    Winner takes 90% · Platform fee 10%
-                  </div>
-                </div>
-                <button
-                  onClick={() => onReady(walletData)}
-                  className="w-full font-pixel py-4 rounded transition-all hover:scale-[1.02] active:scale-[0.98]"
-                  style={{
-                    background: 'linear-gradient(135deg, #ffd700, #ff8800)',
-                    color: '#000',
-                    fontSize: '11px',
-                    letterSpacing: '1px',
-                    boxShadow: '0 0 25px #ffd70050',
-                  }}>
-                  ⚔ ENTER P2E MATCH
-                </button>
-              </>
-            ) : (
-              <>
-                <div className="text-center p-3 rounded mb-4"
-                  style={{ background: '#1a0005', border: '1px solid #ff003030' }}>
-                  <div className="font-pixel mb-1" style={{ fontSize: '8px', color: '#ff4040' }}>
-                    INSUFFICIENT BALANCE
-                  </div>
-                  <div className="font-mono" style={{ fontSize: '10px', color: '#888' }}>
-                    Need ${(P2E_MIN_USD - walletData.baseUsd).toFixed(2)} more on Base to play P2E
-                  </div>
-                </div>
-                <div className="font-mono text-center mb-3" style={{ fontSize: '10px', color: '#666' }}>
-                  Top up via <span style={{ color: '#1d9bf0' }}>@bankrbot</span> on X:
-                  <em style={{ color: '#aaa' }}> "deposit $10 USDC to Base"</em>
-                </div>
-                <button
-                  onClick={() => { setStep('connect'); setWalletAddress(null); setWalletData(null); }}
-                  className="w-full font-pixel py-3 rounded"
-                  style={{ background: 'transparent', border: '1px solid #333', color: '#666', fontSize: '8px' }}>
-                  ← USE DIFFERENT WALLET
-                </button>
-              </>
-            )}
-
-            {walletData.leaderboardRank && (
-              <div className="text-center mt-3 font-pixel" style={{ fontSize: '7px', color: '#555' }}>
-                BANKR RANK #{walletData.leaderboardRank}
+        {/* INSUFFICIENT */}
+        {step === 'insufficient' && balance && (
+          <div>
+            <div className="grid grid-cols-3 gap-2 mb-4">
+              <div className="text-center p-3 rounded" style={{ background: '#0a0018', border: '1px solid #1a0030' }}>
+                <div className="font-mono" style={{ fontSize: '9px', color: '#26a17b' }}>USDC</div>
+                <div className="font-pixel mt-1" style={{ fontSize: '13px', color: '#fff' }}>${balance.usdc.toFixed(2)}</div>
               </div>
-            )}
+              <div className="text-center p-3 rounded" style={{ background: '#0a0018', border: '1px solid #1a0030' }}>
+                <div className="font-mono" style={{ fontSize: '9px', color: '#627eea' }}>ETH</div>
+                <div className="font-pixel mt-1" style={{ fontSize: '13px', color: '#fff' }}>{balance.eth.toFixed(4)}</div>
+              </div>
+              <div className="text-center p-3 rounded" style={{ background: '#1a0005', border: '1px solid #ff003030' }}>
+                <div className="font-mono" style={{ fontSize: '9px', color: '#ff4040' }}>TOTAL</div>
+                <div className="font-pixel mt-1" style={{ fontSize: '13px', color: '#ff4040' }}>${balance.totalUsd.toFixed(2)}</div>
+              </div>
+            </div>
+            <div className="text-center p-3 rounded mb-3" style={{ background: '#1a0005', border: '1px solid #ff003030' }}>
+              <div className="font-pixel mb-1" style={{ fontSize: '8px', color: '#ff4040' }}>INSUFFICIENT BALANCE</div>
+              <div className="font-mono" style={{ fontSize: '10px', color: '#888' }}>
+                Need ${(P2E_MIN_USD - balance.totalUsd).toFixed(2)} more on Base
+              </div>
+            </div>
+            <div className="p-3 rounded mb-3" style={{ background: '#0a0018', border: '1px solid #1a0030' }}>
+              <div className="font-mono mb-1" style={{ fontSize: '10px', color: '#888' }}>
+                Top up via <span style={{ color: '#1d9bf0' }}>@bankrbot</span> on X:
+              </div>
+              <div className="font-pixel" style={{ fontSize: '9px', color: '#ffd700' }}>
+                "deposit ${Math.ceil(P2E_MIN_USD - balance.totalUsd + 1)} USDC to Base"
+              </div>
+            </div>
+            <button onClick={runAutoCheck}
+              className="w-full font-pixel py-3 rounded transition-all hover:scale-[1.02]"
+              style={{ background: 'transparent', border: '1px solid #ffd700', color: '#ffd700', fontSize: '8px' }}>
+              🔄 RECHECK BALANCE
+            </button>
+          </div>
+        )}
+
+        {/* NOT CONNECTED */}
+        {step === 'not_connected' && (
+          <div>
+            <div className="text-center mb-4 p-4 rounded" style={{ background: '#0a0018', border: '1px solid #1a0030' }}>
+              <div className="text-3xl mb-2">🤖</div>
+              <div className="font-pixel mb-2" style={{ fontSize: '9px', color: '#ffd700' }}>NO BANKR WALLET FOUND</div>
+              <div className="font-mono" style={{ fontSize: '10px', color: '#888' }}>
+                @{username} doesn't have a Bankr account yet.
+              </div>
+            </div>
+            <div className="p-3 rounded mb-4" style={{ background: '#12002a', border: '1px solid #2a0050' }}>
+              <div className="font-pixel mb-2" style={{ fontSize: '8px', color: '#00ffff' }}>HOW TO GET STARTED:</div>
+              <ol className="font-mono space-y-1" style={{ fontSize: '10px', color: '#aaa' }}>
+                <li>1. Open X (Twitter)</li>
+                <li>2. DM <span style={{ color: '#1d9bf0' }}>@bankrbot</span>: <em>"create wallet"</em></li>
+                <li>3. Fund with USDC on Base (min $5)</li>
+                <li>4. Come back and try again!</li>
+              </ol>
+            </div>
+            <div className="flex gap-2">
+              <a href="https://twitter.com/messages/compose?recipient_id=bankrbot"
+                target="_blank" rel="noopener"
+                className="flex-1 font-pixel py-3 rounded text-center transition-all hover:scale-[1.02]"
+                style={{ background: '#1d9bf020', border: '1px solid #1d9bf0', color: '#1d9bf0', fontSize: '8px' }}>
+                💬 DM @BANKRBOT
+              </a>
+              <button onClick={runAutoCheck}
+                className="flex-1 font-pixel py-3 rounded transition-all hover:scale-[1.02]"
+                style={{ background: 'transparent', border: '1px solid #333', color: '#666', fontSize: '8px' }}>
+                🔄 TRY AGAIN
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* MANUAL FALLBACK */}
+        {step === 'manual_fallback' && (
+          <div>
+            <div className="text-center mb-4 p-3 rounded" style={{ background: '#1a0005', border: '1px solid #ff003030' }}>
+              <div className="font-pixel mb-1" style={{ fontSize: '8px', color: '#ff6060' }}>AUTO-CHECK UNAVAILABLE</div>
+              <div className="font-mono" style={{ fontSize: '10px', color: '#888' }}>
+                Bankr API unreachable. Enter your API key to continue.
+              </div>
+            </div>
+            <div className="font-mono mb-2" style={{ fontSize: '10px', color: '#666' }}>
+              DM <span style={{ color: '#1d9bf0' }}>@bankrbot</span>: <em style={{ color: '#aaa' }}>"my api key"</em>
+            </div>
+            <div className="flex gap-2 mb-1">
+              <input
+                className="flex-1 bg-black font-mono text-white px-3 py-2 outline-none rounded"
+                style={{ border: '1px solid #2a0050', fontSize: '11px' }}
+                placeholder="bk_xxxxxxxxxxxxxxxxxxxxxxxx"
+                type="password"
+                value={bankrKey}
+                onChange={e => setBankrKey(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && connectWithKey()}
+                autoFocus
+              />
+              <button onClick={connectWithKey} disabled={keyLoading}
+                className="font-pixel px-4 py-2 rounded transition-all hover:scale-[1.02] disabled:opacity-50"
+                style={{ background: '#ffd700', color: '#000', fontSize: '8px' }}>
+                {keyLoading ? '...' : 'GO'}
+              </button>
+            </div>
+            {errMsg && <div className="mt-2 font-mono" style={{ fontSize: '10px', color: '#ff6060' }}>⚠ {errMsg}</div>}
+            <button onClick={runAutoCheck}
+              className="mt-3 w-full font-pixel py-2 rounded"
+              style={{ background: 'transparent', border: '1px solid #333', color: '#555', fontSize: '7px' }}>
+              🔄 RETRY AUTO-CHECK
+            </button>
           </div>
         )}
       </div>
@@ -401,11 +332,10 @@ export function ModeSelect() {
     setTimeout(() => { clearInterval(cd); setSearching(false); pickRandomOpponent(); }, delay);
   };
 
-  const startP2eMatch = (wallet: BankrWalletData) => {
+  const startP2eMatch = () => {
     setShowP2eModal(false);
     setMode('p2e');
     startRandomSearch();
-    void wallet; // wallet stored in gameStore already
   };
 
   const createRoom = () => {
@@ -668,7 +598,7 @@ export function ModeSelect() {
         <P2eModal
           username={player1.profile.username}
           onClose={() => setShowP2eModal(false)}
-          onReady={startP2eMatch}
+          onReady={() => startP2eMatch()}
         />
       )}
     </div>
