@@ -1,13 +1,18 @@
 [build]
-  base = "gitmusk-fighter-arena"
-  command = "npm run build"
-  publish = "dist"
+  base      = "gitmusk-fighter-arena"
+  command   = "npm ci && npm run build"
+  publish   = "dist"
   functions = "netlify/functions"
 
 [build.environment]
   NODE_VERSION = "20"
 
+# Required env vars — set these in Netlify dashboard under Site configuration → Environment variables:
+#   VITE_X_CLIENT_ID      = <your X Client ID>
+#   VITE_REDIRECT_URI     = https://gitmusk.netlify.app/   (must match X Developer Portal)
+#   X_CLIENT_ID           = <same Client ID, used server-side by token-exchange function>
+
 [[redirects]]
-  from = "/*"
-  to = "/index.html"
+  from   = "/*"
+  to     = "/index.html"
   status = 200

@@ -117,10 +117,25 @@ export function Login() {
 
         {/* OAuth error */}
         {oauthError && (
-          <div className="mb-4 p-3 rounded font-mono text-xs"
-            style={{ background: '#1a0010', border: '1px solid #ff004080', color: '#ff6080' }}>
-            ⚠ {oauthError}
-            <button onClick={() => setOauthError('')} className="ml-2 text-gray-500 hover:text-gray-300">✕</button>
+          <div className="mb-4 p-3 rounded" style={{ background: '#1a0010', border: '1px solid #ff004080' }}>
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <div className="font-pixel mb-1" style={{ fontSize: '8px', color: '#ff6080' }}>
+                  ⚠ X LOGIN FAILED
+                </div>
+                <div className="font-mono text-xs" style={{ color: '#cc4060' }}>
+                  {oauthError.includes('CORS') || oauthError.includes('proxy')
+                    ? 'Backend server not reachable. Try demo mode below while we fix this.'
+                    : oauthError.includes('invalid_request') || oauthError.includes('redirect_uri')
+                    ? 'Redirect URI mismatch — check X Developer Portal settings.'
+                    : oauthError.includes('access_denied')
+                    ? 'Login was cancelled.'
+                    : oauthError}
+                </div>
+              </div>
+              <button onClick={() => setOauthError('')}
+                className="text-gray-600 hover:text-gray-300 flex-shrink-0 mt-0.5">✕</button>
+            </div>
           </div>
         )}
 
