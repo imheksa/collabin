@@ -31,9 +31,14 @@ export async function exchangeCodeForToken(
     code_verifier: codeVerifier,
   });
 
-  // Try Netlify/Vercel proxy first (avoids CORS), fall back to direct call
-  const endpoints = [TOKEN_PROXY_URL, 'https://api.twitter.com/2/oauth2/token'];
+  // Try proxy first (required on GitHub Pages — X token endpoint blocks CORS)
+  // Fallback to direct call (works only when app is hosted on Netlify itself)
+  const endpoints = [
+    TOKEN_PROXY_URL,
+    'https://api.twitter.com/2/oauth2/token',
+  ].filter(Boolean);
 
+  let lastError = '';
   for (const endpoint of endpoints) {
     try {
       const res = await fetch(endpoint, {
@@ -44,14 +49,22 @@ export async function exchangeCodeForToken(
       if (res.ok) {
         const data = await res.json();
         if (data.access_token) return data.access_token;
+        lastError = data.error_description ?? data.error ?? 'No access_token in response';
+      } else {
+        const err = await res.json().catch(() => ({}));
+        lastError = err.error_description ?? err.error ?? `HTTP ${res.status}`;
       }
-    } catch {
-      // try next endpoint
+    } catch (e) {
+      lastError = e instanceof Error ? e.message : String(e);
     }
   }
 
+  // Actionable error message
+  const isCors = lastError.includes('Failed to fetch') || lastError.includes('NetworkError');
   throw new Error(
-    'Token exchange failed — deploy to Netlify/Vercel to enable full X OAuth support.',
+    isCors
+      ? 'Token exchange blocked by CORS. Deploy backend to Netlify and set VITE_TOKEN_PROXY_URL.'
+      : `X login failed: ${lastError}`,
   );
 }
 
