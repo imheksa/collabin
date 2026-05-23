@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { Fighter, GameFighterState, MatchResult } from '../types';
 import { calcDamage } from '../utils/statsCalculator';
 import { HPBar } from './HPBar';
+import { playPunch, playKick, playSpecial, playUltimate, playBlock, playCombo, playKO } from '../utils/sounds';
 
 const W = 800;
 const H = 400;
@@ -673,6 +674,7 @@ interface ArenaProps {
 
 export function FightingArena({ player1, player2, onMatchEnd }: ArenaProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const wrapperRef = useRef<HTMLDivElement>(null);
   const p1Ref = useRef<GameFighterState>(makeInitialState('left', 100));
   const p2Ref = useRef<GameFighterState>(makeInitialState('right', 100));
   const keysRef = useRef<Set<string>>(new Set());
@@ -681,6 +683,7 @@ export function FightingArena({ player1, player2, onMatchEnd }: ArenaProps) {
   const matchStartRef = useRef(Date.now());
   const maxComboRef = useRef(0);
   const gameOverRef = useRef(false);
+  const koFiredRef = useRef(false);
 
   // Visual effects
   const particlesRef = useRef<Particle[]>([]);
@@ -688,6 +691,7 @@ export function FightingArena({ player1, player2, onMatchEnd }: ArenaProps) {
   const hitRingsRef = useRef<HitRing[]>([]);
   const hitTextRef = useRef<Array<{ x: number; y: number; text: string; timer: number; color: string; size: number }>>([]);
   const screenFlashRef = useRef<{ alpha: number; color: string } | null>(null);
+  const shakeRef = useRef({ amount: 0 });
 
   const [timeLeft, setTimeLeft] = useState(ROUND_TIME);
   const [round] = useState(1);
@@ -747,6 +751,20 @@ export function FightingArena({ player1, player2, onMatchEnd }: ArenaProps) {
         attacker.comboTimer = 60;
         maxComboRef.current = Math.max(maxComboRef.current, attacker.comboCount);
 
+        // Combo announcements on canvas
+        const comboMilestones: Record<number, string> = { 3: 'COMBO!', 5: 'SAVAGE!', 7: '⚡ ULTRA!', 10: '🔥 GODLIKE!' };
+        if (comboMilestones[attacker.comboCount]) {
+          const cx = attacker.side === 'left' ? W * 0.22 : W * 0.78;
+          hitTextRef.current.push({
+            x: cx, y: FLOOR_Y - 130,
+            text: `${attacker.comboCount}x ${comboMilestones[attacker.comboCount]}`,
+            timer: 80,
+            color: ARCHETYPE_COLORS[attackerFighter.stats.archetype] || '#ffff00',
+            size: 16,
+          });
+          playCombo(attacker.comboCount);
+        }
+
         // Increment special hit counter for normal attacks
         if (move === 'punch' || move === 'kick') {
           attacker.specialHitCount = Math.min(SPECIAL_HITS_REQUIRED, attacker.specialHitCount + 1);
@@ -754,6 +772,8 @@ export function FightingArena({ player1, player2, onMatchEnd }: ArenaProps) {
             attacker.specialReady = true;
           }
         }
+      } else {
+        playBlock();
       }
 
       // Reset special after use
@@ -784,6 +804,16 @@ export function FightingArena({ player1, player2, onMatchEnd }: ArenaProps) {
           width: 2,
         });
       }
+
+      // Screen shake
+      const shakePower = { punch: 2.5, kick: 4, special: 8, ultimate: 14 };
+      shakeRef.current.amount = Math.max(shakeRef.current.amount, shakePower[move]);
+
+      // Sounds
+      if (move === 'punch') playPunch();
+      else if (move === 'kick') playKick();
+      else if (move === 'special') playSpecial();
+      else if (move === 'ultimate') playUltimate();
 
       // Special elemental effect
       if (move === 'special') {
@@ -843,29 +873,50 @@ export function FightingArena({ player1, player2, onMatchEnd }: ArenaProps) {
     window.addEventListener('keyup', onKeyUp);
 
     const loop = () => {
-      if (gameOverRef.current) { frameRef.current = requestAnimationFrame(loop); return; }
-
       const p1 = p1Ref.current;
       const p2 = p2Ref.current;
       const keys = keysRef.current;
 
-      const elapsed = (Date.now() - startTimeRef.current) / 1000;
-      const remaining = Math.max(0, ROUND_TIME - elapsed);
-      setTimeLeft(Math.ceil(remaining));
+      if (!gameOverRef.current) {
+        const elapsed = (Date.now() - startTimeRef.current) / 1000;
+        const remaining = Math.max(0, ROUND_TIME - elapsed);
+        setTimeLeft(Math.ceil(remaining));
 
-      if (remaining <= 0 || p1.hp <= 0 || p2.hp <= 0) {
-        if (!gameOverRef.current) {
+        if (remaining <= 0 || p1.hp <= 0 || p2.hp <= 0) {
           gameOverRef.current = true;
-          const winner = p1.hp > p2.hp ? player1 : player2;
-          const loser = p1.hp > p2.hp ? player2 : player1;
-          setTimeout(() => {
-            onMatchEnd({ winner, loser, rounds: 1, duration: Math.floor((Date.now() - matchStartRef.current) / 1000), maxCombo: maxComboRef.current, mode: 'free' });
-          }, 1800);
+          if (!koFiredRef.current) {
+            koFiredRef.current = true;
+            playKO();
+            screenFlashRef.current = { alpha: 0.7, color: '#ffffff' };
+            shakeRef.current.amount = 18;
+            // KO particle burst around loser
+            const loserState = p1.hp <= p2.hp ? p1 : p2;
+            const burstX = loserState.x + FW / 2;
+            const burstY = loserState.y + FH / 2;
+            for (let i = 0; i < 60; i++) {
+              const angle = Math.random() * Math.PI * 2;
+              const speed = 3 + Math.random() * 9;
+              const colors = ['#ff0040', '#ffff00', '#ff8800', '#ffffff', '#ff00ff'];
+              particlesRef.current.push(makeParticle(
+                burstX, burstY,
+                Math.cos(angle) * speed, Math.sin(angle) * speed - 3,
+                3 + Math.random() * 8,
+                colors[Math.floor(Math.random() * colors.length)],
+                0.015 + Math.random() * 0.01,
+                Math.random() > 0.5 ? 'star' : 'circle',
+                0.12
+              ));
+            }
+            const winner = p1.hp > p2.hp ? player1 : player2;
+            const loser = p1.hp > p2.hp ? player2 : player1;
+            setTimeout(() => {
+              onMatchEnd({ winner, loser, rounds: 1, duration: Math.floor((Date.now() - matchStartRef.current) / 1000), maxCombo: maxComboRef.current, mode: 'free' });
+            }, 2200);
+          }
         }
-        frameRef.current = requestAnimationFrame(loop);
-        return;
       }
 
+      if (!gameOverRef.current) {
       // P1 controls: WASD + F/G/H/V + S=block
       if (p1.stateTimer <= 0) {
         if (keys.has('a') || keys.has('A')) { p1.vx = -WALK_SPEED; p1.state = 'walk_back'; p1.facing = -1; }
@@ -913,6 +964,19 @@ export function FightingArena({ player1, player2, onMatchEnd }: ArenaProps) {
       setP1Hits(p1.specialHitCount); setP2Hits(p2.specialHitCount);
       setP1SpecialReady(p1.specialReady); setP2SpecialReady(p2.specialReady);
       setCombo1(p1.comboCount); setCombo2(p2.comboCount);
+      } // end !gameOverRef.current input+physics block
+
+      // ── Screen shake ────────────────────────────────────────
+      const sh = shakeRef.current;
+      if (sh.amount > 0.5) {
+        const dx = (Math.random() - 0.5) * sh.amount * 2;
+        const dy = (Math.random() - 0.5) * sh.amount * 2;
+        sh.amount *= 0.72;
+        if (wrapperRef.current) wrapperRef.current.style.transform = `translate(${dx}px, ${dy}px)`;
+      } else {
+        sh.amount = 0;
+        if (wrapperRef.current) wrapperRef.current.style.transform = '';
+      }
 
       // ── Draw frame ──────────────────────────────────────────
       ctx.clearRect(0, 0, W, H);
@@ -974,15 +1038,27 @@ export function FightingArena({ player1, player2, onMatchEnd }: ArenaProps) {
 
       // Game over overlay
       if (gameOverRef.current) {
-        ctx.fillStyle = 'rgba(0,0,0,0.65)';
+        ctx.fillStyle = 'rgba(0,0,0,0.7)';
         ctx.fillRect(0, 0, W, H);
-        const winner = p1.hp > p2.hp ? player1.profile.username : player2.profile.username;
-        ctx.fillStyle = '#ffff00';
-        ctx.shadowColor = '#ffff00';
-        ctx.shadowBlur = 25;
-        ctx.font = 'bold 30px "Press Start 2P", monospace';
+        const winnerName = p1.hp > p2.hp ? player1.profile.username : player2.profile.username;
+        const winnerColor = p1.hp > p2.hp
+          ? (ARCHETYPE_COLORS[player1.stats.archetype] || '#00ffff')
+          : (ARCHETYPE_COLORS[player2.stats.archetype] || '#ff00ff');
+
+        // K.O.!
         ctx.textAlign = 'center';
-        ctx.fillText(`${winner.toUpperCase()} WINS!`, W / 2, H / 2);
+        ctx.font = 'bold 52px "Press Start 2P", monospace';
+        ctx.fillStyle = '#ff0040';
+        ctx.shadowColor = '#ff0040';
+        ctx.shadowBlur = 40;
+        ctx.fillText('K.O.!', W / 2, H / 2 - 20);
+
+        // Winner name
+        ctx.font = 'bold 20px "Press Start 2P", monospace';
+        ctx.fillStyle = winnerColor;
+        ctx.shadowColor = winnerColor;
+        ctx.shadowBlur = 20;
+        ctx.fillText(`${winnerName.toUpperCase()} WINS!`, W / 2, H / 2 + 28);
       }
 
       frameRef.current = requestAnimationFrame(loop);
@@ -1028,7 +1104,7 @@ export function FightingArena({ player1, player2, onMatchEnd }: ArenaProps) {
       </div>
 
       {/* Canvas */}
-      <div className="relative">
+      <div className="relative" ref={wrapperRef}>
         <canvas ref={canvasRef} width={W} height={H} className="block"
           style={{ border: '2px solid #bf00ff', boxShadow: '0 0 30px #bf00ff50', maxWidth: '100%' }}
         />

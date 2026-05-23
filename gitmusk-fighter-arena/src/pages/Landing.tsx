@@ -146,7 +146,7 @@ export function Landing() {
         </div>
 
         {/* Mode buttons */}
-        <div className="flex flex-col sm:flex-row gap-4">
+        <div className="flex flex-col sm:flex-row gap-4 flex-wrap justify-center">
           <button
             onClick={() => setScreen('login')}
             className="font-pixel px-6 py-3 transition-all duration-200 hover:scale-105 active:scale-95"
@@ -176,6 +176,21 @@ export function Landing() {
             }}
           >
             💰 PLAY TO EARN
+          </button>
+          <button
+            onClick={() => setScreen('leaderboard')}
+            className="font-pixel px-6 py-3 transition-all duration-200 hover:scale-105 active:scale-95"
+            style={{
+              background: 'transparent',
+              border: '2px solid #ffd700',
+              color: '#ffd700',
+              textShadow: '0 0 8px #ffd700',
+              boxShadow: '0 0 15px #ffd70040, inset 0 0 15px #ffd70010',
+              fontSize: '11px',
+              letterSpacing: '1px',
+            }}
+          >
+            🏆 LEADERBOARD
           </button>
         </div>
 
