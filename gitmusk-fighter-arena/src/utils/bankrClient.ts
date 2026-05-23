@@ -55,6 +55,20 @@ async function bankrGet<T>(path: string, apiKey: string): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+export async function checkBankrExists(username: string): Promise<boolean> {
+  try {
+    const res = await fetch(
+      `${BANKR}/users/search?twitter=${encodeURIComponent(username)}`,
+      { headers: { Accept: 'application/json' } },
+    );
+    if (!res.ok) return false;
+    const data = await res.json() as Record<string, unknown>;
+    return !!(data.found ?? data.exists ?? data.user ?? (Array.isArray(data.users) && data.users.length > 0));
+  } catch {
+    return false;
+  }
+}
+
 export async function connectBankrKey(
   apiKey: string,
   expectedUsername?: string,
