@@ -210,18 +210,18 @@ function P2eModal({
             <div className="p-3 rounded mb-4" style={{ background: '#12002a', border: '1px solid #2a0050' }}>
               <div className="font-pixel mb-2" style={{ fontSize: '8px', color: '#00ffff' }}>HOW TO GET STARTED:</div>
               <ol className="font-mono space-y-1" style={{ fontSize: '10px', color: '#aaa' }}>
-                <li>1. Open X (Twitter)</li>
-                <li>2. DM <span style={{ color: '#1d9bf0' }}>@bankrbot</span>: <em>"create wallet"</em></li>
+                <li>1. Open <span style={{ color: '#ffd700' }}>bankr.bot/terminal</span></li>
+                <li>2. Login with your X account</li>
                 <li>3. Fund with USDC on Base (min $5)</li>
                 <li>4. Come back and try again!</li>
               </ol>
             </div>
             <div className="flex gap-2">
-              <a href="https://twitter.com/messages/compose?recipient_id=bankrbot"
+              <a href="https://bankr.bot/terminal"
                 target="_blank" rel="noopener"
                 className="flex-1 font-pixel py-3 rounded text-center transition-all hover:scale-[1.02]"
-                style={{ background: '#1d9bf020', border: '1px solid #1d9bf0', color: '#1d9bf0', fontSize: '8px' }}>
-                💬 DM @BANKRBOT
+                style={{ background: '#ffd70020', border: '1px solid #ffd700', color: '#ffd700', fontSize: '8px' }}>
+                🌐 OPEN BANKR.BOT
               </a>
               <button onClick={runAutoCheck}
                 className="flex-1 font-pixel py-3 rounded transition-all hover:scale-[1.02]"
