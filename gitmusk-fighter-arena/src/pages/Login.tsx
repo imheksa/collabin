@@ -7,46 +7,43 @@ import { OAUTH_ENABLED, X_CLIENT_ID, REDIRECT_URI } from '../config';
 import { startXOAuth } from '../utils/oauth';
 
 function ProfileRow({ profile, onSelect }: { profile: XProfile; onSelect: (p: XProfile) => void }) {
+  const stats = calculateFighterStats(profile);
   const tickColor = profile.verified === 'gold' ? '#ffd700' : profile.verified === 'blue' ? '#1d9bf0' : 'transparent';
   return (
     <button
       onClick={() => onSelect(profile)}
       className="w-full flex items-center gap-3 p-3 rounded transition-all hover:scale-[1.02]"
       style={{ background: '#12002a', border: '1px solid #2a0050' }}
-      onMouseEnter={e => (e.currentTarget.style.borderColor = '#bf00ff')}
+      onMouseEnter={e => (e.currentTarget.style.borderColor = stats.color)}
       onMouseLeave={e => (e.currentTarget.style.borderColor = '#2a0050')}
     >
       <div className="relative w-10 h-10 rounded overflow-hidden flex-shrink-0"
-        style={{ border: '1px solid #2a0050' }}>
-        <img
-          src={profile.avatarUrl}
-          alt={profile.username}
-          className="w-full h-full object-cover"
-          onError={e => {
-            (e.target as HTMLImageElement).src = `https://api.dicebear.com/7.x/pixel-art/svg?seed=${profile.username}`;
-          }}
-        />
+        style={{ border: `1px solid ${stats.color}40` }}>
+        <img src={profile.avatarUrl} alt={profile.username} className="w-full h-full object-cover"
+          onError={e => { (e.target as HTMLImageElement).src = `https://api.dicebear.com/7.x/pixel-art/svg?seed=${profile.username}`; }} />
       </div>
-      <div className="flex-1 text-left">
-        <div className="flex items-center gap-1">
+      <div className="flex-1 text-left min-w-0">
+        <div className="flex items-center gap-1 mb-0.5 flex-wrap">
           <span className="font-pixel text-white" style={{ fontSize: '9px' }}>{profile.displayName}</span>
           {profile.verified !== 'none' && (
             <span className="w-3 h-3 rounded-full inline-flex items-center justify-center"
               style={{ background: tickColor, color: '#000', fontSize: '8px' }}>✓</span>
           )}
+          <span className="font-pixel px-1.5 py-0.5 rounded"
+            style={{ fontSize: '6px', color: stats.color, border: `1px solid ${stats.color}40`, background: `${stats.color}12` }}>
+            {stats.archetypeLabel}
+          </span>
         </div>
-        <div className="font-mono text-gray-400 text-xs">@{profile.username}</div>
+        <div className="font-mono text-gray-500 text-xs">@{profile.username}</div>
       </div>
-      <div className="text-right">
-        <div className="font-pixel text-yellow-400" style={{ fontSize: '8px' }}>
+      <div className="text-right flex-shrink-0">
+        <div className="font-pixel" style={{ fontSize: '10px', color: '#ffff00' }}>PWR {stats.basePower}</div>
+        <div className="font-pixel mt-0.5" style={{ fontSize: '7px', color: '#555' }}>
           {profile.followers >= 1_000_000
             ? `${(profile.followers / 1_000_000).toFixed(1)}M`
             : profile.followers >= 1000
             ? `${(profile.followers / 1000).toFixed(0)}K`
             : profile.followers} followers
-        </div>
-        <div className="font-pixel mt-0.5" style={{ fontSize: '8px', color: '#bf00ff' }}>
-          Score: {profile.twitterScore}
         </div>
       </div>
     </button>
@@ -172,14 +169,24 @@ export function Login() {
         {/* Divider */}
         <div className="flex items-center gap-3 mb-4">
           <div className="flex-1 h-px" style={{ background: '#1a0030' }} />
-          <span className="font-pixel text-gray-600" style={{ fontSize: '8px' }}>OR TRY DEMO</span>
+          <span className="font-pixel text-gray-600" style={{ fontSize: '8px' }}>OR DEMO MODE</span>
           <div className="flex-1 h-px" style={{ background: '#1a0030' }} />
         </div>
+
+        {/* ⚡ Quick Play */}
+        <button
+          onClick={() => selectProfile(DEMO_PROFILES[Math.floor(Math.random() * DEMO_PROFILES.length)])}
+          className="w-full flex items-center justify-center gap-2 py-3 rounded mb-4 transition-all hover:scale-[1.02] active:scale-[0.98]"
+          style={{ background: '#00ff4115', border: '2px solid #00ff41', color: '#00ff41', boxShadow: '0 0 12px #00ff4130' }}
+        >
+          <span className="font-pixel" style={{ fontSize: '11px' }}>⚡ QUICK PLAY</span>
+          <span className="font-mono" style={{ fontSize: '9px', color: '#00aa2a' }}>— random fighter, instant start</span>
+        </button>
 
         {/* Demo profiles */}
         <div className="space-y-2 mb-4">
           <div className="font-pixel text-gray-600 mb-2" style={{ fontSize: '8px' }}>
-            DEMO PROFILES — PICK ANY:
+            OR PICK A FIGHTER:
           </div>
           {DEMO_PROFILES.map(p => (
             <ProfileRow key={p.username} profile={p} onSelect={selectProfile} />
