@@ -13,6 +13,7 @@ interface GameStore {
   activeMatches: number;
   xAccessToken: string | null;
   oauthError: string;
+  walletAddress: string | null;
 
   setScreen: (screen: GameScreen) => void;
   setMode: (mode: GameMode) => void;
@@ -25,6 +26,7 @@ interface GameStore {
   setActiveMatches: (n: number) => void;
   setXAccessToken: (token: string | null) => void;
   setOauthError: (err: string) => void;
+  setWalletAddress: (addr: string | null) => void;
   resetMatch: () => void;
 }
 
@@ -40,6 +42,7 @@ export const useGameStore = create<GameStore>((set) => ({
   activeMatches: 18,
   xAccessToken: null,
   oauthError: '',
+  walletAddress: null,
 
   setScreen: (screen) => set({ screen }),
   setMode: (mode) => set({ mode }),
@@ -52,5 +55,6 @@ export const useGameStore = create<GameStore>((set) => ({
   setActiveMatches: (activeMatches) => set({ activeMatches }),
   setXAccessToken: (xAccessToken) => set({ xAccessToken }),
   setOauthError: (oauthError) => set({ oauthError }),
+  setWalletAddress: (walletAddress) => set({ walletAddress }),
   resetMatch: () => set({ player1: null, player2: null, matchResult: null, screen: 'mode_select' }),
 }));
