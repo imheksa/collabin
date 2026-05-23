@@ -59,7 +59,8 @@ export type GameScreen =
   | 'vs_screen'
   | 'arena'
   | 'results'
-  | 'leaderboard';
+  | 'leaderboard'
+  | 'profile';
 
 export type GameMode = 'free' | 'p2e';
 export type MatchMode = 'random' | 'friend';

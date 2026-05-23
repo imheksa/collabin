@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { Fighter, GameFighterState, MatchResult } from '../types';
 import { calcDamage } from '../utils/statsCalculator';
+import { getProfile, getCombatModifiers } from '../utils/playerProfile';
 import { HPBar } from './HPBar';
 import { playPunch, playKick, playSpecial, playUltimate, playBlock, playCombo, playKO } from '../utils/sounds';
 
@@ -706,6 +707,13 @@ export function FightingArena({ player1, player2, onMatchEnd }: ArenaProps) {
   const [combo1, setCombo1] = useState(0);
   const [combo2, setCombo2] = useState(0);
   const [showAnnounce, setShowAnnounce] = useState(true);
+  const p1ModsRef = useRef({ attackMult: 1, defenseMult: 1 });
+
+  useEffect(() => {
+    const profile = getProfile(player1.profile.username);
+    const mods = getCombatModifiers(profile);
+    p1ModsRef.current = { attackMult: mods.attackMult, defenseMult: mods.defenseMult };
+  }, [player1.profile.username]);
 
   useEffect(() => {
     const t = setTimeout(() => setShowAnnounce(false), 2000);
@@ -734,12 +742,16 @@ export function FightingArena({ player1, player2, onMatchEnd }: ArenaProps) {
     const hitY = defender.y + FH / 3;
 
     if (dist < range[move]) {
+      const attackerMods = attacker.side === 'left' ? p1ModsRef.current : undefined;
+      const defenderMods = defender.side === 'left' ? p1ModsRef.current : undefined;
       const dmg = calcDamage(
         attackerFighter.stats,
         defenderFighter.stats,
         move,
         defender.state === 'block',
-        attacker.comboCount
+        attacker.comboCount,
+        attackerMods,
+        defenderMods
       );
 
       defender.hp = Math.max(0, defender.hp - dmg);

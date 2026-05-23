@@ -90,7 +90,9 @@ export function calcDamage(
   defender: FighterStats,
   moveType: 'punch' | 'kick' | 'special' | 'ultimate',
   isBlocking: boolean,
-  comboCount: number
+  comboCount: number,
+  attackerMods?: { attackMult: number },
+  defenderMods?: { defenseMult: number },
 ): number {
   const baseDamage: Record<string, number> = {
     punch: 6,
@@ -107,9 +109,15 @@ export function calcDamage(
 
   let damage = base * attackMult * combBonus * critMult;
 
-  // Defense reduction
+  // Profile-based attack modifier
+  if (attackerMods) damage *= attackerMods.attackMult;
+
+  // Defense reduction (archetype stat)
   const defReduction = defender.defense / 200;
   damage *= (1 - defReduction);
+
+  // Profile-based defense modifier (less damage taken)
+  if (defenderMods) damage *= defenderMods.defenseMult;
 
   // Block reduces damage by 80%
   if (isBlocking) damage *= 0.2;

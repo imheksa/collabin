@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useGameStore } from '../stores/gameStore';
 import { Fighter } from '../types';
-import { recordMatchResult } from '../utils/leaderboard';
+import { recordMatch, getProfile, getLevelTier, ACHIEVEMENT_RARITY_COLORS } from '../utils/playerProfile';
 
 const GAME_URL = 'https://imheksa.github.io/collabin/gitmusk-fighter-arena/';
 const CARD_W = 600;
@@ -317,16 +317,20 @@ export function Results() {
   const [copied, setCopied] = useState(false);
   const [cardReady, setCardReady] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const { lastMatchReward, setLastMatchReward, setPlayerProfile, setScreen: _setScreen } = useGameStore();
 
   useEffect(() => {
     const t = setTimeout(() => setShow(true), 300);
     return () => clearTimeout(t);
   }, []);
 
+  // Record match + compute reward once on mount
   useEffect(() => {
     if (!matchResult || !player1) return;
     const isP1Win = matchResult.winner.profile.username === player1.profile.username;
-    recordMatchResult(player1.profile.username, isP1Win, matchResult.maxCombo);
+    const reward = recordMatch(player1.profile.username, isP1Win, matchResult.maxCombo, matchResult.duration);
+    setLastMatchReward(reward);
+    setPlayerProfile(getProfile(player1.profile.username));
   }, []);
 
   // Render share card after mount
@@ -404,6 +408,47 @@ export function Results() {
             </div>
           ))}
         </div>
+
+        {/* ── XP Reward panel ── */}
+        {lastMatchReward && (
+          <div className="mb-4 p-4 rounded transition-all duration-700"
+            style={{ background: '#0d001a', border: `2px solid ${lastMatchReward.leveledUp ? '#ffd700' : '#2a0050'}`, boxShadow: lastMatchReward.leveledUp ? '0 0 30px #ffd70040' : 'none', opacity: show ? 1 : 0 }}>
+
+            {lastMatchReward.leveledUp ? (
+              <div className="text-center mb-3">
+                <div className="font-pixel text-2xl animate-pulse" style={{ color: '#ffd700', textShadow: '0 0 20px #ffd700' }}>
+                  ⬆ LEVEL UP!
+                </div>
+                <div className="font-pixel mt-1" style={{ fontSize: '10px', color: '#fff' }}>
+                  {getLevelTier(lastMatchReward.oldLevel).name} → {getLevelTier(lastMatchReward.newLevel).name} LV{lastMatchReward.newLevel}
+                </div>
+              </div>
+            ) : (
+              <div className="font-pixel text-center mb-2" style={{ fontSize: '8px', color: '#bf00ff' }}>XP EARNED</div>
+            )}
+
+            <div className="text-center mb-2">
+              <span className="font-pixel text-2xl" style={{ color: '#00ff41', textShadow: '0 0 12px #00ff41' }}>
+                +{lastMatchReward.xpGained} XP
+              </span>
+            </div>
+
+            {lastMatchReward.newAchievements.length > 0 && (
+              <div className="mt-2">
+                <div className="font-pixel text-center mb-2" style={{ fontSize: '7px', color: '#888' }}>ACHIEVEMENTS UNLOCKED</div>
+                <div className="flex flex-wrap gap-2 justify-center">
+                  {lastMatchReward.newAchievements.map(ach => (
+                    <div key={ach.id} className="flex items-center gap-1.5 px-2 py-1 rounded"
+                      style={{ background: `${ACHIEVEMENT_RARITY_COLORS[ach.rarity]}15`, border: `1px solid ${ACHIEVEMENT_RARITY_COLORS[ach.rarity]}` }}>
+                      <span>{ach.icon}</span>
+                      <span className="font-pixel" style={{ fontSize: '7px', color: ACHIEVEMENT_RARITY_COLORS[ach.rarity] }}>{ach.name}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* ── Share card canvas ── */}
         <div className="mb-4 transition-all duration-700"
@@ -516,6 +561,13 @@ export function Results() {
             style={{ border: '2px solid #ffd700', color: '#ffd700', background: 'transparent', boxShadow: '0 0 10px #ffd70030' }}
           >
             🏆 LEADERBOARD
+          </button>
+          <button
+            onClick={() => setScreen('profile')}
+            className="font-pixel px-5 py-3 text-xs transition-all hover:scale-105 active:scale-95"
+            style={{ border: '2px solid #bf00ff', color: '#bf00ff', background: 'transparent', boxShadow: '0 0 10px #bf00ff30' }}
+          >
+            👤 PROFILE
           </button>
           <button
             onClick={() => setScreen('landing')}

@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { Fighter, GameScreen, GameMode, MatchResult, MatchMode } from '../types';
+import { PlayerProfile, MatchReward } from '../utils/playerProfile';
 
 interface GameStore {
   screen: GameScreen;
@@ -14,6 +15,8 @@ interface GameStore {
   xAccessToken: string | null;
   oauthError: string;
   walletAddress: string | null;
+  playerProfile: PlayerProfile | null;
+  lastMatchReward: MatchReward | null;
 
   setScreen: (screen: GameScreen) => void;
   setMode: (mode: GameMode) => void;
@@ -27,6 +30,8 @@ interface GameStore {
   setXAccessToken: (token: string | null) => void;
   setOauthError: (err: string) => void;
   setWalletAddress: (addr: string | null) => void;
+  setPlayerProfile: (p: PlayerProfile | null) => void;
+  setLastMatchReward: (r: MatchReward | null) => void;
   resetMatch: () => void;
 }
 
@@ -43,6 +48,8 @@ export const useGameStore = create<GameStore>((set) => ({
   xAccessToken: null,
   oauthError: '',
   walletAddress: null,
+  playerProfile: null,
+  lastMatchReward: null,
 
   setScreen: (screen) => set({ screen }),
   setMode: (mode) => set({ mode }),
@@ -56,5 +63,7 @@ export const useGameStore = create<GameStore>((set) => ({
   setXAccessToken: (xAccessToken) => set({ xAccessToken }),
   setOauthError: (oauthError) => set({ oauthError }),
   setWalletAddress: (walletAddress) => set({ walletAddress }),
+  setPlayerProfile: (playerProfile) => set({ playerProfile }),
+  setLastMatchReward: (lastMatchReward) => set({ lastMatchReward }),
   resetMatch: () => set({ player1: null, player2: null, matchResult: null, screen: 'mode_select' }),
 }));

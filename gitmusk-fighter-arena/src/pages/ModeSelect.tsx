@@ -5,6 +5,7 @@ import { calculateFighterStats } from '../utils/statsCalculator';
 import { Fighter } from '../types';
 import { connectBankrKey, checkBankrExists, lookupBankrUser } from '../utils/bankrClient';
 import { getWalletBalance } from '../utils/baseRpc';
+import { getProfile, getLevelTier, xpProgressInLevel, xpForLevel } from '../utils/playerProfile';
 
 const P2E_MIN_USD = 5;
 
@@ -353,6 +354,10 @@ export function ModeSelect() {
 
   if (!player1) return null;
 
+  const p1Profile = getProfile(player1.profile.username);
+  const p1Tier = getLevelTier(p1Profile.level);
+  const p1XpPct = xpProgressInLevel(p1Profile.xp, p1Profile.level);
+
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-arena-bg p-4">
       <div className="w-full max-w-lg">
@@ -361,35 +366,56 @@ export function ModeSelect() {
         <div className="text-center mb-6">
           <div className="font-pixel text-xs mb-2" style={{ color: '#bf00ff' }}>FIGHTER SELECTED</div>
 
-          <div className="flex items-center justify-center gap-3 mb-4 p-3 rounded"
-            style={{ background: '#12002a', border: '1px solid #2a0050' }}>
-            <div className="w-10 h-10 rounded overflow-hidden flex-shrink-0"
-              style={{ border: `2px solid ${player1.stats.color}`, boxShadow: `0 0 8px ${player1.stats.glowColor}` }}>
-              <img
-                src={player1.profile.avatarUrl} alt={player1.profile.username}
-                className="w-full h-full object-cover"
-                onError={e => { (e.target as HTMLImageElement).src = `https://api.dicebear.com/7.x/pixel-art/svg?seed=${player1.profile.username}`; }}
-              />
+          <div className="flex items-center justify-center gap-3 mb-2 p-3 rounded"
+            style={{ background: '#12002a', border: `1px solid ${p1Tier.color}40` }}>
+            {/* Avatar with level badge */}
+            <div className="relative flex-shrink-0">
+              <div className="w-11 h-11 rounded-full overflow-hidden"
+                style={{ border: `2px solid ${p1Tier.color}`, boxShadow: `0 0 10px ${p1Tier.color}60` }}>
+                <img
+                  src={player1.profile.avatarUrl} alt={player1.profile.username}
+                  className="w-full h-full object-cover"
+                  onError={e => { (e.target as HTMLImageElement).src = `https://api.dicebear.com/7.x/pixel-art/svg?seed=${player1.profile.username}`; }}
+                />
+              </div>
+              <div className="absolute -bottom-1 -right-1 font-pixel px-1 rounded"
+                style={{ background: p1Tier.color, color: '#000', fontSize: '6px', lineHeight: '1.4' }}>
+                LV{p1Profile.level}
+              </div>
             </div>
-            <div className="text-left flex-1">
-              <div className="flex items-center gap-2">
+
+            <div className="text-left flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-0.5">
                 <div className="font-pixel text-white" style={{ fontSize: '9px' }}>@{player1.profile.username}</div>
-                {/* Bankr status dot */}
+                <span className="font-pixel" style={{ fontSize: '6px', color: p1Tier.color }}>{p1Tier.name}</span>
                 {bankrExists !== null && (
                   <span title={bankrExists ? 'Has Bankr wallet' : 'No Bankr wallet found'}
-                    className="w-2 h-2 rounded-full"
+                    className="w-1.5 h-1.5 rounded-full"
                     style={{ background: bankrExists ? '#ffd700' : '#333', boxShadow: bankrExists ? '0 0 4px #ffd700' : 'none' }} />
                 )}
                 {walletAddress && (
                   <span className="font-pixel" style={{ fontSize: '6px', color: '#00ff41' }}>● WALLET</span>
                 )}
               </div>
-              <div className="font-pixel mt-0.5" style={{ color: player1.stats.color, fontSize: '7px' }}>
-                {player1.stats.archetypeLabel.toUpperCase()} · {player1.stats.tier.toUpperCase()}
+              <div className="font-pixel mb-1" style={{ color: player1.stats.color, fontSize: '7px' }}>
+                {player1.stats.archetypeLabel.toUpperCase()}
+              </div>
+              {/* XP bar */}
+              <div className="h-1.5 rounded-full overflow-hidden" style={{ background: '#0d001a' }}>
+                <div className="h-full rounded-full" style={{ width: `${p1XpPct * 100}%`, background: p1Tier.color, boxShadow: `0 0 4px ${p1Tier.color}`, transition: 'width 1s' }} />
               </div>
             </div>
-            <div className="text-right">
+
+            <div className="text-right flex-shrink-0">
               <div className="font-pixel" style={{ color: '#ffff00', fontSize: '10px' }}>PWR {player1.stats.basePower}</div>
+              <div className="font-pixel mt-0.5" style={{ fontSize: '7px', color: '#555' }}>
+                {p1Profile.wins}W {p1Profile.losses}L
+              </div>
+              <button onClick={() => setScreen('profile')}
+                className="font-pixel mt-1 px-2 py-0.5 rounded transition-all hover:scale-105"
+                style={{ fontSize: '6px', background: `${p1Tier.color}20`, border: `1px solid ${p1Tier.color}`, color: p1Tier.color }}>
+                👤 PROFILE
+              </button>
             </div>
           </div>
 

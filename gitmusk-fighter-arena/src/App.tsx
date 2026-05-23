@@ -8,6 +8,7 @@ import { VSScreen } from './pages/VSScreen';
 import { Arena } from './pages/Arena';
 import { Results } from './pages/Results';
 import { Leaderboard } from './pages/Leaderboard';
+import { Profile } from './pages/Profile';
 import { X_CLIENT_ID, REDIRECT_URI } from './config';
 import { exchangeCodeForToken, fetchXProfile } from './utils/xApiClient';
 import { calculateFighterStats } from './utils/statsCalculator';
@@ -97,6 +98,7 @@ export default function App() {
       {screen === 'arena' && <Arena />}
       {screen === 'results' && <Results />}
       {screen === 'leaderboard' && <Leaderboard />}
+      {screen === 'profile' && <Profile />}
     </div>
   );
 }
