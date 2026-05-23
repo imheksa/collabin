@@ -3,8 +3,8 @@ import { useGameStore } from '../stores/gameStore';
 import { DEMO_PROFILES } from '../data/mockProfiles';
 import { calculateFighterStats } from '../utils/statsCalculator';
 import { Fighter } from '../types';
-import { resolveXHandleToAddress, getBankrPortfolio } from '../utils/bankrClient';
-import { getWalletBalance, isValidAddress, WalletBalance } from '../utils/baseRpc';
+import { connectBankrKey, BankrWalletData } from '../utils/bankrClient';
+import { getWalletBalance, isValidAddress } from '../utils/baseRpc';
 
 const P2E_MIN_USD = 5;
 
@@ -28,8 +28,7 @@ function OnlinePulse({ count, label }: { count: number; label: string }) {
   );
 }
 
-type WalletState = 'idle' | 'resolving' | 'checking' | 'ready' | 'not_found' | 'error';
-type ConnectMethod = 'auto' | 'bankr_key' | 'manual';
+type WalletState = 'idle' | 'connecting' | 'ready' | 'error';
 
 function WalletPanel({
   username,
@@ -42,166 +41,127 @@ function WalletPanel({
 }) {
   const { setWalletAddress } = useGameStore();
   const [state, setState] = useState<WalletState>('idle');
-  const [balance, setBalance] = useState<WalletBalance | null>(null);
-  const [method, setMethod] = useState<ConnectMethod | null>(null);
-  const [manualAddr, setManualAddr] = useState('');
+  const [bankrData, setBankrData] = useState<BankrWalletData | null>(null);
+  const [tab, setTab] = useState<'bankr' | 'manual'>('bankr');
   const [bankrKey, setBankrKey] = useState('');
+  const [manualAddr, setManualAddr] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
 
-  const checkBalance = useCallback(async (addr: string) => {
-    setState('checking');
+  // Resume from stored address
+  useEffect(() => {
+    if (walletAddress && state === 'idle') {
+      getWalletBalance(walletAddress)
+        .then(bal => {
+          setBankrData({ evmAddress: walletAddress, twitterUsername: null, baseUsd: bal.totalUsd, usdc: bal.usdc, eth: bal.eth, ethUsd: bal.eth * bal.ethPriceUsd });
+          setState('ready');
+        })
+        .catch(() => {});
+    }
+  }, []);
+
+  const handleBankrKey = async () => {
+    const key = bankrKey.trim();
+    if (!key) return;
+    setState('connecting');
+    setErrorMsg('');
+    try {
+      const data = await connectBankrKey(key, username);
+      setWalletAddress(data.evmAddress);
+      onAddressSet(data.evmAddress);
+      setBankrData(data);
+      setState('ready');
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : 'Connection failed.');
+      setState('error');
+    }
+  };
+
+  const handleManual = async () => {
+    const addr = manualAddr.trim();
+    if (!isValidAddress(addr)) { setErrorMsg('Invalid address (must be 0x..., 42 chars).'); return; }
+    setState('connecting');
+    setErrorMsg('');
     try {
       const bal = await getWalletBalance(addr);
-      setBalance(bal);
+      setWalletAddress(addr);
+      onAddressSet(addr);
+      setBankrData({ evmAddress: addr, twitterUsername: null, baseUsd: bal.totalUsd, usdc: bal.usdc, eth: bal.eth, ethUsd: bal.eth * bal.ethPriceUsd });
       setState('ready');
     } catch {
       setErrorMsg('Failed to read balance from Base chain.');
       setState('error');
     }
-  }, []);
-
-  const resolveAndCheck = useCallback(async () => {
-    setState('resolving');
-    setErrorMsg('');
-    const addr = await resolveXHandleToAddress(username);
-    if (addr) {
-      setWalletAddress(addr);
-      onAddressSet(addr);
-      await checkBalance(addr);
-    } else {
-      setState('not_found');
-      setMethod('bankr_key');
-    }
-  }, [username, checkBalance, setWalletAddress, onAddressSet]);
-
-  const connectViaBankrKey = async () => {
-    const key = bankrKey.trim();
-    if (!key.startsWith('bk_')) {
-      setErrorMsg('Bankr API key must start with bk_');
-      return;
-    }
-    setState('checking');
-    setErrorMsg('');
-    try {
-      const portfolio = await getBankrPortfolio(key);
-      // Try to extract address from portfolio response
-      const p = portfolio as Record<string, unknown>;
-      const addr = (p.address ?? p.evm_address ?? p.wallet_address ?? null) as string | null;
-      if (addr && isValidAddress(addr)) {
-        setWalletAddress(addr);
-        onAddressSet(addr);
-        const bal = await getWalletBalance(addr);
-        setBalance(bal);
-        setState('ready');
-      } else {
-        // We got portfolio data but no address — parse directly
-        setErrorMsg('Connected to Bankr but could not extract wallet address. Try manual entry.');
-        setState('not_found');
-        setMethod('manual');
-      }
-    } catch {
-      setErrorMsg('Invalid Bankr API key or API unreachable.');
-      setState('error');
-    }
   };
 
-  const handleManualSubmit = async () => {
-    const addr = manualAddr.trim();
-    if (!isValidAddress(addr)) { setErrorMsg('Invalid address format (must be 0x...).'); return; }
-    setErrorMsg('');
-    setWalletAddress(addr);
-    onAddressSet(addr);
-    await checkBalance(addr);
+  const reset = () => {
+    setState('idle'); setBankrData(null); setWalletAddress(null);
+    onAddressSet(''); setErrorMsg(''); setBankrKey(''); setManualAddr('');
   };
 
-  useEffect(() => {
-    if (walletAddress && state === 'idle') checkBalance(walletAddress);
-  }, []);
-
-  const eligible = balance && balance.totalUsd >= P2E_MIN_USD;
+  const eligible = bankrData && bankrData.baseUsd >= P2E_MIN_USD;
   const short = (a: string) => `${a.slice(0, 6)}...${a.slice(-4)}`;
 
   return (
     <div className="mb-4 p-4 rounded" style={{ background: '#0a001a', border: '1px solid #2a0050' }}>
+      {/* Header */}
       <div className="flex items-center justify-between mb-3">
-        <div className="font-pixel" style={{ fontSize: '8px', color: '#ffff00' }}>
-          💰 P2E WALLET (BASE CHAIN)
-        </div>
-        {state === 'ready' && walletAddress && (
-          <span className="font-mono" style={{ fontSize: '10px', color: '#555' }}>{short(walletAddress)}</span>
+        <div className="font-pixel" style={{ fontSize: '8px', color: '#ffff00' }}>💰 P2E WALLET (BASE)</div>
+        {state === 'ready' && bankrData && (
+          <span className="font-mono" style={{ fontSize: '10px', color: '#555' }}>{short(bankrData.evmAddress)}</span>
         )}
       </div>
 
-      {/* IDLE — choose method */}
-      {(state === 'idle' && !walletAddress) && (
+      {/* IDLE */}
+      {state === 'idle' && (
         <div>
-          <div className="font-mono text-gray-500 mb-3" style={{ fontSize: '10px' }}>
-            Bankr links every X account to a Base wallet. Choose how to connect:
-          </div>
-
-          {/* Method picker */}
-          <div className="grid grid-cols-3 gap-2 mb-3">
-            {[
-              { id: 'auto' as ConnectMethod, icon: '🔍', label: 'AUTO-DETECT', desc: 'via @' + username },
-              { id: 'bankr_key' as ConnectMethod, icon: '🔑', label: 'BANKR KEY', desc: 'paste bk_... key' },
-              { id: 'manual' as ConnectMethod, icon: '✏️', label: 'MANUAL', desc: '0x address' },
-            ].map(m => (
-              <button
-                key={m.id}
-                onClick={() => setMethod(m.id)}
-                className="p-2 rounded text-center transition-all"
+          {/* Tabs */}
+          <div className="flex mb-3 rounded overflow-hidden" style={{ border: '1px solid #1a0030' }}>
+            {(['bankr', 'manual'] as const).map(t => (
+              <button key={t} onClick={() => setTab(t)}
+                className="flex-1 py-2 font-pixel transition-all"
                 style={{
-                  background: method === m.id ? '#1a0040' : '#0d001a',
-                  border: `1px solid ${method === m.id ? '#bf00ff' : '#2a0050'}`,
-                  color: method === m.id ? '#bf00ff' : '#555',
-                }}
-              >
-                <div style={{ fontSize: '16px' }}>{m.icon}</div>
-                <div className="font-pixel mt-1" style={{ fontSize: '6px' }}>{m.label}</div>
-                <div className="font-mono mt-0.5" style={{ fontSize: '9px', color: '#444' }}>{m.desc}</div>
+                  fontSize: '7px',
+                  background: tab === t ? '#1a0040' : 'transparent',
+                  color: tab === t ? '#bf00ff' : '#444',
+                  borderBottom: tab === t ? '2px solid #bf00ff' : '2px solid transparent',
+                }}>
+                {t === 'bankr' ? '🔑 BANKR API KEY' : '✏️ WALLET ADDRESS'}
               </button>
             ))}
           </div>
 
-          {method === 'auto' && (
-            <button
-              onClick={resolveAndCheck}
-              className="w-full font-pixel py-2 transition-all hover:scale-[1.01]"
-              style={{ background: 'transparent', border: '1px solid #1d9bf0', color: '#1d9bf0', fontSize: '8px' }}
-            >
-              RESOLVE @{username} VIA BANKR API →
-            </button>
-          )}
-
-          {method === 'bankr_key' && (
+          {tab === 'bankr' && (
             <div>
-              <div className="font-mono mb-2" style={{ fontSize: '10px', color: '#888' }}>
-                Get your key at bankr.bot or DM @bankrbot "my api key" on X
+              <div className="font-mono mb-2" style={{ fontSize: '10px', color: '#666' }}>
+                Get your key: <span style={{ color: '#1d9bf0' }}>bankr.bot/api</span>
+                {' '}— or DM <span style={{ color: '#1d9bf0' }}>@bankrbot</span>: <em>"my api key"</em>
               </div>
               <div className="flex gap-2">
                 <input
                   className="flex-1 bg-black font-mono text-white px-3 py-2 outline-none"
                   style={{ border: '1px solid #2a0050', fontSize: '11px' }}
-                  placeholder="bk_xxxxxxxxxxxxxxxx"
+                  placeholder="bk_xxxxxxxxxxxxxxxxxxxxxxxx"
                   value={bankrKey}
+                  type="password"
                   onChange={e => setBankrKey(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && connectViaBankrKey()}
+                  onKeyDown={e => e.key === 'Enter' && handleBankrKey()}
                 />
-                <button
-                  onClick={connectViaBankrKey}
-                  className="font-pixel px-3 py-2"
-                  style={{ background: '#bf00ff', color: '#000', fontSize: '8px' }}
-                >
+                <button onClick={handleBankrKey}
+                  className="font-pixel px-4 py-2 transition-all hover:scale-[1.02]"
+                  style={{ background: '#bf00ff', color: '#000', fontSize: '8px' }}>
                   CONNECT
                 </button>
+              </div>
+              <div className="mt-2 font-mono" style={{ fontSize: '9px', color: '#444' }}>
+                🔒 Key used read-only to verify your balance. Not stored anywhere.
               </div>
             </div>
           )}
 
-          {method === 'manual' && (
+          {tab === 'manual' && (
             <div>
-              <div className="font-mono mb-2" style={{ fontSize: '10px', color: '#888' }}>
-                Paste your Base chain wallet address (0x...)
+              <div className="font-mono mb-2" style={{ fontSize: '10px', color: '#666' }}>
+                Paste your Base chain wallet address
               </div>
               <div className="flex gap-2">
                 <input
@@ -210,13 +170,11 @@ function WalletPanel({
                   placeholder="0xabc123..."
                   value={manualAddr}
                   onChange={e => setManualAddr(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && handleManualSubmit()}
+                  onKeyDown={e => e.key === 'Enter' && handleManual()}
                 />
-                <button
-                  onClick={handleManualSubmit}
-                  className="font-pixel px-3 py-2"
-                  style={{ background: '#bf00ff', color: '#000', fontSize: '8px' }}
-                >
+                <button onClick={handleManual}
+                  className="font-pixel px-4 py-2 transition-all hover:scale-[1.02]"
+                  style={{ background: '#bf00ff', color: '#000', fontSize: '8px' }}>
                   CHECK
                 </button>
               </div>
@@ -229,146 +187,97 @@ function WalletPanel({
         </div>
       )}
 
-      {/* RESOLVING */}
-      {state === 'resolving' && (
-        <div className="flex items-center gap-2 py-2">
-          <div className="flex gap-1">
-            {[0, 1, 2].map(i => (
-              <div key={i} className="w-1.5 h-1.5 rounded-full animate-bounce"
-                style={{ background: '#1d9bf0', animationDelay: `${i * 0.15}s` }} />
-            ))}
-          </div>
-          <span className="font-mono text-gray-500" style={{ fontSize: '11px' }}>
-            Querying Bankr for @{username}...
-          </span>
-        </div>
-      )}
-
-      {/* CHECKING BALANCE */}
-      {state === 'checking' && (
-        <div className="flex items-center gap-2 py-2">
+      {/* CONNECTING */}
+      {state === 'connecting' && (
+        <div className="flex items-center gap-3 py-2">
           <div className="flex gap-1">
             {[0, 1, 2].map(i => (
               <div key={i} className="w-1.5 h-1.5 rounded-full animate-bounce"
                 style={{ background: '#bf00ff', animationDelay: `${i * 0.15}s` }} />
             ))}
           </div>
-          <span className="font-mono text-gray-500" style={{ fontSize: '11px' }}>Reading Base chain balance...</span>
-        </div>
-      )}
-
-      {/* NOT FOUND — switch to key/manual */}
-      {state === 'not_found' && (
-        <div>
-          <div className="font-mono mb-3" style={{ fontSize: '10px', color: '#ff9060' }}>
-            ⚠ @{username} not found in Bankr — use key or address instead:
-          </div>
-
-          {/* Bankr key input */}
-          <div className="mb-3">
-            <div className="font-pixel mb-1" style={{ fontSize: '7px', color: '#888' }}>
-              OPTION A — BANKR API KEY (bk_...)
-            </div>
-            <div className="flex gap-2">
-              <input
-                className="flex-1 bg-black font-mono text-white px-3 py-2 outline-none"
-                style={{ border: '1px solid #2a0050', fontSize: '11px' }}
-                placeholder="bk_xxxxxxxxxxxxxxxx"
-                value={bankrKey}
-                onChange={e => setBankrKey(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && connectViaBankrKey()}
-              />
-              <button onClick={connectViaBankrKey}
-                className="font-pixel px-3 py-2"
-                style={{ background: '#1d9bf0', color: '#000', fontSize: '8px' }}>
-                GO
-              </button>
-            </div>
-          </div>
-
-          {/* Manual address input */}
-          <div>
-            <div className="font-pixel mb-1" style={{ fontSize: '7px', color: '#888' }}>
-              OPTION B — BASE WALLET ADDRESS
-            </div>
-            <div className="flex gap-2">
-              <input
-                className="flex-1 bg-black font-mono text-white px-3 py-2 outline-none"
-                style={{ border: '1px solid #2a0050', fontSize: '11px' }}
-                placeholder="0xabc123..."
-                value={manualAddr}
-                onChange={e => setManualAddr(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleManualSubmit()}
-              />
-              <button onClick={handleManualSubmit}
-                className="font-pixel px-3 py-2"
-                style={{ background: '#bf00ff', color: '#000', fontSize: '8px' }}>
-                CHECK
-              </button>
-            </div>
-          </div>
-
-          <div className="mt-2 font-mono" style={{ fontSize: '10px', color: '#555' }}>
-            No Bankr? DM <span style={{ color: '#1d9bf0' }}>@bankrbot</span> on X — free wallet on Base
-          </div>
-          {errorMsg && <div className="mt-1 font-mono" style={{ fontSize: '10px', color: '#ff6060' }}>⚠ {errorMsg}</div>}
+          <span className="font-mono text-gray-500" style={{ fontSize: '11px' }}>
+            {tab === 'bankr' ? 'Connecting to Bankr API...' : 'Reading Base chain...'}
+          </span>
         </div>
       )}
 
       {/* ERROR */}
       {state === 'error' && (
-        <div className="font-mono py-1" style={{ fontSize: '10px', color: '#ff6060' }}>
-          ⚠ {errorMsg}
-          <button onClick={() => { setState('idle'); setBalance(null); setErrorMsg(''); setMethod(null); }}
-            className="ml-2 text-gray-500">retry</button>
+        <div>
+          <div className="font-mono mb-2" style={{ fontSize: '10px', color: '#ff6060' }}>⚠ {errorMsg}</div>
+          <button onClick={reset} className="font-mono text-gray-500 hover:text-gray-300" style={{ fontSize: '10px' }}>
+            ← Try again
+          </button>
         </div>
       )}
 
-      {/* READY — show balance */}
-      {state === 'ready' && balance && (
+      {/* READY */}
+      {state === 'ready' && bankrData && (
         <div>
+          {/* Twitter verification badge */}
+          {bankrData.twitterUsername && (
+            <div className="flex items-center gap-2 mb-3 p-2 rounded"
+              style={{ background: '#001020', border: '1px solid #1d9bf020' }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="#1d9bf0">
+                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.746l7.73-8.835L1.254 2.25H8.08l4.261 5.635zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+              </svg>
+              <span className="font-mono" style={{ fontSize: '10px', color: '#1d9bf0' }}>
+                @{bankrData.twitterUsername}
+              </span>
+              {bankrData.twitterUsername.toLowerCase() === username.toLowerCase() && (
+                <span className="font-pixel ml-auto" style={{ fontSize: '7px', color: '#00ff41' }}>✓ VERIFIED</span>
+              )}
+            </div>
+          )}
+
+          {/* Balance grid */}
           <div className="grid grid-cols-3 gap-2 mb-3">
             <div className="text-center p-2 rounded" style={{ background: '#0d001a', border: '1px solid #1a0030' }}>
-              <div className="font-mono" style={{ fontSize: '10px', color: '#26a17b' }}>USDC</div>
-              <div className="font-pixel mt-0.5" style={{ fontSize: '11px', color: '#fff' }}>${balance.usdc.toFixed(2)}</div>
+              <div className="font-mono" style={{ fontSize: '9px', color: '#26a17b' }}>USDC</div>
+              <div className="font-pixel mt-0.5" style={{ fontSize: '11px', color: '#fff' }}>${bankrData.usdc.toFixed(2)}</div>
             </div>
             <div className="text-center p-2 rounded" style={{ background: '#0d001a', border: '1px solid #1a0030' }}>
-              <div className="font-mono" style={{ fontSize: '10px', color: '#627eea' }}>ETH</div>
-              <div className="font-pixel mt-0.5" style={{ fontSize: '11px', color: '#fff' }}>{balance.eth.toFixed(4)}</div>
+              <div className="font-mono" style={{ fontSize: '9px', color: '#627eea' }}>ETH</div>
+              <div className="font-pixel mt-0.5" style={{ fontSize: '11px', color: '#fff' }}>{bankrData.eth.toFixed(4)}</div>
             </div>
             <div className="text-center p-2 rounded"
-              style={{ background: eligible ? '#001a00' : '#0d001a', border: `1px solid ${eligible ? '#00ff4140' : '#1a0030'}` }}>
-              <div className="font-mono" style={{ fontSize: '10px', color: eligible ? '#00ff41' : '#555' }}>TOTAL USD</div>
+              style={{ background: eligible ? '#001a00' : '#0d001a', border: `1px solid ${eligible ? '#00ff4130' : '#1a0030'}` }}>
+              <div className="font-mono" style={{ fontSize: '9px', color: eligible ? '#00ff41' : '#555' }}>TOTAL</div>
               <div className="font-pixel mt-0.5" style={{ fontSize: '11px', color: eligible ? '#00ff41' : '#ff4040' }}>
-                ${balance.totalUsd.toFixed(2)}
+                ${bankrData.baseUsd.toFixed(2)}
               </div>
             </div>
           </div>
 
+          {/* P2E status */}
           {eligible ? (
             <div className="flex items-center gap-2 p-2 rounded"
               style={{ background: '#001500', border: '1px solid #00ff4130' }}>
               <span style={{ color: '#00ff41' }}>✓</span>
               <div className="font-pixel" style={{ fontSize: '8px', color: '#00ff41' }}>
-                P2E UNLOCKED — balance ≥ ${P2E_MIN_USD} minimum
+                P2E UNLOCKED — min ${P2E_MIN_USD} met
               </div>
+              {bankrData.leaderboardRank && (
+                <span className="ml-auto font-pixel" style={{ fontSize: '7px', color: '#ffff00' }}>
+                  RANK #{bankrData.leaderboardRank}
+                </span>
+              )}
             </div>
           ) : (
             <div className="flex items-center gap-2 p-2 rounded"
               style={{ background: '#1a0000', border: '1px solid #ff004030' }}>
               <span style={{ color: '#ff4040' }}>✕</span>
               <div className="font-pixel" style={{ fontSize: '8px', color: '#ff4040' }}>
-                NEED ${(P2E_MIN_USD - balance.totalUsd).toFixed(2)} MORE — min ${P2E_MIN_USD} for P2E
+                NEED ${(P2E_MIN_USD - bankrData.baseUsd).toFixed(2)} MORE on Base to play P2E
               </div>
             </div>
           )}
 
-          <button
-            onClick={() => { setState('idle'); setBalance(null); setWalletAddress(null); onAddressSet(''); setMethod(null); }}
+          <button onClick={reset}
             className="mt-2 font-mono text-gray-600 hover:text-gray-400"
-            style={{ fontSize: '10px' }}
-          >
-            ↺ Change wallet
+            style={{ fontSize: '10px' }}>
+            ↺ Disconnect
           </button>
         </div>
       )}

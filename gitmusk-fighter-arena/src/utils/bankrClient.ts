@@ -1,92 +1,102 @@
 const BANKR = 'https://api.bankr.bot';
 
-interface BankrUser {
-  address?: string;
-  evm_address?: string;
-  wallet_address?: string;
-  base_address?: string;
-  twitter_username?: string;
-  username?: string;
+export interface BankrWalletInfo {
+  success: boolean;
+  wallets: Array<{ chain: string; address: string }>;
+  socialAccounts: Array<{ platform: string; username: string }>;
+  bankrClub?: { active: boolean };
+  leaderboard?: { score: number; rank: number };
 }
 
-async function tryGet(url: string): Promise<unknown> {
-  const res = await fetch(url, { headers: { Accept: 'application/json' } });
-  if (!res.ok) throw new Error(`${res.status}`);
-  return res.json();
+export interface BankrTokenBalance {
+  network: string;
+  token: {
+    balance: number;
+    balanceUSD: number;
+    baseToken: {
+      name: string;
+      address: string;
+      symbol: string;
+      price: number;
+    };
+  };
 }
 
-async function tryPost(url: string, body: unknown): Promise<unknown> {
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-    body: JSON.stringify(body),
+export interface BankrChainBalance {
+  nativeBalance: string;
+  nativeUsd: string;
+  tokenBalances: BankrTokenBalance[];
+  total: string;
+}
+
+export interface BankrPortfolio {
+  success: boolean;
+  evmAddress: string;
+  solAddress?: string;
+  balances: Record<string, BankrChainBalance>;
+}
+
+export interface BankrWalletData {
+  evmAddress: string;
+  twitterUsername: string | null;
+  baseUsd: number;
+  usdc: number;
+  eth: number;
+  ethUsd: number;
+  leaderboardRank?: number;
+}
+
+async function bankrGet<T>(path: string, apiKey: string): Promise<T> {
+  const res = await fetch(`${BANKR}${path}`, {
+    headers: { 'X-API-Key': apiKey, 'Accept': 'application/json' },
   });
-  if (!res.ok) throw new Error(`${res.status}`);
-  return res.json();
+  if (res.status === 401 || res.status === 403) throw new Error('Invalid or expired API key.');
+  if (!res.ok) throw new Error(`Bankr API error ${res.status}`);
+  return res.json() as Promise<T>;
 }
 
-function extractAddress(data: unknown): string | null {
-  if (!data || typeof data !== 'object') return null;
-  const d = data as Record<string, unknown>;
+export async function connectBankrKey(
+  apiKey: string,
+  expectedUsername?: string,
+): Promise<BankrWalletData> {
+  const key = apiKey.trim();
+  if (!key.startsWith('bk_')) throw new Error('Key must start with bk_');
 
-  // Direct address fields
-  for (const key of ['address', 'evm_address', 'wallet_address', 'base_address', 'result']) {
-    const val = d[key];
-    if (typeof val === 'string' && /^0x[0-9a-fA-F]{40}$/.test(val)) return val;
+  const [me, portfolio] = await Promise.all([
+    bankrGet<BankrWalletInfo>('/wallet/me', key),
+    bankrGet<BankrPortfolio>('/wallet/portfolio?chains=base', key),
+  ]);
+
+  const evmWallet = me.wallets?.find(w => w.chain === 'evm');
+  if (!evmWallet?.address) throw new Error('No EVM wallet on this Bankr account.');
+
+  const twitter = me.socialAccounts?.find(s => s.platform === 'twitter');
+  const twitterUsername = twitter?.username ?? null;
+
+  if (expectedUsername && twitterUsername &&
+    twitterUsername.toLowerCase() !== expectedUsername.toLowerCase()) {
+    throw new Error(`This Bankr key belongs to @${twitterUsername}, not @${expectedUsername}.`);
   }
 
-  // Nested: data.address, data[0].address, users[0].address, etc.
-  for (const key of ['data', 'user', 'users', 'result']) {
-    const nested = d[key];
-    if (Array.isArray(nested) && nested.length > 0) {
-      const found = extractAddress(nested[0]);
-      if (found) return found;
-    }
-    if (nested && typeof nested === 'object') {
-      const found = extractAddress(nested);
-      if (found) return found;
-    }
-  }
+  const base = portfolio.balances?.base;
+  const baseUsd = parseFloat(base?.total ?? '0');
+  const eth = parseFloat(base?.nativeBalance ?? '0');
+  const ethUsd = parseFloat(base?.nativeUsd ?? '0');
 
-  return null;
-}
-
-export async function resolveXHandleToAddress(username: string): Promise<string | null> {
-  const handle = username.replace(/^@/, '');
-
-  const strategies: Array<() => Promise<unknown>> = [
-    // 1. /users/search — public endpoint, search by twitter username
-    () => tryGet(`${BANKR}/users/search?twitter=${encodeURIComponent(handle)}`),
-    () => tryGet(`${BANKR}/users/search?username=${encodeURIComponent('@' + handle)}`),
-    () => tryGet(`${BANKR}/users/search?handle=${encodeURIComponent('@' + handle)}`),
-
-    // 2. /addresses/resolve — resolve social handles (public helper endpoint)
-    () => tryPost(`${BANKR}/addresses/resolve`, { handle: `@${handle}`, platform: 'twitter' }),
-    () => tryPost(`${BANKR}/addresses/resolve`, { handle: `@${handle}` }),
-    () => tryGet(`${BANKR}/addresses/resolve?handle=${encodeURIComponent('@' + handle)}`),
-
-    // 3. Direct user profile lookup
-    () => tryGet(`${BANKR}/users/${encodeURIComponent(handle)}`),
-    () => tryGet(`${BANKR}/users/twitter/${encodeURIComponent(handle)}`),
-  ];
-
-  for (const strategy of strategies) {
-    try {
-      const data = await strategy();
-      const addr = extractAddress(data);
-      if (addr) return addr;
-    } catch {
-      // try next
+  let usdc = 0;
+  for (const tb of base?.tokenBalances ?? []) {
+    if (tb.token?.baseToken?.symbol?.toUpperCase() === 'USDC') {
+      usdc = tb.token.balance;
     }
   }
 
-  return null;
-}
-
-export async function getBankrPortfolio(apiKey: string): Promise<BankrUser & { portfolio?: unknown }> {
-  const res = await fetch(`${BANKR}/wallet/portfolio`, {
-    headers: { 'X-API-Key': apiKey, Accept: 'application/json' },
-  });
-  if (!res.ok) throw new Error(`Bankr API ${res.status}`);
-  return res.json();
+  return {
+    evmAddress: evmWallet.address,
+    twitterUsername,
+    baseUsd,
+    usdc,
+    eth,
+    ethUsd,
+    leaderboardRank: me.leaderboard?.rank,
+  };
 }
