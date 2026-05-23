@@ -1,5 +1,15 @@
 // ─── Types ───────────────────────────────────────────────────────────────────
 
+export interface MatchHistoryEntry {
+  opponent: string;
+  opponentArchetype: string;
+  won: boolean;
+  maxCombo: number;
+  durationSec: number;
+  xpGained: number;
+  timestamp: number;
+}
+
 export interface PlayerProfile {
   username: string;
   xp: number;
@@ -11,6 +21,7 @@ export interface PlayerProfile {
   lossStreak: number;
   maxWinStreak: number;
   achievements: string[];
+  matchHistory: MatchHistoryEntry[];
 }
 
 export interface CombatModifiers {
@@ -200,9 +211,13 @@ const KEY = (u: string) => `gmf_profile_v2_${u}`;
 export function getProfile(username: string): PlayerProfile {
   try {
     const raw = localStorage.getItem(KEY(username));
-    if (raw) return JSON.parse(raw) as PlayerProfile;
+    if (raw) {
+      const p = JSON.parse(raw) as PlayerProfile;
+      if (!p.matchHistory) p.matchHistory = [];
+      return p;
+    }
   } catch { /* blocked */ }
-  return { username, xp: 0, level: 1, wins: 0, losses: 0, maxCombo: 0, winStreak: 0, lossStreak: 0, maxWinStreak: 0, achievements: [] };
+  return { username, xp: 0, level: 1, wins: 0, losses: 0, maxCombo: 0, winStreak: 0, lossStreak: 0, maxWinStreak: 0, achievements: [], matchHistory: [] };
 }
 
 export function saveProfile(p: PlayerProfile): void {
@@ -229,6 +244,7 @@ export function recordMatch(
   won: boolean,
   maxCombo: number,
   durationSec: number,
+  opponent?: { username: string; archetype: string },
 ): MatchReward {
   const profile = getProfile(username);
   const mods = getCombatModifiers(profile);
@@ -250,6 +266,19 @@ export function recordMatch(
     profile.winStreak = 0;
   }
   profile.maxCombo = Math.max(profile.maxCombo, maxCombo);
+
+  if (opponent) {
+    const entry: MatchHistoryEntry = {
+      opponent: opponent.username,
+      opponentArchetype: opponent.archetype,
+      won,
+      maxCombo,
+      durationSec,
+      xpGained,
+      timestamp: Date.now(),
+    };
+    profile.matchHistory = [entry, ...(profile.matchHistory ?? [])].slice(0, 3);
+  }
 
   const newAchIds = ACHIEVEMENTS.map(a => a.id)
     .filter(id => !profile.achievements.includes(id) && checkCondition(id, profile));

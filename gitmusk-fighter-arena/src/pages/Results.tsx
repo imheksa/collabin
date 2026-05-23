@@ -326,9 +326,15 @@ export function Results() {
 
   // Record match + compute reward once on mount
   useEffect(() => {
-    if (!matchResult || !player1) return;
+    if (!matchResult || !player1 || !player2) return;
     const isP1Win = matchResult.winner.profile.username === player1.profile.username;
-    const reward = recordMatch(player1.profile.username, isP1Win, matchResult.maxCombo, matchResult.duration);
+    const reward = recordMatch(
+      player1.profile.username,
+      isP1Win,
+      matchResult.maxCombo,
+      matchResult.duration,
+      { username: player2.profile.username, archetype: player2.stats.archetype },
+    );
     setLastMatchReward(reward);
     setPlayerProfile(getProfile(player1.profile.username));
   }, []);
