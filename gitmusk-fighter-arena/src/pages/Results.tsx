@@ -9,24 +9,28 @@ const CARD_H = 315;
 
 // ─── Canvas share-card renderer ──────────────────────────────────────────────
 
-async function loadImg(src: string): Promise<HTMLImageElement | null> {
-  return new Promise(resolve => {
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    const timer = setTimeout(() => resolve(null), 3000);
-    img.onload = () => { clearTimeout(timer); resolve(img); };
-    img.onerror = () => {
-      clearTimeout(timer);
-      // fallback: DiceBear PNG
-      const fallback = new Image();
-      fallback.crossOrigin = 'anonymous';
-      const t2 = setTimeout(() => resolve(null), 2000);
-      fallback.onload = () => { clearTimeout(t2); resolve(fallback); };
-      fallback.onerror = () => { clearTimeout(t2); resolve(null); };
-      fallback.src = `https://api.dicebear.com/7.x/pixel-art/png?seed=${encodeURIComponent(src)}&size=80`;
-    };
-    img.src = src;
-  });
+async function loadImg(username: string, avatarUrl: string): Promise<HTMLImageElement | null> {
+  const dicebear = `https://api.dicebear.com/7.x/pixel-art/png?seed=${encodeURIComponent(username)}&size=80`;
+
+  // Try sources in order: Netlify proxy → original URL → DiceBear fallback
+  const sources = [
+    `/.netlify/functions/avatar-proxy?username=${encodeURIComponent(username)}`,
+    avatarUrl,
+    dicebear,
+  ];
+
+  for (const src of sources) {
+    const result = await new Promise<HTMLImageElement | null>(resolve => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      const timer = setTimeout(() => resolve(null), 4000);
+      img.onload = () => { clearTimeout(timer); resolve(img); };
+      img.onerror = () => { clearTimeout(timer); resolve(null); };
+      img.src = src;
+    });
+    if (result) return result;
+  }
+  return null;
 }
 
 function hexToRgb(hex: string) {
@@ -110,7 +114,7 @@ async function renderCard(
   // ── MY fighter card (left) ────────────────────────────────────────────────
   const avatarX = 80, avatarY = 175, avatarR = 38;
 
-  const meImg = await loadImg(me.profile.avatarUrl);
+  const meImg = await loadImg(me.profile.username, me.profile.avatarUrl);
   if (meImg) {
     ctx.save();
     ctx.beginPath();
@@ -188,7 +192,7 @@ async function renderCard(
   ctx.globalAlpha = oppAlpha;
 
   const oppAvatarX = CARD_W - 80, oppAvatarY = 175, oppR = 30;
-  const oppImg = await loadImg(opponent.profile.avatarUrl);
+  const oppImg = await loadImg(opponent.profile.username, opponent.profile.avatarUrl);
   if (oppImg) {
     ctx.save();
     ctx.beginPath();
