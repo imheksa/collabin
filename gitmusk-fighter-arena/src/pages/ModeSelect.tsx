@@ -411,11 +411,6 @@ export function ModeSelect() {
               <div className="font-pixel mt-0.5" style={{ fontSize: '7px', color: '#555' }}>
                 {p1Profile.wins}W {p1Profile.losses}L
               </div>
-              <button onClick={() => setScreen('profile')}
-                className="font-pixel mt-1 px-2 py-0.5 rounded transition-all hover:scale-105"
-                style={{ fontSize: '6px', background: `${p1Tier.color}20`, border: `1px solid ${p1Tier.color}`, color: p1Tier.color }}>
-                👤 PROFILE
-              </button>
             </div>
           </div>
 
@@ -613,10 +608,24 @@ export function ModeSelect() {
           </div>
         )}
 
-        <button onClick={() => setScreen('login')}
-          className="mt-4 font-mono text-gray-600 hover:text-gray-400 text-sm w-full text-center">
-          ← Change Fighter
-        </button>
+        {/* Bottom nav */}
+        <div className="mt-4 flex gap-2">
+          <button onClick={() => setScreen('profile')}
+            className="flex-1 font-pixel py-2.5 rounded transition-all hover:scale-[1.02]"
+            style={{ background: `${p1Tier.color}15`, border: `2px solid ${p1Tier.color}`, color: p1Tier.color, fontSize: '8px' }}>
+            👤 PROFILE
+          </button>
+          <button onClick={() => setScreen('leaderboard')}
+            className="flex-1 font-pixel py-2.5 rounded transition-all hover:scale-[1.02]"
+            style={{ background: '#ffd70010', border: '2px solid #ffd700', color: '#ffd700', fontSize: '8px' }}>
+            🏆 LEADERBOARD
+          </button>
+          <button onClick={() => setScreen('login')}
+            className="font-pixel px-3 py-2.5 rounded transition-all hover:scale-[1.02]"
+            style={{ background: 'transparent', border: '1px solid #333', color: '#555', fontSize: '8px' }}>
+            ← SWITCH
+          </button>
+        </div>
       </div>
 
       {/* P2E Modal */}
