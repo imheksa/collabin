@@ -1,0 +1,18 @@
+# LFS tracking removed — binary assets are not required for web builds.
+# Removing filter=lfs prevents Netlify checkout from failing when LFS
+# objects are unavailable on the remote. Pointer files are written as-is.
+*.uasset -filter -diff -merge -text
+*.umap -filter -diff -merge -text
+*.fbx -filter -diff -merge -text
+*.3ds -filter -diff -merge -text
+*.psd -filter -diff -merge -text
+*.png -filter -diff -merge -text
+*.mp3 -filter -diff -merge -text
+*.wav -filter -diff -merge -text
+*.xcf -filter -diff -merge -text
+*.jpg -filter -diff -merge -text
+*.bmp -filter -diff -merge -text
+*.zip -filter -diff -merge -text
+*.jpeg -filter -diff -merge -text
+*.tga -filter -diff -merge -text
+*.gltf -filter -diff -merge -text
