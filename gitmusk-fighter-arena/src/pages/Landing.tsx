@@ -1,8 +1,21 @@
 import { useGameStore } from '../stores/gameStore';
+import { DEMO_PROFILES } from '../data/mockProfiles';
+import { calculateFighterStats } from '../utils/statsCalculator';
+import { Fighter } from '../types';
 
 export function Landing() {
-  const { setScreen } = useGameStore();
+  const { setScreen, setPlayer1 } = useGameStore();
   const goLogin = () => setScreen('login');
+
+  const elonProfile = DEMO_PROFILES.find(p => p.username === 'elonmusk')!;
+  const elonStats = calculateFighterStats(elonProfile);
+
+  const tryDemo = () => {
+    const profile = DEMO_PROFILES[Math.floor(Math.random() * DEMO_PROFILES.length)];
+    const fighter: Fighter = { profile, stats: calculateFighterStats(profile) };
+    setPlayer1(fighter);
+    setScreen('mode_select');
+  };
 
   return (
     <div className="lp">
@@ -292,7 +305,7 @@ export function Landing() {
             <p className="sub">A retro PvP fighting game where your <b>X account</b> becomes your fighter. Your reputation, engagement, and social identity determine your combat power.</p>
             <div className="cta">
               <button className="pxbtn" onClick={goLogin}>▶ CONNECT X</button>
-              <a href="#gameplay" className="pxbtn ghost">▷ WATCH GAMEPLAY</a>
+              <button className="pxbtn ghost" onClick={tryDemo}>▷ TRY DEMO</button>
             </div>
             <div className="meta">
               <span><b>24,810</b>FIGHTERS MINTED</span>
@@ -307,14 +320,28 @@ export function Landing() {
                 <div className="hp"><span>P1</span><div className="hp-bar"><i></i></div></div>
                 <div className="hp"><div className="hp-bar" style={{ transform:'scaleX(-1)' }}><i style={{ width:'62%' }}></i></div><span>P2</span></div>
               </div>
-              <div className="pixel-fighter"></div>
+              {/* Elon Musk profile display */}
+              <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:'10px', animation:'bob 1.2s steps(2) infinite' }}>
+                <div style={{ width:'120px', height:'120px', overflow:'hidden', border:`4px solid ${elonStats.color}`, boxShadow:`0 0 0 2px var(--void), 0 0 28px ${elonStats.color}90`, imageRendering:'pixelated' }}>
+                  <img
+                    src={elonProfile.avatarUrl}
+                    alt="@elonmusk"
+                    style={{ width:'100%', height:'100%', objectFit:'cover', imageRendering:'pixelated', display:'block' }}
+                    onError={e => { (e.target as HTMLImageElement).src = 'https://api.dicebear.com/7.x/pixel-art/svg?seed=elonmusk'; }}
+                  />
+                </div>
+                <div style={{ textAlign:'center' }}>
+                  <div style={{ fontFamily:'var(--pixel)', fontSize:'9px', color:'var(--neon-yel)', marginBottom:'4px' }}>@ELONMUSK ✓</div>
+                  <div style={{ fontFamily:'var(--pixel)', fontSize:'7px', color:elonStats.color, letterSpacing:'.15em' }}>{elonStats.archetypeLabel.toUpperCase()}</div>
+                </div>
+              </div>
               <div className="scan"></div>
-              <div style={{ position:'absolute', bottom:'14px', left:'14px', right:'14px', fontFamily:'var(--mono)', fontSize:'12px', color:'var(--txt-dim)', textTransform:'uppercase', letterSpacing:'.2em', textAlign:'center' }}>
-                <b style={{ color:'var(--neon-yel)', display:'block', fontWeight:700, marginBottom:'8px', fontSize:'14px' }}>// FIGHTER_RENDER</b>profile-pic → arcade sprite
+              <div style={{ position:'absolute', bottom:'14px', left:'14px', right:'14px', fontFamily:'var(--mono)', fontSize:'11px', color:'var(--txt-dim)', textTransform:'uppercase', letterSpacing:'.2em', textAlign:'center' }}>
+                <b style={{ color:'var(--neon-yel)', display:'block', fontWeight:700, marginBottom:'4px', fontSize:'12px', fontFamily:'var(--pixel)' }}>// FIGHTER_RENDER</b>profile-pic → arcade sprite
               </div>
             </div>
-            <div className="stat-strip">ATK +124<br />CRIT 38%</div>
-            <div className="stat-strip r">@user.eth<br />RANK · DIAMOND</div>
+            <div className="stat-strip">ATK {elonStats.basePower}<br />CRIT {elonStats.critRate}%</div>
+            <div className="stat-strip r">@elonmusk<br />RANK · {elonStats.rarity.toUpperCase()}</div>
           </div>
         </div>
       </section>
