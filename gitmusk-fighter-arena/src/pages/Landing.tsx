@@ -1,336 +1,629 @@
-import { useEffect, useState } from 'react';
 import { useGameStore } from '../stores/gameStore';
 
-// ─── CSS-animated pixel fighter silhouette ────────────────────────────────────
-function FighterSilhouette({ color, flip = false }: { color: string; flip?: boolean }) {
-  const s = (w: number, h: number, extra: React.CSSProperties = {}): React.CSSProperties => ({
-    width: w, height: h, background: color, borderRadius: 2, flexShrink: 0, ...extra,
-  });
-  return (
-    <div style={{
-      display: 'flex', flexDirection: 'column', alignItems: 'center',
-      filter: `drop-shadow(0 0 10px ${color})`,
-      animation: `fighterIdle 0.9s ease-in-out infinite`,
-      transform: flip ? 'scaleX(-1)' : 'none',
-    }}>
-      {/* Head */}
-      <div style={{ ...s(22, 22), borderRadius: '50%', marginBottom: 2 }} />
-      {/* Torso + arms row */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 3 }}>
-        {/* Front arm (raised in fighting stance) */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 0, marginTop: 3 }}>
-          <div style={s(8, 14)} />
-          <div style={{ ...s(12, 8), marginLeft: -4 }} />
-        </div>
-        {/* Torso */}
-        <div style={s(16, 30)} />
-        {/* Back arm */}
-        <div style={{ ...s(8, 18), marginTop: 6 }} />
-      </div>
-      {/* Legs */}
-      <div style={{ display: 'flex', gap: 4, marginTop: 2 }}>
-        <div style={{ ...s(10, 12), marginTop: 0 }} />
-        <div style={{ ...s(10, 22) }} />
-      </div>
-      {/* Feet */}
-      <div style={{ display: 'flex', gap: 2, marginTop: 0 }}>
-        <div style={{ ...s(14, 7), borderRadius: '0 3px 3px 0', marginLeft: -4 }} />
-        <div style={{ ...s(14, 7), borderRadius: '3px 0 0 3px', marginRight: -4 }} />
-      </div>
-    </div>
-  );
-}
-
-// ─── How To Play modal ─────────────────────────────────────────────────────────
-function HowToPlay({ onClose }: { onClose: () => void }) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: 'rgba(0,0,0,0.88)' }} onClick={onClose}>
-      <div className="w-full max-w-lg rounded p-6 relative"
-        style={{ background: '#0d001a', border: '2px solid #bf00ff', boxShadow: '0 0 40px #bf00ff30' }}
-        onClick={e => e.stopPropagation()}>
-
-        <button onClick={onClose}
-          className="absolute top-3 right-4 font-pixel text-gray-600 hover:text-white"
-          style={{ fontSize: '10px' }}>✕ CLOSE</button>
-
-        <div className="font-pixel text-center mb-5" style={{ fontSize: '12px', color: '#bf00ff', textShadow: '0 0 12px #bf00ff' }}>
-          ❓ HOW TO PLAY
-        </div>
-
-        {/* Steps */}
-        <div className="space-y-4 mb-5">
-          {[
-            { n: '01', title: 'PICK YOUR FIGHTER', desc: 'Choose a demo profile or connect your X account. Your followers, tweets & engagement become your base stats.', color: '#00ffff' },
-            { n: '02', title: 'ENTER THE ARENA', desc: 'Local 2-player or vs random opponent. First to drain HP wins. Unlock ULTIMATE when rage bar fills.', color: '#ff00ff' },
-            { n: '03', title: 'WIN, LEVEL UP, SHARE', desc: 'Earn XP every match. Leveling up boosts your ATK & DEF permanently. Share your profile card on X.', color: '#ffd700' },
-          ].map(({ n, title, desc, color }) => (
-            <div key={n} className="flex gap-3">
-              <div className="font-pixel flex-shrink-0 w-8 h-8 rounded flex items-center justify-center"
-                style={{ background: `${color}20`, border: `1px solid ${color}`, color, fontSize: '10px' }}>{n}</div>
-              <div>
-                <div className="font-pixel mb-0.5" style={{ fontSize: '8px', color }}>{title}</div>
-                <div className="font-mono" style={{ fontSize: '10px', color: '#666' }}>{desc}</div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Controls */}
-        <div className="grid grid-cols-2 gap-3">
-          <div className="p-3 rounded" style={{ background: '#080015', border: '1px solid #00ffff30' }}>
-            <div className="font-pixel mb-2" style={{ fontSize: '7px', color: '#00ffff' }}>⌨ PLAYER 1</div>
-            {[
-              ['W', 'Jump'],
-              ['A / D', 'Move'],
-              ['S', 'Block'],
-              ['F', 'Punch'],
-              ['G', 'Kick'],
-              ['H', 'Special (5 hits)'],
-              ['V', 'Ultimate (full rage)'],
-            ].map(([k, v]) => (
-              <div key={k} className="flex justify-between text-xs font-mono mb-0.5">
-                <span style={{ color: '#00ffff' }}>{k}</span>
-                <span style={{ color: '#555' }}>{v}</span>
-              </div>
-            ))}
-          </div>
-          <div className="p-3 rounded" style={{ background: '#080015', border: '1px solid #ff00ff30' }}>
-            <div className="font-pixel mb-2" style={{ fontSize: '7px', color: '#ff00ff' }}>⌨ PLAYER 2</div>
-            {[
-              ['↑', 'Jump'],
-              ['← / →', 'Move'],
-              ['↓', 'Block'],
-              ['1', 'Punch'],
-              ['2', 'Kick'],
-              ['3', 'Special (5 hits)'],
-              ['4', 'Ultimate (full rage)'],
-            ].map(([k, v]) => (
-              <div key={k} className="flex justify-between text-xs font-mono mb-0.5">
-                <span style={{ color: '#ff00ff' }}>{k}</span>
-                <span style={{ color: '#555' }}>{v}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="text-center mt-4">
-          <button onClick={onClose}
-            className="font-pixel px-6 py-2 rounded transition-all hover:scale-105"
-            style={{ background: '#bf00ff20', border: '2px solid #bf00ff', color: '#bf00ff', fontSize: '9px' }}>
-            LET'S FIGHT! ⚔
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── Landing page ─────────────────────────────────────────────────────────────
-
 export function Landing() {
-  const { setScreen, onlinePlayers, activeMatches, setOnlinePlayers, setActiveMatches } = useGameStore();
-  const [blink, setBlink] = useState(true);
-  const [glitch, setGlitch] = useState(false);
-  const [showHowTo, setShowHowTo] = useState(false);
-
-  useEffect(() => {
-    const b = setInterval(() => setBlink(v => !v), 600);
-    const g = setInterval(() => {
-      setGlitch(true);
-      setTimeout(() => setGlitch(false), 150);
-    }, 4000);
-    const o = setInterval(() => {
-      setOnlinePlayers(onlinePlayers + Math.floor((Math.random() - 0.4) * 5));
-      setActiveMatches(Math.max(5, activeMatches + Math.floor((Math.random() - 0.4) * 3)));
-    }, 3000);
-    return () => { clearInterval(b); clearInterval(g); clearInterval(o); };
-  }, [onlinePlayers, activeMatches]);
+  const { setScreen } = useGameStore();
+  const goLogin = () => setScreen('login');
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-arena-bg relative overflow-hidden">
-      {/* Keyframes injected once */}
+    <div className="lp">
       <style>{`
-        @keyframes fighterIdle {
-          0%, 100% { transform: translateY(0px); }
-          50% { transform: translateY(-7px); }
+        .lp {
+          --void:#0a0118;--void-2:#140827;--void-3:#1d0b3a;--panel:#22103f;--panel-line:#3a1c5e;
+          --neon-p:#b026ff;--neon-b:#00e5ff;--neon-pink:#ff2d75;--neon-yel:#ffd60a;--neon-grn:#00ff9d;
+          --txt:#e8e3ff;--txt-dim:#a695d4;
+          --pixel:'Press Start 2P',monospace;--body:'VT323',monospace;--mono:'JetBrains Mono',monospace;
+          background:
+            radial-gradient(ellipse at top,rgba(176,38,255,.18),transparent 60%),
+            radial-gradient(ellipse at 80% 30%,rgba(0,229,255,.12),transparent 55%),
+            var(--void);
+          color:var(--txt);
+          font-family:var(--body);
+          font-size:22px;
+          line-height:1.35;
+          -webkit-font-smoothing:none;
+          font-smooth:never;
+          image-rendering:pixelated;
+          overflow-x:hidden;
+          min-height:100vh;
         }
-        @keyframes vsFlash {
-          0%, 100% { opacity: 1; transform: scale(1); }
-          50% { opacity: 0.6; transform: scale(1.1); }
-        }
-        @keyframes neonPulse {
-          0%, 100% { box-shadow: 0 0 12px #00ffff40, inset 0 0 12px #00ffff08; }
-          50% { box-shadow: 0 0 28px #00ffff80, inset 0 0 20px #00ffff15; }
+        .lp h1,.lp h2,.lp h3,.lp h4{font-family:var(--pixel);font-weight:400;line-height:1.4;letter-spacing:.02em}
+        .lp h1{font-size:28px}.lp h2{font-size:22px}.lp h3{font-size:14px}.lp h4{font-size:11px}
+        .lp p{font-size:22px;color:var(--txt);max-width:60ch}
+        .lp .mono{font-family:var(--mono);font-size:13px;letter-spacing:.06em;text-transform:uppercase}
+        .lp .tag{font-family:var(--pixel);font-size:9px;color:var(--neon-b);letter-spacing:.15em;text-transform:uppercase}
+
+        /* Pixel button */
+        .pxbtn{display:inline-flex;align-items:center;gap:10px;font-family:var(--pixel);font-size:11px;color:var(--void);background:var(--neon-yel);padding:16px 22px;border:0;cursor:pointer;position:relative;box-shadow:0 4px 0 0 #b38800,0 4px 0 4px var(--void),0 8px 0 4px #5a1a99;text-decoration:none;text-transform:uppercase;letter-spacing:.05em;transition:transform .08s ease,box-shadow .08s ease}
+        .pxbtn:hover{transform:translate(0,2px);box-shadow:0 2px 0 0 #b38800,0 2px 0 4px var(--void),0 4px 0 4px #5a1a99}
+        .pxbtn.ghost{background:var(--void);color:var(--neon-b);box-shadow:0 4px 0 0 #003a4d,0 4px 0 4px var(--neon-b),0 8px 0 4px #5a1a99}
+        .pxbtn.ghost:hover{box-shadow:0 2px 0 0 #003a4d,0 2px 0 4px var(--neon-b),0 4px 0 4px #5a1a99}
+        .pxbtn.pink{background:var(--neon-pink);color:#fff;box-shadow:0 4px 0 0 #800030,0 4px 0 4px var(--void),0 8px 0 4px #5a1a99}
+
+        /* Pixel panel */
+        .panel{position:relative;background:var(--panel);border:4px solid var(--neon-p);box-shadow:inset 0 0 0 4px var(--void),0 0 0 4px var(--void),0 0 24px rgba(176,38,255,.4);padding:24px}
+        .panel.blue{border-color:var(--neon-b);box-shadow:inset 0 0 0 4px var(--void),0 0 0 4px var(--void),0 0 24px rgba(0,229,255,.35)}
+        .panel.pink{border-color:var(--neon-pink);box-shadow:inset 0 0 0 4px var(--void),0 0 0 4px var(--void),0 0 24px rgba(255,45,117,.35)}
+        .panel.yel{border-color:var(--neon-yel);box-shadow:inset 0 0 0 4px var(--void),0 0 0 4px var(--void),0 0 24px rgba(255,214,10,.3)}
+        .panel .corners i{position:absolute;width:10px;height:10px;background:var(--neon-yel)}
+        .panel .corners i:nth-child(1){top:-2px;left:-2px}
+        .panel .corners i:nth-child(2){top:-2px;right:-2px}
+        .panel .corners i:nth-child(3){bottom:-2px;left:-2px}
+        .panel .corners i:nth-child(4){bottom:-2px;right:-2px}
+
+        /* Nav */
+        .lp nav{position:sticky;top:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:14px 32px;background:rgba(10,1,24,.85);border-bottom:4px solid var(--neon-p);backdrop-filter:blur(2px)}
+        .logo{display:flex;align-items:center;gap:12px;font-family:var(--pixel);font-size:14px;color:var(--neon-yel);text-shadow:2px 2px 0 var(--neon-pink)}
+        .logo .badge{width:32px;height:32px;background:var(--neon-p);position:relative;display:grid;place-items:center;color:#fff;font-family:var(--pixel);font-size:14px;box-shadow:4px 4px 0 var(--void),4px 4px 0 4px var(--neon-b)}
+        .nav-links{display:flex;gap:28px;font-family:var(--pixel);font-size:10px;color:var(--txt-dim)}
+        .nav-links a{color:var(--txt-dim);text-decoration:none;letter-spacing:.1em}
+        .nav-links a:hover{color:var(--neon-b);text-shadow:0 0 8px var(--neon-b)}
+        .status{display:flex;align-items:center;gap:8px;font-family:var(--pixel);font-size:9px;color:var(--neon-grn)}
+        .dot{width:10px;height:10px;background:var(--neon-grn);animation:blink 1s steps(2) infinite}
+        @keyframes blink{50%{opacity:.2}}
+
+        /* Section scaffolding */
+        .lp section{padding:96px 32px;position:relative}
+        .wrap{max-width:1280px;margin:0 auto}
+        .eyebrow{display:inline-flex;align-items:center;gap:10px;font-family:var(--pixel);font-size:10px;color:var(--neon-b);letter-spacing:.2em;margin-bottom:24px}
+        .eyebrow::before{content:"";width:24px;height:4px;background:var(--neon-b)}
+        .sec-head{margin-bottom:56px;display:flex;align-items:end;justify-content:space-between;gap:32px;flex-wrap:wrap}
+        .sec-head h2{max-width:18ch;text-shadow:3px 3px 0 var(--neon-pink)}
+
+        /* Hero */
+        .hero{padding:48px 32px 96px;min-height:90vh;display:flex;align-items:center;position:relative;overflow:hidden}
+        .hero-grid{display:grid;grid-template-columns:1.1fr 1fr;gap:48px;align-items:center;width:100%;max-width:1280px;margin:0 auto;position:relative;z-index:2}
+        .hero h1{font-size:36px;line-height:1.5;text-shadow:4px 4px 0 var(--neon-pink),8px 8px 0 var(--void-3)}
+        .hero h1 .lit{color:var(--neon-yel)}
+        .hero .sub{font-size:24px;color:var(--txt-dim);margin:32px 0;max-width:38ch}
+        .hero .sub b{color:var(--neon-b);font-weight:normal}
+        .hero .cta{display:flex;gap:32px;margin-top:40px;flex-wrap:wrap}
+        .hero .meta{display:flex;gap:32px;margin-top:56px;font-family:var(--pixel);font-size:9px;color:var(--txt-dim);letter-spacing:.15em}
+        .hero .meta span b{color:var(--neon-yel);font-weight:normal;font-size:14px;display:block;margin-bottom:6px}
+        .arena-bg{position:absolute;inset:0;z-index:1;opacity:.7}
+        .arena-bg .grid{position:absolute;inset:0;background:linear-gradient(0deg,transparent 95%,rgba(176,38,255,.4) 95%),linear-gradient(90deg,transparent 95%,rgba(0,229,255,.25) 95%);background-size:48px 48px;transform:perspective(600px) rotateX(60deg);transform-origin:center 80%;mask:linear-gradient(180deg,transparent 0%,#000 40%,#000 80%,transparent 100%)}
+        .arena-bg .floor{position:absolute;bottom:0;left:0;right:0;height:35%;background:linear-gradient(180deg,transparent,rgba(176,38,255,.25))}
+        .silhouette{position:absolute;bottom:14%;font-family:var(--pixel);font-size:12px;letter-spacing:.2em;color:rgba(255,255,255,.08)}
+        .silhouette.l{left:8%}.silhouette.r{right:8%}
+        .pixel-spark{position:absolute;width:8px;height:8px;background:var(--neon-yel);box-shadow:0 0 12px var(--neon-yel);animation:rise 4s linear infinite}
+        @keyframes rise{0%{transform:translateY(0);opacity:0}10%{opacity:1}100%{transform:translateY(-300px);opacity:0}}
+        .fighter-card{position:relative}
+        .fighter-frame{aspect-ratio:4/5;background:repeating-linear-gradient(45deg,rgba(176,38,255,.12) 0 6px,transparent 6px 12px),linear-gradient(180deg,#1a0834,#0c0220);border:6px solid var(--neon-b);box-shadow:inset 0 0 0 4px var(--void),0 0 0 4px var(--void),0 0 40px rgba(0,229,255,.5);position:relative;display:grid;place-items:center;overflow:hidden}
+        .pixel-fighter{position:relative;width:140px;height:200px;background:linear-gradient(180deg,transparent 0%,transparent 16%,var(--neon-pink) 16%,var(--neon-pink) 28%,transparent 28%,transparent 32%,var(--neon-p) 32%,var(--neon-p) 70%,transparent 70%,transparent 72%,var(--neon-b) 72%,var(--neon-b) 96%,transparent 96%);image-rendering:pixelated;filter:drop-shadow(4px 4px 0 var(--void));animation:bob 1.2s steps(2) infinite}
+        @keyframes bob{50%{transform:translateY(-6px)}}
+        .scan{position:absolute;left:0;right:0;height:2px;background:var(--neon-b);box-shadow:0 0 12px var(--neon-b);animation:scan 3s linear infinite;opacity:.7}
+        @keyframes scan{0%{top:0}100%{top:100%}}
+        .stat-strip{position:absolute;left:-16px;top:32px;background:var(--void);border:3px solid var(--neon-yel);padding:10px 14px;font-family:var(--pixel);font-size:9px;color:var(--neon-yel);box-shadow:4px 4px 0 var(--neon-p)}
+        .stat-strip.r{left:auto;right:-16px;top:auto;bottom:32px;border-color:var(--neon-pink);color:var(--neon-pink);box-shadow:4px 4px 0 var(--neon-b)}
+        .hud{position:absolute;top:14px;left:14px;right:14px;display:flex;justify-content:space-between;align-items:center;font-family:var(--pixel);font-size:9px;color:var(--neon-yel)}
+        .hud .hp{display:flex;align-items:center;gap:8px}
+        .hp-bar{width:120px;height:10px;background:var(--void);border:2px solid #fff;position:relative}
+        .hp-bar i{display:block;height:100%;background:linear-gradient(90deg,var(--neon-grn),var(--neon-yel) 70%,var(--neon-pink));width:84%;animation:hppulse 2s steps(8) infinite}
+        @keyframes hppulse{50%{width:78%}}
+
+        /* How It Works */
+        .how-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:32px}
+        .step .num{font-family:var(--pixel);font-size:48px;color:var(--neon-p);text-shadow:4px 4px 0 var(--void),4px 4px 0 6px var(--neon-yel);line-height:1;margin-bottom:24px;display:block}
+        .step h3{margin-bottom:16px;color:var(--neon-yel)}
+        .step p{font-size:20px;color:var(--txt-dim)}
+        .step .ico{width:64px;height:64px;background:var(--void);border:4px solid var(--neon-b);display:grid;place-items:center;font-family:var(--pixel);font-size:18px;color:var(--neon-b);margin-bottom:24px;box-shadow:4px 4px 0 var(--neon-pink)}
+        .flow-strip{margin-top:48px;padding:28px;background:var(--void-2);border:4px dashed var(--panel-line);display:flex;align-items:center;justify-content:center;gap:18px;font-family:var(--pixel);font-size:11px;color:var(--txt-dim);flex-wrap:wrap}
+        .flow-strip b{color:var(--neon-yel);font-weight:normal;background:var(--void);padding:8px 14px;border:3px solid var(--neon-yel);box-shadow:3px 3px 0 var(--neon-p)}
+        .flow-strip .arr{color:var(--neon-b);font-size:18px;animation:dash 1.2s steps(3) infinite}
+        @keyframes dash{50%{transform:translateX(6px)}}
+
+        /* Character System */
+        .char-wrap{display:grid;grid-template-columns:1fr 1fr;gap:48px;align-items:start}
+        .stat-list{display:flex;flex-direction:column;gap:16px}
+        .stat-row{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:18px;padding:18px 22px;background:var(--void-2);border-left:6px solid var(--neon-p);border-right:6px solid var(--neon-b);position:relative}
+        .stat-row .from{font-family:var(--pixel);font-size:11px;color:var(--neon-b)}
+        .stat-row .to{font-family:var(--pixel);font-size:11px;color:var(--neon-yel);text-align:right}
+        .stat-row .arr{font-family:var(--pixel);font-size:14px;color:var(--neon-pink)}
+        .stat-row:hover{background:var(--void-3)}
+        .rpg{padding:24px;font-family:var(--mono);font-size:13px;color:var(--neon-b)}
+        .rpg .title{font-family:var(--pixel);font-size:12px;color:var(--neon-yel);margin-bottom:6px;letter-spacing:.1em}
+        .rpg .sub{font-family:var(--pixel);font-size:9px;color:var(--txt-dim);margin-bottom:24px;letter-spacing:.2em}
+        .rpg .row{display:flex;align-items:center;gap:14px;margin-bottom:14px;font-family:var(--pixel);font-size:10px}
+        .rpg .row .lbl{width:80px;color:var(--txt);letter-spacing:.1em}
+        .rpg .bar{flex:1;height:14px;background:var(--void);border:2px solid var(--panel-line);position:relative;overflow:hidden}
+        .rpg .bar i{display:block;height:100%;background:repeating-linear-gradient(90deg,var(--neon-pink) 0 6px,#ff5494 6px 8px)}
+        .rpg .val{width:54px;text-align:right;color:var(--neon-yel);font-size:10px}
+        .rpg .divide{border-top:2px dashed var(--panel-line);margin:18px 0}
+        .rpg .traits{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+        .rpg .traits span{font-family:var(--pixel);font-size:9px;color:var(--neon-grn);border:2px solid var(--neon-grn);padding:5px 8px;letter-spacing:.1em}
+        .rpg .footer{margin-top:24px;display:flex;justify-content:space-between;font-family:var(--pixel);font-size:9px;color:var(--txt-dim);letter-spacing:.15em}
+
+        /* Archetypes */
+        .archetype-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:24px}
+        .arch{padding:0;background:var(--panel);border:4px solid var(--neon-p);box-shadow:6px 6px 0 var(--void),6px 6px 0 8px var(--neon-pink);position:relative;cursor:pointer;transition:transform .15s steps(3)}
+        .arch:hover{transform:translate(-3px,-3px);box-shadow:9px 9px 0 var(--void),9px 9px 0 12px var(--neon-yel)}
+        .arch .portrait{aspect-ratio:1;background:repeating-linear-gradient(45deg,rgba(255,255,255,.04) 0 6px,transparent 6px 12px),linear-gradient(180deg,#1a0834,#0c0220);position:relative;display:grid;place-items:center;border-bottom:4px solid var(--neon-p)}
+        .arch .portrait .glyph{font-family:var(--pixel);font-size:42px;color:var(--neon-yel);text-shadow:3px 3px 0 var(--neon-pink),6px 6px 0 var(--void)}
+        .arch .body{padding:20px}
+        .arch h3{font-size:13px;color:var(--neon-b);margin-bottom:10px}
+        .arch p{font-size:18px;color:var(--txt-dim)}
+        .arch .ult{margin-top:14px;font-family:var(--pixel);font-size:9px;color:var(--neon-yel);letter-spacing:.15em;border-top:2px dashed var(--panel-line);padding-top:12px}
+        .arch .ult b{color:var(--neon-pink);font-weight:normal}
+        .arch .rarity{position:absolute;top:10px;right:10px;font-family:var(--pixel);font-size:8px;padding:5px 8px;background:var(--void);color:var(--neon-yel);letter-spacing:.2em;border:2px solid var(--neon-yel);z-index:2}
+        .arch:nth-child(2) .rarity{color:var(--neon-pink);border-color:var(--neon-pink)}
+        .arch:nth-child(3) .rarity{color:var(--neon-b);border-color:var(--neon-b)}
+        .arch:nth-child(4) .rarity{color:var(--neon-grn);border-color:var(--neon-grn)}
+
+        /* Gameplay */
+        .gameplay{background:linear-gradient(180deg,transparent,rgba(0,229,255,.06))}
+        .gp-wrap{display:grid;grid-template-columns:1fr 1.4fr;gap:56px;align-items:center}
+        .gp-screen{position:relative;aspect-ratio:16/10;background:radial-gradient(ellipse at center bottom,rgba(255,45,117,.35),transparent 60%),linear-gradient(180deg,#1a0834 0%,#0c0220 100%);border:6px solid var(--neon-yel);box-shadow:inset 0 0 0 4px var(--void),0 0 0 4px var(--void),0 0 50px rgba(255,214,10,.3);overflow:hidden}
+        .gp-screen .ground{position:absolute;bottom:0;left:0;right:0;height:30%;background:linear-gradient(180deg,transparent,rgba(176,38,255,.35) 50%,rgba(176,38,255,.5));border-top:4px solid var(--neon-p)}
+        .gp-screen .ground::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(90deg,transparent 0 32px,rgba(0,0,0,.3) 32px 34px)}
+        .gp-hud{position:absolute;top:18px;left:18px;right:18px;display:flex;justify-content:space-between;align-items:flex-start}
+        .gp-player{flex:1;max-width:42%}
+        .gp-player .name{font-family:var(--pixel);font-size:11px;color:var(--neon-yel);margin-bottom:6px;letter-spacing:.1em}
+        .gp-player.r .name{color:var(--neon-pink);text-align:right}
+        .gp-hpbar{height:18px;background:var(--void);border:3px solid #fff;position:relative}
+        .gp-hpbar i{display:block;height:100%;background:linear-gradient(90deg,var(--neon-grn),var(--neon-yel),var(--neon-pink))}
+        .gp-hpbar.r i{background:linear-gradient(270deg,var(--neon-grn),var(--neon-yel),var(--neon-pink))}
+        .gp-timer{font-family:var(--pixel);font-size:32px;color:var(--neon-yel);text-shadow:3px 3px 0 var(--void);padding:0 18px}
+        .combo{position:absolute;top:38%;left:8%;font-family:var(--pixel);font-size:16px;color:var(--neon-yel);text-shadow:3px 3px 0 var(--neon-pink),6px 6px 0 var(--void);animation:pop 1.2s steps(4) infinite}
+        .combo b{font-size:42px;display:block;color:var(--neon-pink);text-shadow:4px 4px 0 var(--void)}
+        @keyframes pop{0%,40%{transform:scale(1)}50%{transform:scale(1.06)}100%{transform:scale(1)}}
+        .ult-meter{position:absolute;bottom:16px;left:50%;transform:translateX(-50%);width:60%;display:flex;align-items:center;gap:10px}
+        .ult-meter .ult-label{font-family:var(--pixel);font-size:9px;color:var(--neon-b);letter-spacing:.2em}
+        .ult-meter .ult-bar{flex:1;height:14px;background:var(--void);border:3px solid var(--neon-b);position:relative}
+        .ult-meter .ult-bar i{display:block;height:100%;width:72%;background:repeating-linear-gradient(45deg,var(--neon-b) 0 6px,#57f1ff 6px 12px);animation:ultfill 3s steps(20) infinite}
+        @keyframes ultfill{50%{width:90%}}
+        .gp-fighter{position:absolute;bottom:22%}
+        .gp-fighter.l{left:18%;width:80px;height:120px;background:linear-gradient(180deg,var(--neon-yel) 0 22%,transparent 22% 26%,var(--neon-pink) 26% 56%,transparent 56% 60%,var(--neon-p) 60% 100%);filter:drop-shadow(3px 3px 0 var(--void))}
+        .gp-fighter.r{right:18%;width:80px;height:120px;background:linear-gradient(180deg,var(--neon-grn) 0 22%,transparent 22% 26%,var(--neon-b) 26% 56%,transparent 56% 60%,var(--neon-p) 60% 100%);filter:drop-shadow(3px 3px 0 var(--void));transform:scaleX(-1)}
+        .gp-features{list-style:none;margin-top:32px;display:grid;grid-template-columns:1fr 1fr;gap:18px}
+        .gp-features li{font-family:var(--pixel);font-size:11px;color:var(--txt);padding:18px;background:var(--void-2);border-left:6px solid var(--neon-b);letter-spacing:.05em}
+        .gp-features li:nth-child(2){border-color:var(--neon-pink)}
+        .gp-features li:nth-child(3){border-color:var(--neon-yel)}
+        .gp-features li:nth-child(4){border-color:var(--neon-grn)}
+
+        /* P2E */
+        .p2e{background:linear-gradient(180deg,var(--void-2),var(--void))}
+        .p2e-grid{display:grid;grid-template-columns:1fr 1fr;gap:56px;align-items:center}
+        .flow{display:grid;grid-template-columns:1fr;gap:14px;margin-top:32px}
+        .flow-step{display:flex;align-items:center;gap:18px;padding:18px;background:var(--void-2);border:3px solid var(--panel-line)}
+        .flow-step .n{width:42px;height:42px;background:var(--neon-yel);color:var(--void);display:grid;place-items:center;font-family:var(--pixel);font-size:14px;flex-shrink:0;box-shadow:3px 3px 0 var(--void),3px 3px 0 6px var(--neon-p)}
+        .flow-step .l{font-family:var(--pixel);font-size:12px;color:var(--txt);letter-spacing:.05em;flex:1}
+        .flow-step .x{font-family:var(--mono);font-size:11px;color:var(--neon-b);letter-spacing:.15em}
+        .wallet{padding:0;border:6px solid var(--neon-grn);background:var(--void-2);box-shadow:inset 0 0 0 4px var(--void),0 0 0 4px var(--void),0 0 40px rgba(0,255,157,.25)}
+        .wallet header{padding:16px 20px;background:var(--void);border-bottom:4px solid var(--neon-grn);display:flex;justify-content:space-between;align-items:center;font-family:var(--pixel);font-size:10px;color:var(--neon-grn)}
+        .wallet header .net{display:flex;align-items:center;gap:8px;color:var(--txt-dim);font-size:9px}
+        .wallet header .net::before{content:"";width:8px;height:8px;background:var(--neon-grn);box-shadow:0 0 8px var(--neon-grn)}
+        .wallet .balance{padding:32px 24px;text-align:center;border-bottom:3px dashed var(--panel-line)}
+        .wallet .balance .l{font-family:var(--pixel);font-size:9px;color:var(--txt-dim);letter-spacing:.2em;margin-bottom:12px}
+        .wallet .balance .amt{font-family:var(--pixel);font-size:42px;color:var(--neon-yel);text-shadow:3px 3px 0 var(--neon-pink),6px 6px 0 var(--void)}
+        .wallet .balance .delta{margin-top:10px;font-family:var(--mono);font-size:13px;color:var(--neon-grn)}
+        .wallet .feed{padding:20px 24px}
+        .wallet .feed .li{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:2px dotted var(--panel-line);font-family:var(--pixel);font-size:10px;color:var(--txt)}
+        .wallet .feed .li:last-child{border:0}
+        .wallet .feed .li b{color:var(--neon-yel);font-weight:normal}
+        .wallet .feed .li.loss b{color:var(--neon-pink)}
+        .coin{position:absolute;width:18px;height:18px;background:var(--neon-yel);border:3px solid var(--void);border-radius:2px;animation:float 3s steps(8) infinite}
+        .coin::before{content:"$";position:absolute;inset:0;display:grid;place-items:center;font-family:var(--pixel);font-size:8px;color:var(--void)}
+        @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
+
+        /* Tournaments */
+        .tour{background:repeating-linear-gradient(0deg,rgba(255,255,255,.015) 0 2px,transparent 2px 4px),var(--void)}
+        .bracket{display:grid;grid-template-columns:repeat(4,1fr);gap:24px;align-items:center;margin-bottom:40px}
+        .match{padding:14px;background:var(--void-2);border:3px solid var(--panel-line);font-family:var(--pixel);font-size:9px}
+        .match .vs{display:flex;align-items:center;justify-content:space-between;padding:6px 0}
+        .match .vs span:first-child{color:var(--txt)}
+        .match .vs b{color:var(--neon-yel);font-weight:normal}
+        .match .vs.winner span:first-child{color:var(--neon-grn)}
+        .match.final{border-color:var(--neon-yel);box-shadow:0 0 20px rgba(255,214,10,.3)}
+        .bracket-col{display:flex;flex-direction:column;gap:24px}
+        .bracket-col.col2{gap:64px;padding-top:24px}
+        .bracket-col.col3{gap:0;justify-content:center;height:100%;display:grid;place-items:center}
+        .tour-tags{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:32px}
+        .tour-tag{padding:24px;background:var(--void-2);border-top:6px solid var(--neon-pink);font-family:var(--pixel);font-size:11px;color:var(--txt);letter-spacing:.05em}
+        .tour-tag:nth-child(2){border-color:var(--neon-b)}
+        .tour-tag:nth-child(3){border-color:var(--neon-yel)}
+        .tour-tag:nth-child(4){border-color:var(--neon-grn)}
+        .tour-tag .pz{margin-top:14px;font-family:var(--mono);font-size:12px;color:var(--txt-dim);letter-spacing:.1em}
+        .crowd{height:80px;margin-bottom:48px;background:repeating-linear-gradient(90deg,transparent 0 6px,rgba(176,38,255,.4) 6px 8px,transparent 8px 14px,rgba(0,229,255,.4) 14px 16px);mask:linear-gradient(180deg,transparent 0%,#000 60%);position:relative}
+        .crowd::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent 0 4px,rgba(255,214,10,.06) 4px 6px);animation:bob2 .8s steps(2) infinite}
+        @keyframes bob2{50%{transform:translateY(-3px)}}
+
+        /* Final CTA */
+        .final{text-align:center;padding:128px 32px;position:relative}
+        .final h2{font-size:34px;line-height:1.5;max-width:22ch;margin:0 auto 32px;text-shadow:4px 4px 0 var(--neon-pink),8px 8px 0 var(--void-3)}
+        .final p{font-size:24px;margin:0 auto 12px;max-width:38ch;color:var(--txt-dim)}
+        .final p b{color:var(--neon-yel);font-weight:normal}
+        .final .cta{display:flex;justify-content:center;gap:32px;margin-top:48px;flex-wrap:wrap}
+        .final::before,.final::after{content:"";position:absolute;left:0;right:0;height:8px;background:repeating-linear-gradient(90deg,var(--neon-p) 0 16px,var(--neon-b) 16px 32px,var(--neon-pink) 32px 48px,var(--neon-yel) 48px 64px)}
+        .final::before{top:0}.final::after{bottom:0}
+
+        /* Footer */
+        .lp footer{padding:48px 32px;background:var(--void-2);border-top:4px solid var(--neon-p);font-family:var(--pixel);font-size:10px;color:var(--txt-dim);text-align:center;letter-spacing:.15em}
+        .lp footer .row{display:flex;justify-content:space-between;align-items:center;max-width:1280px;margin:0 auto;flex-wrap:wrap;gap:18px}
+        .lp footer a{color:var(--txt-dim);text-decoration:none;margin:0 14px}
+        .lp footer a:hover{color:var(--neon-yel)}
+
+        /* Marquee */
+        .marquee{padding:14px 0;background:var(--neon-yel);color:var(--void);border-top:4px solid var(--void);border-bottom:4px solid var(--void);overflow:hidden;position:relative}
+        .marquee .track{display:flex;gap:48px;white-space:nowrap;animation:scroll 30s linear infinite;font-family:var(--pixel);font-size:12px;letter-spacing:.2em}
+        .marquee .track span{display:flex;align-items:center;gap:48px}
+        .marquee .track span::after{content:"✦"}
+        @keyframes scroll{to{transform:translateX(-50%)}}
+
+        @media(max-width:980px){
+          .hero-grid,.char-wrap,.gp-wrap,.p2e-grid{grid-template-columns:1fr}
+          .how-grid,.archetype-grid{grid-template-columns:1fr 1fr}
+          .nav-links{display:none}
+          .hero h1{font-size:24px}
+          .lp h2{font-size:18px}
+          .bracket,.tour-tags,.gp-features{grid-template-columns:1fr 1fr}
         }
       `}</style>
 
-      {/* Background stars */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        {Array.from({ length: 60 }, (_, i) => (
-          <div key={i} className="absolute rounded-full" style={{
-            width: i % 10 === 0 ? 3 : 1,
-            height: i % 10 === 0 ? 3 : 1,
-            left: `${(i * 17.3) % 100}%`,
-            top: `${(i * 13.7) % 100}%`,
-            background: ['#ff00ff', '#00ffff', '#ffff00', '#ffffff'][i % 4],
-            opacity: 0.15 + (i % 5) * 0.1,
-            animation: `pulse ${1.5 + (i % 4) * 0.5}s ease-in-out infinite`,
-            animationDelay: `${(i % 7) * 0.3}s`,
-          }} />
-        ))}
-      </div>
+      {/* NAV */}
+      <nav>
+        <div className="logo"><div className="badge">X</div>FIGHTER ARENA</div>
+        <div className="nav-links">
+          <a href="#how">HOW IT WORKS</a>
+          <a href="#chars">CHARACTERS</a>
+          <a href="#gameplay">GAMEPLAY</a>
+          <a href="#p2e">P2E</a>
+          <a href="#tour">TOURNAMENTS</a>
+        </div>
+        <div className="status"><span className="dot"></span>SERVERS · ONLINE · 24,810 PLAYERS</div>
+      </nav>
 
-      {/* Neon grid floor */}
-      <div className="absolute bottom-0 left-0 right-0 h-48 opacity-20" style={{
-        backgroundImage: `
-          linear-gradient(to bottom, transparent, #0d001a),
-          repeating-linear-gradient(90deg, #bf00ff 0, #bf00ff 1px, transparent 0, transparent 60px),
-          repeating-linear-gradient(0deg, #bf00ff 0, #bf00ff 1px, transparent 0, transparent 30px)
-        `,
-        perspective: '300px',
-        transform: 'rotateX(30deg)',
-        transformOrigin: 'bottom center',
-      }} />
+      {/* 1. HERO */}
+      <section className="hero">
+        <div className="arena-bg">
+          <div className="grid"></div>
+          <div className="floor"></div>
+          <div className="silhouette l">[ FIGHTER_01 ]</div>
+          <div className="silhouette r">[ FIGHTER_02 ]</div>
+          <div className="pixel-spark" style={{ left:'10%', top:'60%', animationDelay:'0s' }}></div>
+          <div className="pixel-spark" style={{ left:'24%', top:'80%', animationDelay:'1.2s', background:'var(--neon-pink)', boxShadow:'0 0 12px var(--neon-pink)' }}></div>
+          <div className="pixel-spark" style={{ left:'70%', top:'70%', animationDelay:'.6s', background:'var(--neon-b)', boxShadow:'0 0 12px var(--neon-b)' }}></div>
+          <div className="pixel-spark" style={{ left:'88%', top:'55%', animationDelay:'2.1s' }}></div>
+          <div className="pixel-spark" style={{ left:'48%', top:'90%', animationDelay:'.3s', background:'var(--neon-grn)', boxShadow:'0 0 12px var(--neon-grn)' }}></div>
+        </div>
 
-      <div className="relative z-10 flex flex-col items-center px-4 text-center">
-
-        {/* ── Fighters VS preview ── */}
-        <div className="flex items-end justify-center gap-6 md:gap-12 mb-5">
-          <div className="flex flex-col items-center gap-2">
-            <FighterSilhouette color="#00ffff" />
-            <div className="font-pixel" style={{ fontSize: '7px', color: '#00ffff66' }}>P1</div>
-          </div>
-
-          <div className="flex flex-col items-center mb-2">
-            <div className="font-pixel text-2xl md:text-3xl"
-              style={{ color: '#ff0040', textShadow: '0 0 20px #ff0040', animation: 'vsFlash 1.5s ease-in-out infinite' }}>
-              VS
+        <div className="hero-grid">
+          <div>
+            <span className="eyebrow">INSERT COIN · BETA · SEASON 0</span>
+            <h1>YOUR TIMELINE<br />BECOMES YOUR<br /><span className="lit">WEAPON.</span></h1>
+            <p className="sub">A retro PvP fighting game where your <b>X account</b> becomes your fighter. Your reputation, engagement, and social identity determine your combat power.</p>
+            <div className="cta">
+              <button className="pxbtn" onClick={goLogin}>▶ CONNECT X</button>
+              <a href="#gameplay" className="pxbtn ghost">▷ WATCH GAMEPLAY</a>
+            </div>
+            <div className="meta">
+              <span><b>24,810</b>FIGHTERS MINTED</span>
+              <span><b>1.2M</b>MATCHES PLAYED</span>
+              <span><b>$847K</b>POT THIS WEEK</span>
             </div>
           </div>
 
-          <div className="flex flex-col items-center gap-2">
-            <FighterSilhouette color="#ff00ff" flip />
-            <div className="font-pixel" style={{ fontSize: '7px', color: '#ff00ff66' }}>P2</div>
-          </div>
-        </div>
-
-        {/* ── Title ── */}
-        <div className={glitch ? 'animate-glitch' : ''}>
-          <div className="font-pixel text-4xl md:text-5xl leading-tight mb-1"
-            style={{ color: '#ff00ff', textShadow: '0 0 20px #ff00ff, 0 0 40px #bf00ff', letterSpacing: '2px' }}>
-            GITMUSK
-          </div>
-          <div className="font-pixel text-3xl md:text-4xl leading-tight"
-            style={{ color: '#00ffff', textShadow: '0 0 20px #00ffff, 0 0 40px #0080ff', letterSpacing: '4px' }}>
-            FIGHTER ARENA
-          </div>
-        </div>
-
-        {/* Tagline */}
-        <div className="mt-3 font-mono text-sm md:text-base"
-          style={{ color: '#ffff00', textShadow: '0 0 8px #ffff00' }}>
-          Your social identity becomes your fighting power.
-        </div>
-
-        {/* Live counter */}
-        <div className="flex justify-center gap-6 mt-2">
-          <div className="flex items-center gap-2">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ background: '#00ff41' }} />
-              <span className="relative inline-flex rounded-full h-2 w-2" style={{ background: '#00ff41' }} />
-            </span>
-            <span className="font-pixel" style={{ color: '#00ff41', fontSize: '8px' }}>{onlinePlayers.toLocaleString()} ONLINE</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ background: '#ff6600' }} />
-              <span className="relative inline-flex rounded-full h-2 w-2" style={{ background: '#ff6600' }} />
-            </span>
-            <span className="font-pixel" style={{ color: '#ff6600', fontSize: '8px' }}>{activeMatches} IN BATTLE</span>
-          </div>
-        </div>
-
-        {/* Tags */}
-        <div className="flex gap-2 mt-3 flex-wrap justify-center">
-          {['SOCIALFI', 'IDENTITY PVP', 'BASE L2', 'P2E'].map(tag => (
-            <span key={tag} className="font-pixel px-2 py-0.5 rounded"
-              style={{ border: '1px solid #bf00ff', color: '#bf00ff', background: '#1a003a', fontSize: '7px' }}>
-              {tag}
-            </span>
-          ))}
-        </div>
-
-        {/* ── Blink prompt ── */}
-        <div className="mt-8 mb-4 h-7 flex items-center">
-          {blink && (
-            <div className="font-pixel text-lg"
-              style={{ color: '#ffffff', textShadow: '0 0 12px #ffffff', letterSpacing: '2px' }}>
-              ► INSERT COIN TO PLAY ◄
+          <div className="fighter-card">
+            <div className="fighter-frame">
+              <div className="hud">
+                <div className="hp"><span>P1</span><div className="hp-bar"><i></i></div></div>
+                <div className="hp"><div className="hp-bar" style={{ transform:'scaleX(-1)' }}><i style={{ width:'62%' }}></i></div><span>P2</span></div>
+              </div>
+              <div className="pixel-fighter"></div>
+              <div className="scan"></div>
+              <div style={{ position:'absolute', bottom:'14px', left:'14px', right:'14px', fontFamily:'var(--mono)', fontSize:'12px', color:'var(--txt-dim)', textTransform:'uppercase', letterSpacing:'.2em', textAlign:'center' }}>
+                <b style={{ color:'var(--neon-yel)', display:'block', fontWeight:700, marginBottom:'8px', fontSize:'14px' }}>// FIGHTER_RENDER</b>profile-pic → arcade sprite
+              </div>
             </div>
-          )}
+            <div className="stat-strip">ATK +124<br />CRIT 38%</div>
+            <div className="stat-strip r">@user.eth<br />RANK · DIAMOND</div>
+          </div>
         </div>
+      </section>
 
-        {/* ── Primary CTA ── */}
-        <button onClick={() => setScreen('login')}
-          className="font-pixel px-10 py-4 rounded transition-all duration-200 hover:scale-105 active:scale-95 mb-3"
-          style={{
-            background: 'transparent',
-            border: '3px solid #00ffff',
-            color: '#00ffff',
-            textShadow: '0 0 10px #00ffff',
-            fontSize: '14px',
-            letterSpacing: '2px',
-            animation: 'neonPulse 2s ease-in-out infinite',
-          }}>
-          ▶ ENTER ARENA
-        </button>
-
-        {/* ── Secondary buttons ── */}
-        <div className="flex gap-3 flex-wrap justify-center mb-10">
-          <button onClick={() => setScreen('login')}
-            className="font-pixel px-4 py-2 rounded transition-all hover:scale-105"
-            style={{ background: 'transparent', border: '2px solid #ff00ff', color: '#ff00ff', fontSize: '9px', boxShadow: '0 0 10px #ff00ff30' }}>
-            💰 P2E MODE
-          </button>
-          <button onClick={() => setScreen('leaderboard')}
-            className="font-pixel px-4 py-2 rounded transition-all hover:scale-105"
-            style={{ background: 'transparent', border: '2px solid #ffd700', color: '#ffd700', fontSize: '9px', boxShadow: '0 0 10px #ffd70030' }}>
-            🏆 LEADERBOARD
-          </button>
-          <button onClick={() => setShowHowTo(true)}
-            className="font-pixel px-4 py-2 rounded transition-all hover:scale-105"
-            style={{ background: 'transparent', border: '2px solid #bf00ff', color: '#bf00ff', fontSize: '9px', boxShadow: '0 0 10px #bf00ff30' }}>
-            ❓ HOW TO PLAY
-          </button>
-        </div>
-
-        {/* ── Feature cards ── */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 max-w-2xl">
-          {[
-            { icon: '🐦', label: 'X Identity', desc: 'Profile → fighter stats' },
-            { icon: '⚔️', label: 'Retro PvP', desc: 'Tekken-style combat' },
-            { icon: '📈', label: 'Level System', desc: 'XP, tiers, achievements' },
-            { icon: '💰', label: 'P2E Economy', desc: 'Base L2 settlement' },
-          ].map(f => (
-            <div key={f.label} className="p-3 rounded text-center"
-              style={{ background: '#12002a', border: '1px solid #2a0050' }}>
-              <div className="text-2xl mb-1">{f.icon}</div>
-              <div className="font-pixel text-white" style={{ fontSize: '8px' }}>{f.label}</div>
-              <div className="font-mono text-gray-400 mt-1" style={{ fontSize: '10px' }}>{f.desc}</div>
-            </div>
-          ))}
-        </div>
-
-        {/* Footer */}
-        <div className="mt-6 font-mono text-xs text-gray-600">
-          Built on <span style={{ color: '#00ffff' }}>@gitlawb</span>
-          {' '}· Follow <span style={{ color: '#ff00ff' }}>@iniheksa</span>
+      {/* MARQUEE */}
+      <div className="marquee" aria-hidden={true}>
+        <div className="track">
+          <span>READY · FIGHT · WIN · CLAIM · REPEAT</span>
+          <span>POWERED BY X · SETTLED ON BASE</span>
+          <span>SEASON 0 LIVE NOW</span>
+          <span>READY · FIGHT · WIN · CLAIM · REPEAT</span>
+          <span>POWERED BY X · SETTLED ON BASE</span>
+          <span>SEASON 0 LIVE NOW</span>
         </div>
       </div>
 
-      {/* How To Play modal */}
-      {showHowTo && <HowToPlay onClose={() => setShowHowTo(false)} />}
+      {/* 2. HOW IT WORKS */}
+      <section id="how">
+        <div className="wrap">
+          <div className="sec-head">
+            <div>
+              <span className="eyebrow">// HOW IT WORKS</span>
+              <h2>FROM PROFILE<br />TO PIXEL FIGHTER<br />IN 60 SECONDS.</h2>
+            </div>
+            <p style={{ fontFamily:'var(--body)', fontSize:'20px', color:'var(--txt-dim)' }}>Three buttons separate you from the arena. No downloads. No grinding. Your fighter already exists — it's been training on your timeline.</p>
+          </div>
+          <div className="how-grid">
+            <div className="panel step">
+              <div className="corners"><i></i><i></i><i></i><i></i></div>
+              <div className="ico">X</div>
+              <span className="num">01</span>
+              <h3>CONNECT YOUR X</h3>
+              <p>OAuth sign-in — no password, no email. Verify your handle in one tap; we never post for you.</p>
+            </div>
+            <div className="panel blue step">
+              <div className="corners"><i></i><i></i><i></i><i></i></div>
+              <div className="ico">AI</div>
+              <span className="num">02</span>
+              <h3>AI GENERATES YOUR FIGHTER</h3>
+              <p>Our model parses profile, engagement, and niche to produce stats, archetype, and an original pixel sprite.</p>
+            </div>
+            <div className="panel pink step">
+              <div className="corners"><i></i><i></i><i></i><i></i></div>
+              <div className="ico">▶</div>
+              <span className="num">03</span>
+              <h3>ENTER THE ARENA</h3>
+              <p>Queue ranked PvP, casual rooms, or tournaments. First match starts in under a minute.</p>
+            </div>
+          </div>
+          <div className="flow-strip">
+            <b>X PROFILE</b><span className="arr">▶▶▶</span>
+            <b>AI ENGINE</b><span className="arr">▶▶▶</span>
+            <b>FIGHTER SPRITE</b><span className="arr">▶▶▶</span>
+            <b>READY · FIGHT</b>
+          </div>
+        </div>
+      </section>
+
+      {/* 3. CHARACTER SYSTEM */}
+      <section id="chars" style={{ background:'linear-gradient(180deg,transparent,rgba(176,38,255,.06),transparent)' }}>
+        <div className="wrap">
+          <div className="sec-head">
+            <div>
+              <span className="eyebrow">// STAT TRANSLATION</span>
+              <h2>YOUR SOCIAL<br />REPUTATION =<br />YOUR COMBAT STATS.</h2>
+            </div>
+            <p style={{ fontFamily:'var(--body)', fontSize:'20px', color:'var(--txt-dim)' }}>Every metric on your profile maps to a number in the arena. No way to game it without actually being on X.</p>
+          </div>
+          <div className="char-wrap">
+            <div className="stat-list">
+              {[
+                ['TWITTER SCORE','ATTACK POWER'],
+                ['VERIFIED FOLLOWERS','CRITICAL DAMAGE'],
+                ['ACCOUNT AGE','DEFENSE'],
+                ['POSTING ACTIVITY','STAMINA REGEN'],
+                ['ACCOUNT TYPE','PASSIVE BUFFS'],
+              ].map(([from, to]) => (
+                <div className="stat-row" key={from}>
+                  <div className="from">{from}</div>
+                  <div className="arr">▶▶</div>
+                  <div className="to">{to}</div>
+                </div>
+              ))}
+            </div>
+            <div className="panel blue rpg">
+              <div className="corners"><i></i><i></i><i></i><i></i></div>
+              <div className="title">@FIGHTER_NAME · LVL 47</div>
+              <div className="sub">CLASS · CRYPTO TRADER · S-TIER</div>
+              <div className="row"><span className="lbl">ATK</span><div className="bar"><i style={{ width:'88%' }}></i></div><span className="val">880</span></div>
+              <div className="row"><span className="lbl">CRIT</span><div className="bar"><i style={{ width:'72%', background:'repeating-linear-gradient(90deg,var(--neon-yel) 0 6px,#ffe666 6px 8px)' }}></i></div><span className="val">72</span></div>
+              <div className="row"><span className="lbl">DEF</span><div className="bar"><i style={{ width:'54%', background:'repeating-linear-gradient(90deg,var(--neon-b) 0 6px,#57f1ff 6px 8px)' }}></i></div><span className="val">540</span></div>
+              <div className="row"><span className="lbl">STA</span><div className="bar"><i style={{ width:'64%', background:'repeating-linear-gradient(90deg,var(--neon-grn) 0 6px,#66ffc2 6px 8px)' }}></i></div><span className="val">640</span></div>
+              <div className="row"><span className="lbl">SPD</span><div className="bar"><i style={{ width:'78%' }}></i></div><span className="val">780</span></div>
+              <div className="divide"></div>
+              <div style={{ fontFamily:'var(--pixel)', fontSize:'10px', color:'var(--neon-yel)', letterSpacing:'.15em' }}>PASSIVE BUFFS</div>
+              <div className="traits">
+                <span>VERIFIED +12% CRIT</span>
+                <span>4Y ACCOUNT +8% DEF</span>
+                <span>DAILY POSTER +REGEN</span>
+              </div>
+              <div className="footer"><span>◀ PREV</span><span>SELECT ▶</span></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 4. ARCHETYPES */}
+      <section id="archetypes">
+        <div className="wrap">
+          <div className="sec-head">
+            <div>
+              <span className="eyebrow">// AI ARCHETYPES</span>
+              <h2>FOUR CLASSES.<br />INFINITE BUILDS.</h2>
+            </div>
+            <p style={{ fontFamily:'var(--body)', fontSize:'20px', color:'var(--txt-dim)' }}>The AI picks one of four base archetypes from your posting pattern. Hover any card to peek at the ultimate skill.</p>
+          </div>
+          <div className="archetype-grid">
+            <div className="arch">
+              <div className="rarity">★ S</div>
+              <div className="portrait"><div className="glyph">$</div></div>
+              <div className="body"><h3>CRYPTO TRADER</h3><p>Glass cannon — massive burst damage, fragile guard. High risk, highest reward.</p><div className="ult"><b>ULT ›</b> LIQUIDATION CASCADE</div></div>
+            </div>
+            <div className="arch">
+              <div className="rarity">★ A</div>
+              <div className="portrait"><div className="glyph">??</div></div>
+              <div className="body"><h3>MEME ACCOUNT</h3><p>Chaos fighter — random critical attacks, unpredictable combos. Opponents hate it.</p><div className="ult"><b>ULT ›</b> COPY · PASTE · DELETE</div></div>
+            </div>
+            <div className="arch">
+              <div className="rarity">★ B</div>
+              <div className="portrait"><div className="glyph">{'</>'}</div></div>
+              <div className="body"><h3>BUILDER</h3><p>Strategic support — stacks tactical abilities and zone control. Calculated, patient, lethal.</p><div className="ult"><b>ULT ›</b> SHIP IT</div></div>
+            </div>
+            <div className="arch">
+              <div className="rarity">★ S+</div>
+              <div className="portrait"><div className="glyph">♚</div></div>
+              <div className="body"><h3>FOUNDER</h3><p>Leadership aura — buffs allies in team modes, intimidates 1v1. The boss-fight class.</p><div className="ult"><b>ULT ›</b> SERIES A STRIKE</div></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 5. GAMEPLAY */}
+      <section id="gameplay" className="gameplay">
+        <div className="wrap">
+          <div className="sec-head">
+            <div>
+              <span className="eyebrow">// GAMEPLAY</span>
+              <h2>RETRO ARCADE COMBAT<br />MEETS SOCIALFI.</h2>
+            </div>
+          </div>
+          <div className="gp-wrap">
+            <div>
+              <p style={{ fontSize:'22px', color:'var(--txt-dim)', marginBottom:'18px' }}>Sixty-frame combo windows. Three-button input. Skill ceiling for the FGC, pick-up-and-play for everyone else.</p>
+              <ul className="gp-features">
+                <li>FAST-PACED<br />PVP COMBAT</li>
+                <li>AI-GENERATED<br />ABILITY KITS</li>
+                <li>IDENTITY-BASED<br />PROGRESSION</li>
+                <li>ONCHAIN<br />COMPETITION</li>
+              </ul>
+              <div style={{ display:'flex', gap:'24px', marginTop:'36px' }}>
+                <button className="pxbtn" onClick={goLogin}>▶ TRY DEMO</button>
+                <a href="#how" className="pxbtn ghost">▷ MOVELIST</a>
+              </div>
+            </div>
+            <div className="gp-screen">
+              <div className="gp-hud">
+                <div className="gp-player"><div className="name">@TRADER · LVL 47</div><div className="gp-hpbar"><i style={{ width:'78%' }}></i></div></div>
+                <div className="gp-timer">42</div>
+                <div className="gp-player r"><div className="name">@MEMELORD · LVL 39</div><div className="gp-hpbar r"><i style={{ width:'42%' }}></i></div></div>
+              </div>
+              <div className="combo">x<b>17</b>HIT COMBO</div>
+              <div className="gp-fighter l"></div>
+              <div className="gp-fighter r"></div>
+              <div className="ground"></div>
+              <div className="ult-meter">
+                <span className="ult-label">ULT</span>
+                <div className="ult-bar"><i></i></div>
+                <span className="ult-label" style={{ color:'var(--neon-pink)' }}>MAX</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 6. P2E */}
+      <section id="p2e" className="p2e">
+        <div className="wrap">
+          <div className="sec-head">
+            <div>
+              <span className="eyebrow">// PLAY-TO-EARN</span>
+              <h2>PLAY. FIGHT. EARN.</h2>
+            </div>
+            <p style={{ fontFamily:'var(--body)', fontSize:'20px', color:'var(--txt-dim)', maxWidth:'36ch' }}>Every ranked match is an escrowed contract. Win and the pot is yours — settled to your wallet on Base in seconds.</p>
+          </div>
+          <div className="p2e-grid">
+            <div>
+              <div className="flow">
+                <div className="flow-step"><div className="n">1</div><div className="l">CONNECT WALLET</div><div className="x">BASE · ETH</div></div>
+                <div className="flow-step"><div className="n">2</div><div className="l">ENTER MATCH</div><div className="x">STAKE · ESCROW</div></div>
+                <div className="flow-step"><div className="n">3</div><div className="l">WIN BATTLE</div><div className="x">VERIFY · ONCHAIN</div></div>
+                <div className="flow-step"><div className="n">4</div><div className="l">EARN REWARDS</div><div className="x">CLAIM · INSTANT</div></div>
+              </div>
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'14px', marginTop:'32px' }}>
+                <div style={{ padding:'18px', background:'var(--void-2)', borderLeft:'6px solid var(--neon-yel)' }}><div className="tag" style={{ color:'var(--neon-yel)', marginBottom:'8px' }}>ESCROW-BASED</div><div style={{ fontFamily:'var(--body)', fontSize:'18px', color:'var(--txt-dim)' }}>Both fighters stake. Smart contract holds. Winner takes pot.</div></div>
+                <div style={{ padding:'18px', background:'var(--void-2)', borderLeft:'6px solid var(--neon-b)' }}><div className="tag" style={{ marginBottom:'8px' }}>BASE SETTLEMENT</div><div style={{ fontFamily:'var(--body)', fontSize:'18px', color:'var(--txt-dim)' }}>Sub-second finality, cents in gas. Sponsored for new players.</div></div>
+                <div style={{ padding:'18px', background:'var(--void-2)', borderLeft:'6px solid var(--neon-pink)' }}><div className="tag" style={{ color:'var(--neon-pink)', marginBottom:'8px' }}>ANTI-SYBIL</div><div style={{ fontFamily:'var(--body)', fontSize:'18px', color:'var(--txt-dim)' }}>X verification + behavioral signals prevent multi-account abuse.</div></div>
+                <div style={{ padding:'18px', background:'var(--void-2)', borderLeft:'6px solid var(--neon-grn)' }}><div className="tag" style={{ color:'var(--neon-grn)', marginBottom:'8px' }}>TOURNAMENT REWARDS</div><div style={{ fontFamily:'var(--body)', fontSize:'18px', color:'var(--txt-dim)' }}>Weekly cash prizes, NFT trophies, leaderboard payouts.</div></div>
+              </div>
+            </div>
+            <div style={{ position:'relative' }}>
+              <div className="coin" style={{ top:'-12px', left:'-12px', animationDelay:'0s' }}></div>
+              <div className="coin" style={{ top:'18%', right:'-16px', animationDelay:'.4s' }}></div>
+              <div className="coin" style={{ bottom:'24%', left:'-20px', animationDelay:'.8s' }}></div>
+              <div className="coin" style={{ bottom:'-12px', right:'24%', animationDelay:'1.2s' }}></div>
+              <div className="wallet">
+                <header>
+                  <span>WALLET · 0x4f..a921</span>
+                  <span className="net">BASE MAINNET</span>
+                </header>
+                <div className="balance">
+                  <div className="l">SEASON 0 EARNINGS</div>
+                  <div className="amt">$2,847.20</div>
+                  <div className="delta">↑ +$184.40 LAST 24H</div>
+                </div>
+                <div className="feed">
+                  <div className="li"><span>RANKED WIN · vs @memelord</span><b>+$24.80</b></div>
+                  <div className="li"><span>TOURNAMENT R3 · BRACKET A</span><b>+$120.00</b></div>
+                  <div className="li loss"><span>RANKED LOSS · vs @builder</span><b>−$12.00</b></div>
+                  <div className="li"><span>DAILY STREAK BONUS · DAY 7</span><b>+$8.50</b></div>
+                  <div className="li"><span>GUILD WAR PAYOUT · WEEK 12</span><b>+$58.20</b></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 7. TOURNAMENTS */}
+      <section id="tour" className="tour">
+        <div className="wrap">
+          <div className="crowd"></div>
+          <div className="sec-head">
+            <div>
+              <span className="eyebrow">// LIVE TOURNAMENTS</span>
+              <h2>COMMUNITY &amp;<br />PROJECT BATTLES.</h2>
+            </div>
+            <p style={{ fontFamily:'var(--body)', fontSize:'20px', color:'var(--txt-dim)', maxWidth:'36ch' }}>Sponsor a bracket. Run a guild war. Crown a meme champion. Tools for organizers ship in beta.</p>
+          </div>
+          <div className="bracket">
+            <div className="bracket-col">
+              <div className="match"><div className="vs winner"><span>@trader_01</span><b>2</b></div><div className="vs"><span>@noob.eth</span><b>0</b></div></div>
+              <div className="match"><div className="vs"><span>@meme_god</span><b>1</b></div><div className="vs winner"><span>@dev_jane</span><b>2</b></div></div>
+              <div className="match"><div className="vs winner"><span>@founder_x</span><b>2</b></div><div className="vs"><span>@bagholder</span><b>0</b></div></div>
+              <div className="match"><div className="vs"><span>@anon</span><b>1</b></div><div className="vs winner"><span>@shitposter</span><b>2</b></div></div>
+            </div>
+            <div className="bracket-col col2">
+              <div className="match"><div className="vs winner"><span>@trader_01</span><b>3</b></div><div className="vs"><span>@dev_jane</span><b>2</b></div></div>
+              <div className="match"><div className="vs"><span>@founder_x</span><b>2</b></div><div className="vs winner"><span>@shitposter</span><b>3</b></div></div>
+            </div>
+            <div className="bracket-col col3">
+              <div className="match final" style={{ width:'100%' }}><div style={{ fontFamily:'var(--pixel)', fontSize:'9px', color:'var(--neon-yel)', marginBottom:'8px', letterSpacing:'.2em' }}>FINALS · LIVE</div><div className="vs winner"><span>@trader_01</span><b>3</b></div><div className="vs"><span>@shitposter</span><b>2</b></div></div>
+            </div>
+            <div className="bracket-col col3">
+              <div className="panel yel" style={{ width:'100%', textAlign:'center', padding:'24px' }}>
+                <div className="corners"><i></i><i></i><i></i><i></i></div>
+                <div className="tag" style={{ color:'var(--neon-yel)', marginBottom:'10px' }}>CHAMPION</div>
+                <div style={{ fontFamily:'var(--pixel)', fontSize:'14px', color:'var(--neon-yel)', marginBottom:'8px' }}>@TRADER_01</div>
+                <div style={{ fontFamily:'var(--mono)', fontSize:'14px', color:'var(--neon-pink)' }}>$12,400 POT</div>
+              </div>
+            </div>
+          </div>
+          <div className="tour-tags">
+            <div className="tour-tag">CREATOR BATTLES<div className="pz">Top 1% influencers · weekly</div></div>
+            <div className="tour-tag">GUILD WARS<div className="pz">Team-vs-team · 5v5 brackets</div></div>
+            <div className="tour-tag">SPONSORED ARENAS<div className="pz">Brand-funded · open entry</div></div>
+            <div className="tour-tag">MEME COIN CHAMPIONSHIPS<div className="pz">Token communities · monthly</div></div>
+          </div>
+        </div>
+      </section>
+
+      {/* 8. FINAL CTA */}
+      <section className="final">
+        <span className="eyebrow" style={{ marginBottom:'24px' }}>// PRESS START</span>
+        <h2>READY TO ENTER<br />THE ARENA?</h2>
+        <p>Your online identity is no longer just a profile.</p>
+        <p><b>IT'S YOUR FIGHTER.</b></p>
+        <div className="cta">
+          <button className="pxbtn" onClick={goLogin}>▶ CONNECT X</button>
+          <button className="pxbtn pink" onClick={goLogin}>★ JOIN BETA WAITLIST</button>
+        </div>
+      </section>
+
+      {/* FOOTER */}
+      <footer>
+        <div className="row">
+          <div className="logo" style={{ fontSize:'11px' }}>
+            <div className="badge" style={{ width:'24px', height:'24px', fontSize:'10px', boxShadow:'3px 3px 0 var(--void),3px 3px 0 3px var(--neon-b)' }}>X</div>
+            X FIGHTER ARENA
+          </div>
+          <div>
+            <a href="#">DOCS</a>
+            <a href="#">DISCORD</a>
+            <a href="#">X / TWITTER</a>
+            <a href="#">SUPPORT</a>
+            <a href="#">PRESS KIT</a>
+          </div>
+          <div style={{ color:'var(--txt-dim)', fontSize:'9px' }}>© 2026 · ALL RIGHTS RESERVED · INSERT COIN</div>
+        </div>
+      </footer>
     </div>
   );
 }
