@@ -1,0 +1,7 @@
+{
+  "buildCommand": "cd gitmusk-fighter-arena && npm ci && npm run build",
+  "outputDirectory": "gitmusk-fighter-arena/dist",
+  "installCommand": "echo 'deps installed in build step'",
+  "framework": null,
+  "rewrites": [{ "source": "/((?!api/).*)", "destination": "/index.html" }]
+}
