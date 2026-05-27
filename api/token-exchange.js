@@ -1,4 +1,5 @@
-// Vercel serverless function: proxies X OAuth token exchange to avoid browser CORS
+// Vercel serverless function — token exchange proxy for X OAuth 2.0
+// CommonJS format required; avoids browser CORS by proxying to api.twitter.com
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -6,31 +7,45 @@ const CORS = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
-export default async function handler(req, res) {
-  // Preflight
+function setCors(res) {
+  Object.entries(CORS).forEach(([k, v]) => res.setHeader(k, v));
+}
+
+function readBody(req) {
+  return new Promise((resolve, reject) => {
+    if (req.body) {
+      resolve(typeof req.body === 'string' ? req.body : new URLSearchParams(req.body).toString());
+      return;
+    }
+    let data = '';
+    req.on('data', chunk => { data += chunk.toString(); });
+    req.on('end', () => resolve(data));
+    req.on('error', reject);
+  });
+}
+
+module.exports = async function handler(req, res) {
+  setCors(res);
+
   if (req.method === 'OPTIONS') {
-    return res.status(200).set(CORS).end();
+    return res.status(200).end();
   }
 
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method Not Allowed' });
-  }
-
-  const headers = { 'Content-Type': 'application/x-www-form-urlencoded' };
-
-  const clientId = process.env.X_CLIENT_ID;
-  const clientSecret = process.env.X_CLIENT_SECRET;
-  if (clientSecret && clientId) {
-    headers['Authorization'] =
-      'Basic ' + Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
+    res.setHeader('Content-Type', 'application/json');
+    return res.status(405).end(JSON.stringify({ error: 'Method Not Allowed' }));
   }
 
   try {
-    // req.body may be parsed by Vercel; re-serialize as URLSearchParams
-    const body =
-      typeof req.body === 'string'
-        ? req.body
-        : new URLSearchParams(req.body).toString();
+    const body = await readBody(req);
+
+    const headers = { 'Content-Type': 'application/x-www-form-urlencoded' };
+    const clientId = process.env.X_CLIENT_ID;
+    const clientSecret = process.env.X_CLIENT_SECRET;
+    if (clientId && clientSecret) {
+      headers['Authorization'] =
+        'Basic ' + Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
+    }
 
     const upstream = await fetch('https://api.twitter.com/2/oauth2/token', {
       method: 'POST',
@@ -39,15 +54,10 @@ export default async function handler(req, res) {
     });
 
     const data = await upstream.json();
-
-    return res
-      .status(upstream.status)
-      .set({ 'Content-Type': 'application/json', ...CORS })
-      .json(data);
+    res.setHeader('Content-Type', 'application/json');
+    return res.status(upstream.status).end(JSON.stringify(data));
   } catch (err) {
-    return res
-      .status(500)
-      .set(CORS)
-      .json({ error: 'Token exchange failed', detail: String(err) });
+    res.setHeader('Content-Type', 'application/json');
+    return res.status(500).end(JSON.stringify({ error: 'Token exchange failed', detail: String(err) }));
   }
-}
+};
