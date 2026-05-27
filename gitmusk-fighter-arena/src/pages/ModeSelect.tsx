@@ -7,7 +7,7 @@ import { connectBankrKey, checkBankrExists, lookupBankrUser } from '../utils/ban
 import { getWalletBalance } from '../utils/baseRpc';
 import { getProfile, getLevelTier, xpProgressInLevel } from '../utils/playerProfile';
 
-const P2E_MIN_USD = 5;
+const P2E_MIN_USD = 1;
 
 function generateRoomCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -70,7 +70,7 @@ function P2eModal({ username, onClose, onReady }: { username: string; onClose: (
             PLAY. FIGHT. EARN.
           </div>
           <div style={{ fontFamily: 'var(--body)', fontSize: '18px', color: 'var(--txt-dim)', marginTop: '8px' }}>
-            Minimum ${P2E_MIN_USD} via Bankr · 90% to winner
+            Minimum ${P2E_MIN_USD} via Bankr · 99.75% to winner
           </div>
         </div>
 
@@ -100,7 +100,7 @@ function P2eModal({ username, onClose, onReady }: { username: string; onClose: (
             {step === 'eligible' ? (
               <>
                 <div className="text-center py-3 mb-4" style={{ background: 'rgba(0,255,157,.08)', border: '3px solid var(--neon-grn)' }}>
-                  <div style={{ fontFamily: 'var(--pixel)', fontSize: '8px', color: 'var(--neon-grn)' }}>✓ READY — $5 STAKE</div>
+                  <div style={{ fontFamily: 'var(--pixel)', fontSize: '8px', color: 'var(--neon-grn)' }}>✓ READY — $1 STAKE</div>
                 </div>
                 <button onClick={onReady} className="g-btn full" style={{ fontSize: '11px' }}>⚔ ENTER P2E MATCH</button>
               </>
@@ -320,7 +320,7 @@ export function ModeSelect() {
                     ▶ FREE MATCH
                   </button>
                   <button onClick={() => setShowP2eModal(true)} className="g-btn full" style={{ fontSize: '11px' }}>
-                    💰 P2E MATCH — $5 STAKE
+                    💰 P2E MATCH — $1 STAKE
                   </button>
                 </div>
               </div>

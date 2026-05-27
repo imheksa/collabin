@@ -263,7 +263,7 @@ export function Results() {
           <div className="corners"><i></i><i></i><i></i><i></i></div>
           <div style={{ fontFamily: 'var(--pixel)', fontSize: '9px', color: 'var(--neon-yel)', marginBottom: '6px' }}>💰 UPGRADE TO P2E MODE</div>
           <div style={{ fontFamily: 'var(--body)', fontSize: '18px', color: 'var(--txt-dim)' }}>
-            This match was worth $0. In P2E mode, winner takes ~$9 from a $10 pool.
+            This match was worth $0. In P2E mode, winner takes ~$1.995 from a $2 pool (0.25% fee).
           </div>
         </div>
 
