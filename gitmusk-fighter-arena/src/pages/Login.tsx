@@ -5,6 +5,7 @@ import { calculateFighterStats } from '../utils/statsCalculator';
 import { Fighter, XProfile } from '../types';
 import { OAUTH_ENABLED, X_CLIENT_ID, REDIRECT_URI } from '../config';
 import { startXOAuth } from '../utils/oauth';
+import { restoreProfileFromCloud } from '../utils/cloudSync';
 
 function ProfileRow({ profile, onSelect }: { profile: XProfile; onSelect: (p: XProfile) => void }) {
   const stats = calculateFighterStats(profile);
@@ -43,7 +44,7 @@ function ProfileRow({ profile, onSelect }: { profile: XProfile; onSelect: (p: XP
 }
 
 export function Login() {
-  const { setPlayer1, setScreen, oauthError, setOauthError } = useGameStore();
+  const { setPlayer1, setScreen, oauthError, setOauthError, setPlayerProfile } = useGameStore();
   const [customUsername, setCustomUsername] = useState('');
   const [loading, setLoading] = useState(false);
   const [showCustom, setShowCustom] = useState(false);
@@ -55,6 +56,7 @@ export function Login() {
     setTimeout(() => {
       const fighter: Fighter = { profile, stats: calculateFighterStats(profile) };
       setPlayer1(fighter);
+      restoreProfileFromCloud(profile.username).then(merged => { if (merged) setPlayerProfile(merged); });
       setScreen('mode_select');
       setLoading(false);
     }, 500);

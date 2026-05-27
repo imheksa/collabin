@@ -237,6 +237,38 @@ export function getAllProfiles(): PlayerProfile[] {
   return out;
 }
 
+// ─── Merge cloud-restored stats into the local profile ────────────────────────
+// Field-wise max on monotonic counters so a returning device restores progress
+// without ever clobbering whichever copy is further ahead. Level + achievements
+// are recomputed from the merged totals.
+
+export interface CloudStats {
+  xp: number;
+  wins: number;
+  losses: number;
+  maxCombo: number;
+  winStreak: number;
+  maxWinStreak: number;
+}
+
+export function mergeCloudProfile(username: string, cloud: CloudStats): PlayerProfile {
+  const local = getProfile(username);
+  const merged: PlayerProfile = {
+    ...local,
+    xp:           Math.max(local.xp, cloud.xp),
+    wins:         Math.max(local.wins, cloud.wins),
+    losses:       Math.max(local.losses, cloud.losses),
+    maxCombo:     Math.max(local.maxCombo, cloud.maxCombo),
+    winStreak:    Math.max(local.winStreak, cloud.winStreak),
+    maxWinStreak: Math.max(local.maxWinStreak, cloud.maxWinStreak),
+  };
+  merged.level = levelFromXp(merged.xp);
+  const earned = ACHIEVEMENTS.map(a => a.id).filter(id => checkCondition(id, merged));
+  merged.achievements = Array.from(new Set([...local.achievements, ...earned]));
+  saveProfile(merged);
+  return merged;
+}
+
 // ─── Record a match result ───────────────────────────────────────────────────
 
 export function recordMatch(

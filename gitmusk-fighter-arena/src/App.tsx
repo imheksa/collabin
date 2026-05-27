@@ -12,10 +12,11 @@ import { Profile } from './pages/Profile';
 import { X_CLIENT_ID, REDIRECT_URI } from './config';
 import { exchangeCodeForToken, fetchXProfile } from './utils/xApiClient';
 import { calculateFighterStats } from './utils/statsCalculator';
+import { restoreProfileFromCloud } from './utils/cloudSync';
 import { Fighter } from './types';
 
 export default function App() {
-  const { screen, setScreen, setPlayer1, setXAccessToken, setOauthError } = useGameStore();
+  const { screen, setScreen, setPlayer1, setXAccessToken, setOauthError, setPlayerProfile } = useGameStore();
   const [oauthProcessing, setOauthProcessing] = useState(false);
 
   useEffect(() => {
@@ -61,6 +62,7 @@ export default function App() {
 
       setXAccessToken(token);
       setPlayer1(fighter);
+      restoreProfileFromCloud(profile.username).then(merged => { if (merged) setPlayerProfile(merged); });
       setScreen('mode_select');
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'X login failed.';

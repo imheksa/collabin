@@ -1,4 +1,4 @@
-import { PlayerProfile } from './playerProfile';
+import { PlayerProfile, mergeCloudProfile } from './playerProfile';
 import { Fighter } from '../types';
 
 export interface CloudLeaderboardEntry {
@@ -52,6 +52,22 @@ export async function loadCloudProfile(username: string): Promise<PlayerProfile 
     const data = await res.json();
     return data.profile ?? null;
   } catch { return null; }
+}
+
+// Pulls cloud stats for a returning player and merges them into localStorage.
+// Returns the merged profile, or null when the cloud has no record (or is
+// unconfigured) so the caller can leave the existing local profile untouched.
+export async function restoreProfileFromCloud(username: string): Promise<PlayerProfile | null> {
+  const cloud = await loadCloudProfile(username);
+  if (!cloud) return null;
+  return mergeCloudProfile(username, {
+    xp: cloud.xp,
+    wins: cloud.wins,
+    losses: cloud.losses,
+    maxCombo: cloud.maxCombo,
+    winStreak: cloud.winStreak,
+    maxWinStreak: cloud.maxWinStreak,
+  });
 }
 
 export async function fetchLeaderboard(): Promise<LeaderboardResult> {
