@@ -8,43 +8,35 @@ import { startXOAuth } from '../utils/oauth';
 
 function ProfileRow({ profile, onSelect }: { profile: XProfile; onSelect: (p: XProfile) => void }) {
   const stats = calculateFighterStats(profile);
-  const tickColor = profile.verified === 'gold' ? '#ffd700' : profile.verified === 'blue' ? '#1d9bf0' : 'transparent';
+  const fmtFollow = (n: number) =>
+    n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)}M` : n >= 1000 ? `${(n / 1000).toFixed(0)}K` : String(n);
+
   return (
     <button
       onClick={() => onSelect(profile)}
-      className="w-full flex items-center gap-3 p-3 rounded transition-all hover:scale-[1.02]"
-      style={{ background: '#12002a', border: '1px solid #2a0050' }}
+      className="w-full flex items-center gap-3 p-3 transition-all hover:-translate-y-px"
+      style={{ background: 'var(--void-2)', border: '3px solid var(--panel-line)' }}
       onMouseEnter={e => (e.currentTarget.style.borderColor = stats.color)}
-      onMouseLeave={e => (e.currentTarget.style.borderColor = '#2a0050')}
+      onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--panel-line)')}
     >
-      <div className="relative w-10 h-10 rounded overflow-hidden flex-shrink-0"
-        style={{ border: `1px solid ${stats.color}40` }}>
-        <img src={profile.avatarUrl} alt={profile.username} className="w-full h-full object-cover"
-          onError={e => { (e.target as HTMLImageElement).src = `https://api.dicebear.com/7.x/pixel-art/svg?seed=${profile.username}`; }} />
+      <div className="relative flex-shrink-0">
+        <div className="w-10 h-10 overflow-hidden" style={{ border: `2px solid ${stats.color}60` }}>
+          <img src={profile.avatarUrl} alt={profile.username} className="w-full h-full object-cover"
+            onError={e => { (e.target as HTMLImageElement).src = `https://api.dicebear.com/7.x/pixel-art/svg?seed=${profile.username}`; }} />
+        </div>
+        {profile.verified !== 'none' && (
+          <div className="absolute -bottom-1 -right-1 w-4 h-4 flex items-center justify-center"
+            style={{ background: profile.verified === 'gold' ? '#ffd700' : '#1d9bf0', fontSize: '8px', color: '#000' }}>✓</div>
+        )}
       </div>
       <div className="flex-1 text-left min-w-0">
-        <div className="flex items-center gap-1 mb-0.5 flex-wrap">
-          <span className="font-pixel text-white" style={{ fontSize: '9px' }}>{profile.displayName}</span>
-          {profile.verified !== 'none' && (
-            <span className="w-3 h-3 rounded-full inline-flex items-center justify-center"
-              style={{ background: tickColor, color: '#000', fontSize: '8px' }}>✓</span>
-          )}
-          <span className="font-pixel px-1.5 py-0.5 rounded"
-            style={{ fontSize: '6px', color: stats.color, border: `1px solid ${stats.color}40`, background: `${stats.color}12` }}>
-            {stats.archetypeLabel}
-          </span>
-        </div>
-        <div className="font-mono text-gray-500 text-xs">@{profile.username}</div>
+        <div style={{ fontFamily: 'var(--pixel)', fontSize: '8px', color: '#fff', marginBottom: '2px' }}>{profile.displayName}</div>
+        <div style={{ fontFamily: 'var(--mono)', fontSize: '11px', color: 'var(--txt-dim)' }}>@{profile.username}</div>
       </div>
-      <div className="text-right flex-shrink-0">
-        <div className="font-pixel" style={{ fontSize: '10px', color: '#ffff00' }}>PWR {stats.basePower}</div>
-        <div className="font-pixel mt-0.5" style={{ fontSize: '7px', color: '#555' }}>
-          {profile.followers >= 1_000_000
-            ? `${(profile.followers / 1_000_000).toFixed(1)}M`
-            : profile.followers >= 1000
-            ? `${(profile.followers / 1000).toFixed(0)}K`
-            : profile.followers} followers
-        </div>
+      <div className="text-right flex-shrink-0 flex flex-col gap-1">
+        <div className="g-tag yel" style={{ fontSize: '7px', padding: '2px 6px' }}>{stats.archetypeLabel}</div>
+        <div style={{ fontFamily: 'var(--pixel)', fontSize: '9px', color: 'var(--neon-yel)' }}>PWR {stats.basePower}</div>
+        <div style={{ fontFamily: 'var(--mono)', fontSize: '10px', color: 'var(--txt-dim)' }}>{fmtFollow(profile.followers)} followers</div>
       </div>
     </button>
   );
@@ -61,72 +53,79 @@ export function Login() {
     setLoading(true);
     setOauthError('');
     setTimeout(() => {
-      const stats = calculateFighterStats(profile);
-      const fighter: Fighter = { profile, stats };
+      const fighter: Fighter = { profile, stats: calculateFighterStats(profile) };
       setPlayer1(fighter);
       setScreen('mode_select');
       setLoading(false);
-    }, 600);
+    }, 500);
   };
 
   const handleCustom = () => {
     if (!customUsername.trim()) return;
-    const profile = generateCustomProfile(customUsername.trim().replace('@', ''));
-    selectProfile(profile);
+    selectProfile(generateCustomProfile(customUsername.trim().replace('@', '')));
   };
 
   const handleConnectX = async () => {
     if (!X_CLIENT_ID) return;
     setOauthLoading(true);
     setOauthError('');
-    try {
-      await startXOAuth(X_CLIENT_ID, REDIRECT_URI);
-    } catch {
-      setOauthError('Failed to start X login. Please try again.');
-      setOauthLoading(false);
-    }
+    try { await startXOAuth(X_CLIENT_ID, REDIRECT_URI); }
+    catch { setOauthError('Failed to start X login. Please try again.'); setOauthLoading(false); }
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-arena-bg p-4">
+    <div className="gscreen flex flex-col items-center justify-center p-4 py-8">
       <div className="w-full max-w-lg">
+
+        {/* Nav */}
+        <div className="g-nav mb-0" style={{ position: 'relative', marginBottom: '32px' }}>
+          <div className="g-nav logo">
+            <div className="badge">X</div>
+            FIGHTER ARENA
+          </div>
+          <button onClick={() => setScreen('landing')}
+            className="g-btn ghost sm">← BACK</button>
+        </div>
+
+        {/* Progress strip */}
+        <div className="flex gap-0 mb-8" style={{ border: '3px solid var(--panel-line)' }}>
+          {[['SELECT FIGHTER', true], ['CHOOSE MODE', false], ['FIGHT!', false]].map(([label, active]) => (
+            <div key={label as string} className="flex-1 py-2 text-center"
+              style={{
+                fontFamily: 'var(--pixel)', fontSize: '7px',
+                background: active ? 'var(--neon-b)' : 'var(--void-2)',
+                color: active ? 'var(--void)' : 'var(--txt-dim)',
+                letterSpacing: '.1em',
+              }}>
+              {label as string}
+            </div>
+          ))}
+        </div>
+
         {/* Header */}
         <div className="text-center mb-6">
-          <div className="font-pixel text-sm mb-1" style={{ color: '#00ffff', textShadow: '0 0 12px #00ffff' }}>
-            PLAYER 1
-          </div>
-          <div className="font-pixel text-white text-lg" style={{ textShadow: '0 0 8px #fff' }}>
+          <span className="g-eyebrow">// PLAYER 1</span>
+          <div style={{ fontFamily: 'var(--pixel)', fontSize: '20px', color: '#fff', textShadow: '3px 3px 0 var(--neon-pink)' }}>
             SELECT YOUR FIGHTER
           </div>
-          <div className="font-mono text-gray-400 text-sm mt-2">
+          <div style={{ fontFamily: 'var(--body)', fontSize: '20px', color: 'var(--txt-dim)', marginTop: '8px' }}>
             Your X identity becomes your fighter stats
           </div>
         </div>
 
-        {/* Progress */}
-        <div className="flex gap-2 mb-6">
-          {['SELECT FIGHTER', 'CHOOSE MODE', 'FIGHT'].map((p, i) => (
-            <div key={p} className="flex-1 h-1 rounded"
-              style={{
-                background: i === 0 ? '#00ffff' : '#2a0050',
-                boxShadow: i === 0 ? '0 0 8px #00ffff' : 'none',
-              }}
-            />
-          ))}
-        </div>
-
         {/* OAuth error */}
         {oauthError && (
-          <div className="mb-4 p-3 rounded" style={{ background: '#1a0010', border: '1px solid #ff004080' }}>
+          <div className="g-panel pink mb-5" style={{ padding: '16px' }}>
+            <div className="corners"><i></i><i></i><i></i><i></i></div>
             <div className="flex items-start justify-between gap-2">
               <div>
-                <div className="font-pixel mb-1" style={{ fontSize: '8px', color: '#ff6080' }}>
+                <div style={{ fontFamily: 'var(--pixel)', fontSize: '8px', color: 'var(--neon-pink)', marginBottom: '6px' }}>
                   ⚠ X LOGIN FAILED
                 </div>
-                <div className="font-mono text-xs" style={{ color: '#cc4060' }}>
+                <div style={{ fontFamily: 'var(--mono)', fontSize: '12px', color: 'var(--txt-dim)' }}>
                   {oauthError.includes('CORS') || oauthError.includes('proxy')
-                    ? 'Backend server not reachable. Try demo mode below while we fix this.'
-                    : oauthError.includes('invalid_request') || oauthError.includes('redirect_uri')
+                    ? 'Backend server not reachable. Try demo mode below.'
+                    : oauthError.includes('redirect_uri')
                     ? 'Redirect URI mismatch — check X Developer Portal settings.'
                     : oauthError.includes('access_denied')
                     ? 'Login was cancelled.'
@@ -134,143 +133,86 @@ export function Login() {
                 </div>
               </div>
               <button onClick={() => setOauthError('')}
-                className="text-gray-600 hover:text-gray-300 flex-shrink-0 mt-0.5">✕</button>
+                style={{ color: 'var(--txt-dim)', fontFamily: 'var(--pixel)', fontSize: '9px' }}>✕</button>
             </div>
           </div>
         )}
 
-        {/* Real X OAuth — primary CTA */}
+        {/* X OAuth button */}
         {OAUTH_ENABLED ? (
-          <button
-            onClick={handleConnectX}
-            disabled={oauthLoading}
-            className="w-full flex items-center justify-center gap-3 py-4 rounded mb-6 transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-60"
-            style={{
-              background: oauthLoading ? '#0a0a0a' : '#0f1923',
-              border: '2px solid #1d9bf0',
-              color: '#1d9bf0',
-              boxShadow: '0 0 20px #1d9bf040, inset 0 0 20px #1d9bf010',
-            }}
-          >
-            {/* X logo */}
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="#1d9bf0">
+          <button onClick={handleConnectX} disabled={oauthLoading}
+            className="g-btn full mb-5" style={{ background: '#1d9bf0', color: '#fff', boxShadow: '0 4px 0 0 #0d5a8a, 0 4px 0 4px var(--void), 0 8px 0 4px #5a1a99', fontSize: '10px', gap: '12px' }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
               <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.746l7.73-8.835L1.254 2.25H8.08l4.261 5.635zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
             </svg>
-            <span className="font-pixel" style={{ fontSize: '10px', letterSpacing: '1px' }}>
-              {oauthLoading ? 'CONNECTING...' : 'CONNECT WITH X (REAL STATS)'}
-            </span>
+            {oauthLoading ? 'CONNECTING...' : 'CONNECT WITH X — REAL STATS'}
           </button>
         ) : (
-          <div className="w-full flex items-center justify-center gap-3 py-4 rounded mb-6 cursor-not-allowed"
-            style={{
-              background: '#080808',
-              border: '2px solid #1a1a2e',
-              color: '#333',
-            }}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="#333">
-              <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.746l7.73-8.835L1.254 2.25H8.08l4.261 5.635zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-            </svg>
-            <div className="text-left">
-              <div className="font-pixel" style={{ fontSize: '9px', color: '#444' }}>
-                CONNECT WITH X — CONFIGURE VITE_X_CLIENT_ID
-              </div>
-              <div className="font-mono mt-0.5" style={{ fontSize: '9px', color: '#333' }}>
-                Register at developer.x.com → copy Client ID → set env var
-              </div>
+          <div className="g-panel dark mb-5" style={{ padding: '16px', textAlign: 'center' }}>
+            <div style={{ fontFamily: 'var(--pixel)', fontSize: '8px', color: 'var(--txt-dim)' }}>
+              SET VITE_X_CLIENT_ID TO ENABLE X LOGIN
             </div>
           </div>
         )}
 
         {/* Divider */}
         <div className="flex items-center gap-3 mb-4">
-          <div className="flex-1 h-px" style={{ background: '#1a0030' }} />
-          <span className="font-pixel text-gray-600" style={{ fontSize: '8px' }}>OR DEMO MODE</span>
-          <div className="flex-1 h-px" style={{ background: '#1a0030' }} />
+          <div className="flex-1" style={{ height: '2px', background: 'var(--panel-line)' }} />
+          <span style={{ fontFamily: 'var(--pixel)', fontSize: '8px', color: 'var(--txt-dim)' }}>OR DEMO MODE</span>
+          <div className="flex-1" style={{ height: '2px', background: 'var(--panel-line)' }} />
         </div>
 
-        {/* ⚡ Quick Play */}
-        <button
-          onClick={() => selectProfile(DEMO_PROFILES[Math.floor(Math.random() * DEMO_PROFILES.length)])}
-          className="w-full flex items-center justify-center gap-2 py-3 rounded mb-4 transition-all hover:scale-[1.02] active:scale-[0.98]"
-          style={{ background: '#00ff4115', border: '2px solid #00ff41', color: '#00ff41', boxShadow: '0 0 12px #00ff4130' }}
-        >
-          <span className="font-pixel" style={{ fontSize: '11px' }}>⚡ QUICK PLAY</span>
-          <span className="font-mono" style={{ fontSize: '9px', color: '#00aa2a' }}>— random fighter, instant start</span>
+        {/* Quick Play */}
+        <button onClick={() => selectProfile(DEMO_PROFILES[Math.floor(Math.random() * DEMO_PROFILES.length)])}
+          className="g-btn grn full mb-5" style={{ fontSize: '11px' }}>
+          ⚡ QUICK PLAY &nbsp;
+          <span style={{ fontFamily: 'var(--body)', fontSize: '16px', color: '#005a33', fontWeight: 'normal', textTransform: 'none' }}>
+            random fighter, instant start
+          </span>
         </button>
 
         {/* Demo profiles */}
-        <div className="space-y-2 mb-4">
-          <div className="font-pixel text-gray-600 mb-2" style={{ fontSize: '8px' }}>
-            OR PICK A FIGHTER:
+        <div className="mb-5">
+          <div style={{ fontFamily: 'var(--pixel)', fontSize: '8px', color: 'var(--txt-dim)', marginBottom: '12px', letterSpacing: '.15em' }}>
+            — OR PICK A FIGHTER —
           </div>
-          {DEMO_PROFILES.map(p => (
-            <ProfileRow key={p.username} profile={p} onSelect={selectProfile} />
-          ))}
+          <div className="flex flex-col gap-2">
+            {DEMO_PROFILES.map(p => (
+              <ProfileRow key={p.username} profile={p} onSelect={selectProfile} />
+            ))}
+          </div>
         </div>
 
         {/* Custom username */}
-        <div className="p-3 rounded" style={{ background: '#12002a', border: '1px solid #2a0050' }}>
-          <button
-            onClick={() => setShowCustom(v => !v)}
-            className="font-pixel text-white w-full text-left"
-            style={{ fontSize: '9px', color: '#bf00ff' }}
-          >
+        <div className="g-panel dark" style={{ padding: '16px' }}>
+          <button onClick={() => setShowCustom(v => !v)}
+            style={{ fontFamily: 'var(--pixel)', fontSize: '9px', color: 'var(--neon-p)', width: '100%', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer' }}>
             {showCustom ? '▼' : '▶'} USE CUSTOM USERNAME
           </button>
           {showCustom && (
             <div className="flex gap-2 mt-3">
               <input
-                className="flex-1 bg-black border font-mono text-white px-3 py-2 text-sm outline-none focus:border-purple-500"
-                style={{ border: '1px solid #2a0050' }}
+                style={{ flex: 1, background: 'var(--void)', border: '3px solid var(--panel-line)', fontFamily: 'var(--mono)', fontSize: '14px', color: '#fff', padding: '10px 14px', outline: 'none' }}
                 placeholder="@username"
                 value={customUsername}
                 onChange={e => setCustomUsername(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleCustom()}
+                onFocus={e => (e.target.style.borderColor = 'var(--neon-p)')}
+                onBlur={e => (e.target.style.borderColor = 'var(--panel-line)')}
               />
-              <button
-                onClick={handleCustom}
-                className="font-pixel px-4 py-2 text-xs"
-                style={{ background: '#bf00ff', color: '#000' }}
-              >
-                GO
-              </button>
+              <button onClick={handleCustom} className="g-btn sm">GO</button>
             </div>
           )}
         </div>
-
-        {/* Setup hint */}
-        {!OAUTH_ENABLED && (
-          <div className="mt-4 p-3 rounded font-mono text-xs"
-            style={{ background: '#0d001a', border: '1px solid #1a0030', color: '#444' }}>
-            <div className="font-pixel mb-1" style={{ fontSize: '8px', color: '#666' }}>
-              HOW TO ENABLE REAL X LOGIN:
-            </div>
-            <ol className="space-y-1 list-decimal list-inside">
-              <li>Go to <span style={{ color: '#1d9bf0' }}>developer.x.com</span> → create app</li>
-              <li>Enable OAuth 2.0 + PKCE, set type to "Web App"</li>
-              <li>Add callback: <span style={{ color: '#00ffff' }}>https://imheksa.github.io/collabin/</span></li>
-              <li>Copy Client ID → set <span style={{ color: '#ffff00' }}>VITE_X_CLIENT_ID</span> env var</li>
-              <li>Deploy to Netlify/Vercel for token exchange proxy</li>
-            </ol>
-          </div>
-        )}
-
-        {loading && (
-          <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50">
-            <div className="font-pixel text-xl animate-pulse"
-              style={{ color: '#00ffff', textShadow: '0 0 20px #00ffff' }}>
-              GENERATING FIGHTER...
-            </div>
-          </div>
-        )}
-
-        <button
-          onClick={() => setScreen('landing')}
-          className="mt-4 font-mono text-gray-600 hover:text-gray-400 text-sm w-full text-center"
-        >
-          ← Back
-        </button>
       </div>
+
+      {loading && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(10,1,24,.92)' }}>
+          <div style={{ fontFamily: 'var(--pixel)', fontSize: '14px', color: 'var(--neon-b)', textShadow: '0 0 20px var(--neon-b)', animation: 'g-pulse 1s steps(2) infinite' }}>
+            GENERATING FIGHTER...
+          </div>
+        </div>
+      )}
     </div>
   );
 }

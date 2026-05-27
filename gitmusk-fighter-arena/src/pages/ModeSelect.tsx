@@ -5,7 +5,7 @@ import { calculateFighterStats } from '../utils/statsCalculator';
 import { Fighter } from '../types';
 import { connectBankrKey, checkBankrExists, lookupBankrUser } from '../utils/bankrClient';
 import { getWalletBalance } from '../utils/baseRpc';
-import { getProfile, getLevelTier, xpProgressInLevel, xpForLevel } from '../utils/playerProfile';
+import { getProfile, getLevelTier, xpProgressInLevel } from '../utils/playerProfile';
 
 const P2E_MIN_USD = 5;
 
@@ -14,41 +14,12 @@ function generateRoomCode(): string {
   return 'GMF-' + Array.from({ length: 3 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
 }
 
-function OnlinePulse({ count, label, color = '#00ff41' }: { count: number; label: string; color?: string }) {
-  return (
-    <div className="flex items-center gap-2">
-      <span className="relative flex h-2 w-2">
-        <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ background: color }} />
-        <span className="relative inline-flex rounded-full h-2 w-2" style={{ background: color }} />
-      </span>
-      <span className="font-pixel" style={{ color, fontSize: '9px' }}>
-        {count.toLocaleString()} {label}
-      </span>
-    </div>
-  );
-}
-
-/* ─── P2E Modal (fully automatic) ──────────────────────────────────── */
+/* ─── P2E Modal ─────────────────────────────────────────────────── */
 
 type P2eStep = 'checking' | 'eligible' | 'insufficient' | 'not_connected' | 'manual_fallback';
+interface BalanceSnapshot { address: string; usdc: number; eth: number; ethPriceUsd: number; totalUsd: number; }
 
-interface BalanceSnapshot {
-  address: string;
-  usdc: number;
-  eth: number;
-  ethPriceUsd: number;
-  totalUsd: number;
-}
-
-function P2eModal({
-  username,
-  onClose,
-  onReady,
-}: {
-  username: string;
-  onClose: () => void;
-  onReady: () => void;
-}) {
+function P2eModal({ username, onClose, onReady }: { username: string; onClose: () => void; onReady: () => void }) {
   const { setWalletAddress } = useGameStore();
   const [step, setStep] = useState<P2eStep>('checking');
   const [balance, setBalance] = useState<BalanceSnapshot | null>(null);
@@ -57,8 +28,7 @@ function P2eModal({
   const [errMsg, setErrMsg] = useState('');
 
   const runAutoCheck = useCallback(async () => {
-    setStep('checking');
-    setBalance(null);
+    setStep('checking'); setBalance(null);
     try {
       const addr = await lookupBankrUser(username);
       if (!addr) { setStep('not_connected'); return; }
@@ -66,208 +36,113 @@ function P2eModal({
       setWalletAddress(addr);
       setBalance({ address: addr, ...bal });
       setStep(bal.totalUsd >= P2E_MIN_USD ? 'eligible' : 'insufficient');
-    } catch {
-      setStep('manual_fallback');
-    }
+    } catch { setStep('manual_fallback'); }
   }, [username, setWalletAddress]);
 
   useEffect(() => { runAutoCheck(); }, [runAutoCheck]);
 
   const connectWithKey = async () => {
-    const key = bankrKey.trim();
-    if (!key) return;
-    setKeyLoading(true);
-    setErrMsg('');
+    const key = bankrKey.trim(); if (!key) return;
+    setKeyLoading(true); setErrMsg('');
     try {
       const data = await connectBankrKey(key, username);
       const bal = await getWalletBalance(data.evmAddress);
       setWalletAddress(data.evmAddress);
       setBalance({ address: data.evmAddress, ...bal });
       setStep(bal.totalUsd >= P2E_MIN_USD ? 'eligible' : 'insufficient');
-    } catch (err) {
-      setErrMsg(err instanceof Error ? err.message : 'Connection failed.');
-    } finally {
-      setKeyLoading(false);
-    }
+    } catch (err) { setErrMsg(err instanceof Error ? err.message : 'Connection failed.'); }
+    finally { setKeyLoading(false); }
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: 'rgba(0,0,0,0.85)' }}
+      style={{ background: 'rgba(10,1,24,.88)' }}
       onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="w-full max-w-md rounded-lg p-6 relative"
-        style={{ background: '#0d001a', border: '2px solid #ffd700', boxShadow: '0 0 40px #ffd70030' }}>
-
+      <div className="g-panel yel w-full max-w-md" style={{ padding: '28px' }}>
+        <div className="corners"><i></i><i></i><i></i><i></i></div>
         <button onClick={onClose}
-          className="absolute top-4 right-4 font-mono text-gray-600 hover:text-gray-300"
-          style={{ fontSize: '18px' }}>✕</button>
+          className="absolute top-4 right-4"
+          style={{ fontFamily: 'var(--pixel)', fontSize: '9px', color: 'var(--txt-dim)', background: 'none', border: 'none', cursor: 'pointer' }}>✕</button>
 
-        <div className="text-center mb-5">
-          <div className="font-pixel text-2xl mb-1" style={{ color: '#ffd700', textShadow: '0 0 15px #ffd700' }}>
-            💰 PLAY TO EARN
+        <div className="text-center mb-6">
+          <span className="g-eyebrow" style={{ color: 'var(--neon-yel)' }}>// PLAY-TO-EARN</span>
+          <div style={{ fontFamily: 'var(--pixel)', fontSize: '18px', color: 'var(--neon-yel)', textShadow: '3px 3px 0 var(--neon-pink)' }}>
+            PLAY. FIGHT. EARN.
           </div>
-          <div className="font-mono text-gray-400" style={{ fontSize: '11px' }}>
+          <div style={{ fontFamily: 'var(--body)', fontSize: '18px', color: 'var(--txt-dim)', marginTop: '8px' }}>
             Minimum ${P2E_MIN_USD} on Base · 90% to winner
           </div>
         </div>
 
-        {/* CHECKING */}
         {step === 'checking' && (
-          <div className="flex flex-col items-center gap-3 py-8">
-            <div className="flex gap-1">
-              {[0, 1, 2].map(i => (
-                <div key={i} className="w-2 h-2 rounded-full animate-bounce"
-                  style={{ background: '#ffd700', animationDelay: `${i * 0.15}s` }} />
+          <div className="flex flex-col items-center gap-4 py-8">
+            <div className="flex gap-2">
+              {[0,1,2].map(i => <div key={i} className="w-3 h-3 animate-bounce" style={{ background: 'var(--neon-yel)', animationDelay: `${i*.15}s` }} />)}
+            </div>
+            <div style={{ fontFamily: 'var(--body)', fontSize: '18px', color: 'var(--txt-dim)' }}>Checking @{username}'s Bankr wallet...</div>
+          </div>
+        )}
+
+        {(step === 'eligible' || step === 'insufficient') && balance && (
+          <div>
+            <div className="flex gap-2 mb-4">
+              {[
+                { label: 'USDC', val: `$${balance.usdc.toFixed(2)}`, color: 'var(--neon-grn)' },
+                { label: 'ETH',  val: balance.eth.toFixed(4),         color: 'var(--neon-b)' },
+                { label: 'TOTAL', val: `$${balance.totalUsd.toFixed(2)}`, color: step === 'eligible' ? 'var(--neon-grn)' : 'var(--neon-pink)' },
+              ].map(({ label, val, color }) => (
+                <div key={label} className="flex-1 text-center py-3" style={{ background: 'var(--void)', border: `3px solid ${color}40` }}>
+                  <div style={{ fontFamily: 'var(--pixel)', fontSize: '7px', color, marginBottom: '6px' }}>{label}</div>
+                  <div style={{ fontFamily: 'var(--pixel)', fontSize: '12px', color: '#fff' }}>{val}</div>
+                </div>
               ))}
             </div>
-            <span className="font-mono text-gray-400" style={{ fontSize: '11px' }}>
-              Checking @{username}'s Bankr wallet...
-            </span>
+            {step === 'eligible' ? (
+              <>
+                <div className="text-center py-3 mb-4" style={{ background: 'rgba(0,255,157,.08)', border: '3px solid var(--neon-grn)' }}>
+                  <div style={{ fontFamily: 'var(--pixel)', fontSize: '8px', color: 'var(--neon-grn)' }}>✓ READY — $5 STAKE</div>
+                </div>
+                <button onClick={onReady} className="g-btn full" style={{ fontSize: '11px' }}>⚔ ENTER P2E MATCH</button>
+              </>
+            ) : (
+              <>
+                <div className="text-center py-3 mb-4" style={{ background: 'rgba(255,45,117,.08)', border: '3px solid var(--neon-pink)' }}>
+                  <div style={{ fontFamily: 'var(--pixel)', fontSize: '8px', color: 'var(--neon-pink)' }}>
+                    NEED ${(P2E_MIN_USD - balance.totalUsd).toFixed(2)} MORE ON BASE
+                  </div>
+                </div>
+                <button onClick={runAutoCheck} className="g-btn ghost full sm">🔄 RECHECK BALANCE</button>
+              </>
+            )}
           </div>
         )}
 
-        {/* ELIGIBLE */}
-        {step === 'eligible' && balance && (
-          <div>
-            <div className="grid grid-cols-3 gap-2 mb-4">
-              <div className="text-center p-3 rounded" style={{ background: '#0a0018', border: '1px solid #1a0030' }}>
-                <div className="font-mono" style={{ fontSize: '9px', color: '#26a17b' }}>USDC</div>
-                <div className="font-pixel mt-1" style={{ fontSize: '13px', color: '#fff' }}>${balance.usdc.toFixed(2)}</div>
-              </div>
-              <div className="text-center p-3 rounded" style={{ background: '#0a0018', border: '1px solid #1a0030' }}>
-                <div className="font-mono" style={{ fontSize: '9px', color: '#627eea' }}>ETH</div>
-                <div className="font-pixel mt-1" style={{ fontSize: '13px', color: '#fff' }}>{balance.eth.toFixed(4)}</div>
-              </div>
-              <div className="text-center p-3 rounded" style={{ background: '#001a00', border: '1px solid #00ff4130' }}>
-                <div className="font-mono" style={{ fontSize: '9px', color: '#00ff41' }}>TOTAL</div>
-                <div className="font-pixel mt-1" style={{ fontSize: '13px', color: '#00ff41' }}>${balance.totalUsd.toFixed(2)}</div>
-              </div>
-            </div>
-            <div className="text-center p-3 rounded mb-4" style={{ background: '#001500', border: '1px solid #00ff4130' }}>
-              <div className="font-pixel mb-1" style={{ fontSize: '8px', color: '#00ff41' }}>✓ READY TO PLAY — $5 STAKE</div>
-              <div className="font-mono" style={{ fontSize: '10px', color: '#888' }}>Winner takes 90% · Platform fee 10%</div>
-            </div>
-            <button onClick={onReady}
-              className="w-full font-pixel py-4 rounded transition-all hover:scale-[1.02] active:scale-[0.98]"
-              style={{
-                background: 'linear-gradient(135deg, #ffd700, #ff8800)',
-                color: '#000', fontSize: '11px', letterSpacing: '1px',
-                boxShadow: '0 0 25px #ffd70050',
-              }}>
-              ⚔ ENTER P2E MATCH
-            </button>
-          </div>
-        )}
-
-        {/* INSUFFICIENT */}
-        {step === 'insufficient' && balance && (
-          <div>
-            <div className="grid grid-cols-3 gap-2 mb-4">
-              <div className="text-center p-3 rounded" style={{ background: '#0a0018', border: '1px solid #1a0030' }}>
-                <div className="font-mono" style={{ fontSize: '9px', color: '#26a17b' }}>USDC</div>
-                <div className="font-pixel mt-1" style={{ fontSize: '13px', color: '#fff' }}>${balance.usdc.toFixed(2)}</div>
-              </div>
-              <div className="text-center p-3 rounded" style={{ background: '#0a0018', border: '1px solid #1a0030' }}>
-                <div className="font-mono" style={{ fontSize: '9px', color: '#627eea' }}>ETH</div>
-                <div className="font-pixel mt-1" style={{ fontSize: '13px', color: '#fff' }}>{balance.eth.toFixed(4)}</div>
-              </div>
-              <div className="text-center p-3 rounded" style={{ background: '#1a0005', border: '1px solid #ff003030' }}>
-                <div className="font-mono" style={{ fontSize: '9px', color: '#ff4040' }}>TOTAL</div>
-                <div className="font-pixel mt-1" style={{ fontSize: '13px', color: '#ff4040' }}>${balance.totalUsd.toFixed(2)}</div>
-              </div>
-            </div>
-            <div className="text-center p-3 rounded mb-3" style={{ background: '#1a0005', border: '1px solid #ff003030' }}>
-              <div className="font-pixel mb-1" style={{ fontSize: '8px', color: '#ff4040' }}>INSUFFICIENT BALANCE</div>
-              <div className="font-mono" style={{ fontSize: '10px', color: '#888' }}>
-                Need ${(P2E_MIN_USD - balance.totalUsd).toFixed(2)} more on Base
-              </div>
-            </div>
-            <div className="p-3 rounded mb-3" style={{ background: '#0a0018', border: '1px solid #1a0030' }}>
-              <div className="font-mono mb-1" style={{ fontSize: '10px', color: '#888' }}>
-                Top up via <span style={{ color: '#1d9bf0' }}>@bankrbot</span> on X:
-              </div>
-              <div className="font-pixel" style={{ fontSize: '9px', color: '#ffd700' }}>
-                "deposit ${Math.ceil(P2E_MIN_USD - balance.totalUsd + 1)} USDC to Base"
-              </div>
-            </div>
-            <button onClick={runAutoCheck}
-              className="w-full font-pixel py-3 rounded transition-all hover:scale-[1.02]"
-              style={{ background: 'transparent', border: '1px solid #ffd700', color: '#ffd700', fontSize: '8px' }}>
-              🔄 RECHECK BALANCE
-            </button>
-          </div>
-        )}
-
-        {/* NOT CONNECTED */}
         {step === 'not_connected' && (
           <div>
-            <div className="text-center mb-4 p-4 rounded" style={{ background: '#0a0018', border: '1px solid #1a0030' }}>
-              <div className="text-3xl mb-2">🤖</div>
-              <div className="font-pixel mb-2" style={{ fontSize: '9px', color: '#ffd700' }}>NO BANKR WALLET FOUND</div>
-              <div className="font-mono" style={{ fontSize: '10px', color: '#888' }}>
-                @{username} doesn't have a Bankr account yet.
-              </div>
-            </div>
-            <div className="p-3 rounded mb-4" style={{ background: '#12002a', border: '1px solid #2a0050' }}>
-              <div className="font-pixel mb-2" style={{ fontSize: '8px', color: '#00ffff' }}>HOW TO GET STARTED:</div>
-              <ol className="font-mono space-y-1" style={{ fontSize: '10px', color: '#aaa' }}>
-                <li>1. Open <span style={{ color: '#ffd700' }}>bankr.bot/terminal</span></li>
-                <li>2. Login with your X account</li>
-                <li>3. Fund with USDC on Base (min $5)</li>
-                <li>4. Come back and try again!</li>
-              </ol>
+            <div className="g-panel dark text-center mb-4" style={{ padding: '20px' }}>
+              <div style={{ fontFamily: 'var(--pixel)', fontSize: '9px', color: 'var(--neon-yel)', marginBottom: '8px' }}>NO BANKR WALLET FOUND</div>
+              <div style={{ fontFamily: 'var(--body)', fontSize: '18px', color: 'var(--txt-dim)' }}>Open bankr.bot/terminal → login with X → fund $5+ USDC on Base</div>
             </div>
             <div className="flex gap-2">
-              <a href="https://bankr.bot/terminal"
-                target="_blank" rel="noopener"
-                className="flex-1 font-pixel py-3 rounded text-center transition-all hover:scale-[1.02]"
-                style={{ background: '#ffd70020', border: '1px solid #ffd700', color: '#ffd700', fontSize: '8px' }}>
-                🌐 OPEN BANKR.BOT
-              </a>
-              <button onClick={runAutoCheck}
-                className="flex-1 font-pixel py-3 rounded transition-all hover:scale-[1.02]"
-                style={{ background: 'transparent', border: '1px solid #333', color: '#666', fontSize: '8px' }}>
-                🔄 TRY AGAIN
-              </button>
+              <a href="https://bankr.bot/terminal" target="_blank" rel="noopener" className="g-btn sm flex-1" style={{ textDecoration: 'none', justifyContent: 'center' }}>🌐 BANKR.BOT</a>
+              <button onClick={runAutoCheck} className="g-btn ghost sm flex-1">🔄 TRY AGAIN</button>
             </div>
           </div>
         )}
 
-        {/* MANUAL FALLBACK */}
         {step === 'manual_fallback' && (
           <div>
-            <div className="text-center mb-4 p-3 rounded" style={{ background: '#1a0005', border: '1px solid #ff003030' }}>
-              <div className="font-pixel mb-1" style={{ fontSize: '8px', color: '#ff6060' }}>AUTO-CHECK UNAVAILABLE</div>
-              <div className="font-mono" style={{ fontSize: '10px', color: '#888' }}>
-                Bankr API unreachable. Enter your API key to continue.
-              </div>
+            <div className="g-panel pink text-center mb-4" style={{ padding: '16px' }}>
+              <div style={{ fontFamily: 'var(--pixel)', fontSize: '8px', color: 'var(--neon-pink)' }}>AUTO-CHECK UNAVAILABLE</div>
+              <div style={{ fontFamily: 'var(--body)', fontSize: '16px', color: 'var(--txt-dim)', marginTop: '4px' }}>DM @bankrbot: "my api key"</div>
             </div>
-            <div className="font-mono mb-2" style={{ fontSize: '10px', color: '#666' }}>
-              DM <span style={{ color: '#1d9bf0' }}>@bankrbot</span>: <em style={{ color: '#aaa' }}>"my api key"</em>
+            <div className="flex gap-2 mb-2">
+              <input style={{ flex: 1, background: 'var(--void)', border: '3px solid var(--panel-line)', fontFamily: 'var(--mono)', fontSize: '13px', color: '#fff', padding: '10px 14px', outline: 'none' }}
+                placeholder="bk_xxxxxxxxxxxxxxxx" type="password" value={bankrKey}
+                onChange={e => setBankrKey(e.target.value)} onKeyDown={e => e.key === 'Enter' && connectWithKey()} autoFocus />
+              <button onClick={connectWithKey} disabled={keyLoading} className="g-btn sm">{keyLoading ? '...' : 'GO'}</button>
             </div>
-            <div className="flex gap-2 mb-1">
-              <input
-                className="flex-1 bg-black font-mono text-white px-3 py-2 outline-none rounded"
-                style={{ border: '1px solid #2a0050', fontSize: '11px' }}
-                placeholder="bk_xxxxxxxxxxxxxxxxxxxxxxxx"
-                type="password"
-                value={bankrKey}
-                onChange={e => setBankrKey(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && connectWithKey()}
-                autoFocus
-              />
-              <button onClick={connectWithKey} disabled={keyLoading}
-                className="font-pixel px-4 py-2 rounded transition-all hover:scale-[1.02] disabled:opacity-50"
-                style={{ background: '#ffd700', color: '#000', fontSize: '8px' }}>
-                {keyLoading ? '...' : 'GO'}
-              </button>
-            </div>
-            {errMsg && <div className="mt-2 font-mono" style={{ fontSize: '10px', color: '#ff6060' }}>⚠ {errMsg}</div>}
-            <button onClick={runAutoCheck}
-              className="mt-3 w-full font-pixel py-2 rounded"
-              style={{ background: 'transparent', border: '1px solid #333', color: '#555', fontSize: '7px' }}>
-              🔄 RETRY AUTO-CHECK
-            </button>
+            {errMsg && <div style={{ fontFamily: 'var(--mono)', fontSize: '12px', color: 'var(--neon-pink)', marginTop: '8px' }}>⚠ {errMsg}</div>}
           </div>
         )}
       </div>
@@ -275,15 +150,10 @@ function P2eModal({
   );
 }
 
-/* ─── ModeSelect ────────────────────────────────────────────────────── */
+/* ─── ModeSelect ─────────────────────────────────────────────────── */
 
 export function ModeSelect() {
-  const {
-    player1, setPlayer2, setScreen, setMode, setMatchMode,
-    onlinePlayers, activeMatches, setOnlinePlayers, setActiveMatches,
-    roomCode, setRoomCode, walletAddress,
-  } = useGameStore();
-
+  const { player1, setPlayer2, setScreen, setMode, setMatchMode, onlinePlayers, activeMatches, setOnlinePlayers, setActiveMatches, roomCode, setRoomCode, walletAddress } = useGameStore();
   const [tab, setTab] = useState<'random' | 'friend'>('random');
   const [friendTab, setFriendTab] = useState<'create' | 'join'>('create');
   const [joinCode, setJoinCode] = useState('');
@@ -294,23 +164,20 @@ export function ModeSelect() {
   const [showP2eModal, setShowP2eModal] = useState(false);
   const [bankrExists, setBankrExists] = useState<boolean | null>(null);
 
-  // Fluctuate online numbers
   useEffect(() => {
     const iv = setInterval(() => {
-      setOnlinePlayers(onlinePlayers + Math.floor((Math.random() - 0.4) * 5));
-      setActiveMatches(Math.max(5, activeMatches + Math.floor((Math.random() - 0.4) * 3)));
+      setOnlinePlayers(onlinePlayers + Math.floor((Math.random() - .4) * 5));
+      setActiveMatches(Math.max(5, activeMatches + Math.floor((Math.random() - .4) * 3)));
     }, 3000);
     return () => clearInterval(iv);
   }, [onlinePlayers, activeMatches, setOnlinePlayers, setActiveMatches]);
 
-  // Animate dots
   useEffect(() => {
     if (!searching && !waitingFriend) return;
     const iv = setInterval(() => setSearchDots(d => d.length >= 3 ? '' : d + '.'), 400);
     return () => clearInterval(iv);
   }, [searching, waitingFriend]);
 
-  // Background Bankr existence check on mount
   useEffect(() => {
     if (!player1) return;
     checkBankrExists(player1.profile.username).then(setBankrExists);
@@ -319,8 +186,7 @@ export function ModeSelect() {
   const pickRandomOpponent = useCallback(() => {
     const others = DEMO_PROFILES.filter(p => p.username !== player1?.profile.username);
     const picked = others[Math.floor(Math.random() * others.length)];
-    const fighter: Fighter = { profile: picked, stats: calculateFighterStats(picked) };
-    setPlayer2(fighter);
+    setPlayer2({ profile: picked, stats: calculateFighterStats(picked) } as Fighter);
     setMatchMode('random');
     setScreen('vs_screen');
   }, [player1, setPlayer2, setMatchMode, setScreen]);
@@ -333,17 +199,10 @@ export function ModeSelect() {
     setTimeout(() => { clearInterval(cd); setSearching(false); pickRandomOpponent(); }, delay);
   };
 
-  const startP2eMatch = () => {
-    setShowP2eModal(false);
-    setMode('p2e');
-    startRandomSearch();
-  };
-
   const createRoom = () => {
     setRoomCode(generateRoomCode());
     setWaitingFriend(true);
-    setTimeout(() => { setWaitingFriend(false); pickRandomOpponent(); setMatchMode('friend'); },
-      4000 + Math.random() * 4000);
+    setTimeout(() => { setWaitingFriend(false); pickRandomOpponent(); setMatchMode('friend'); }, 4000 + Math.random() * 4000);
   };
 
   const joinRoom = () => {
@@ -359,249 +218,195 @@ export function ModeSelect() {
   const p1XpPct = xpProgressInLevel(p1Profile.xp, p1Profile.level);
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-arena-bg p-4">
+    <div className="gscreen flex flex-col items-center justify-center p-4 py-8">
       <div className="w-full max-w-lg">
 
-        {/* Fighter header */}
-        <div className="text-center mb-6">
-          <div className="font-pixel text-xs mb-2" style={{ color: '#bf00ff' }}>FIGHTER SELECTED</div>
+        {/* Nav */}
+        <nav className="g-nav" style={{ marginBottom: '28px', position: 'relative' }}>
+          <div className="logo">
+            <div className="badge">X</div>
+            FIGHTER ARENA
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span className="g-dot"></span>
+              <span style={{ fontFamily: 'var(--pixel)', fontSize: '8px', color: 'var(--neon-grn)' }}>{onlinePlayers.toLocaleString()} ONLINE</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span className="g-dot" style={{ background: 'var(--neon-pink)', animationDelay: '.5s' }}></span>
+              <span style={{ fontFamily: 'var(--pixel)', fontSize: '8px', color: 'var(--neon-pink)' }}>{activeMatches} IN BATTLE</span>
+            </div>
+          </div>
+        </nav>
 
-          <div className="flex items-center justify-center gap-3 mb-2 p-3 rounded"
-            style={{ background: '#12002a', border: `1px solid ${p1Tier.color}40` }}>
-            {/* Avatar with level badge */}
+        {/* Fighter status header */}
+        <div className="g-panel blue mb-6" style={{ padding: '16px' }}>
+          <div className="corners"><i></i><i></i><i></i><i></i></div>
+          <div style={{ fontFamily: 'var(--pixel)', fontSize: '8px', color: 'var(--neon-b)', marginBottom: '12px', letterSpacing: '.2em' }}>// FIGHTER SELECTED</div>
+          <div className="flex items-center gap-3">
             <div className="relative flex-shrink-0">
-              <div className="w-11 h-11 rounded-full overflow-hidden"
-                style={{ border: `2px solid ${p1Tier.color}`, boxShadow: `0 0 10px ${p1Tier.color}60` }}>
-                <img
-                  src={player1.profile.avatarUrl} alt={player1.profile.username}
-                  className="w-full h-full object-cover"
-                  onError={e => { (e.target as HTMLImageElement).src = `https://api.dicebear.com/7.x/pixel-art/svg?seed=${player1.profile.username}`; }}
-                />
+              <div className="w-12 h-12 overflow-hidden" style={{ border: `3px solid ${p1Tier.color}` }}>
+                <img src={player1.profile.avatarUrl} alt="" className="w-full h-full object-cover"
+                  onError={e => { (e.target as HTMLImageElement).src = `https://api.dicebear.com/7.x/pixel-art/svg?seed=${player1.profile.username}`; }} />
               </div>
-              <div className="absolute -bottom-1 -right-1 font-pixel px-1 rounded"
-                style={{ background: p1Tier.color, color: '#000', fontSize: '6px', lineHeight: '1.4' }}>
+              <div className="absolute -bottom-1 -right-1 px-1"
+                style={{ background: p1Tier.color, color: 'var(--void)', fontFamily: 'var(--pixel)', fontSize: '6px' }}>
                 LV{p1Profile.level}
               </div>
             </div>
-
-            <div className="text-left flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-0.5">
-                <div className="font-pixel text-white" style={{ fontSize: '9px' }}>@{player1.profile.username}</div>
-                <span className="font-pixel" style={{ fontSize: '6px', color: p1Tier.color }}>{p1Tier.name}</span>
-                {bankrExists !== null && (
-                  <span title={bankrExists ? 'Has Bankr wallet' : 'No Bankr wallet found'}
-                    className="w-1.5 h-1.5 rounded-full"
-                    style={{ background: bankrExists ? '#ffd700' : '#333', boxShadow: bankrExists ? '0 0 4px #ffd700' : 'none' }} />
-                )}
-                {walletAddress && (
-                  <span className="font-pixel" style={{ fontSize: '6px', color: '#00ff41' }}>● WALLET</span>
-                )}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <span style={{ fontFamily: 'var(--pixel)', fontSize: '9px', color: '#fff' }}>@{player1.profile.username}</span>
+                <span style={{ fontFamily: 'var(--pixel)', fontSize: '6px', color: p1Tier.color }}>{p1Tier.name}</span>
+                {bankrExists && <span style={{ fontFamily: 'var(--pixel)', fontSize: '6px', color: 'var(--neon-yel)' }}>● BANKR</span>}
+                {walletAddress && <span style={{ fontFamily: 'var(--pixel)', fontSize: '6px', color: 'var(--neon-grn)' }}>● WALLET</span>}
               </div>
-              <div className="font-pixel mb-1" style={{ color: player1.stats.color, fontSize: '7px' }}>
+              <div style={{ fontFamily: 'var(--pixel)', fontSize: '7px', color: player1.stats.color, marginBottom: '6px' }}>
                 {player1.stats.archetypeLabel.toUpperCase()}
               </div>
-              {/* XP bar */}
-              <div className="h-1.5 rounded-full overflow-hidden" style={{ background: '#0d001a' }}>
-                <div className="h-full rounded-full" style={{ width: `${p1XpPct * 100}%`, background: p1Tier.color, boxShadow: `0 0 4px ${p1Tier.color}`, transition: 'width 1s' }} />
+              <div style={{ height: '8px', background: 'var(--void)', border: '2px solid var(--panel-line)' }}>
+                <div style={{ height: '100%', width: `${p1XpPct * 100}%`, background: p1Tier.color, transition: 'width 1s' }} />
               </div>
             </div>
-
             <div className="text-right flex-shrink-0">
-              <div className="font-pixel" style={{ color: '#ffff00', fontSize: '10px' }}>PWR {player1.stats.basePower}</div>
-              <div className="font-pixel mt-0.5" style={{ fontSize: '7px', color: '#555' }}>
+              <div style={{ fontFamily: 'var(--pixel)', fontSize: '11px', color: 'var(--neon-yel)' }}>PWR {player1.stats.basePower}</div>
+              <div style={{ fontFamily: 'var(--pixel)', fontSize: '7px', color: 'var(--txt-dim)', marginTop: '4px' }}>
                 {p1Profile.wins}W {p1Profile.losses}L
               </div>
             </div>
           </div>
-
-          <div className="flex justify-center gap-6">
-            <OnlinePulse count={onlinePlayers} label="online" />
-            <OnlinePulse count={activeMatches} label="in battle" color="#ff6600" />
-          </div>
         </div>
 
         {/* Mode tabs */}
-        <div className="flex mb-4 rounded overflow-hidden" style={{ border: '1px solid #2a0050' }}>
+        <div className="flex mb-4" style={{ border: '3px solid var(--panel-line)' }}>
           {(['random', 'friend'] as const).map(t => (
-            <button key={t}
-              onClick={() => { setTab(t); setSearching(false); setWaitingFriend(false); }}
-              className="flex-1 py-3 font-pixel transition-all"
+            <button key={t} onClick={() => { setTab(t); setSearching(false); setWaitingFriend(false); }}
+              className="flex-1 py-3"
               style={{
-                fontSize: '9px',
-                background: tab === t ? (t === 'random' ? '#00ffff20' : '#ff00ff20') : 'transparent',
-                color: tab === t ? (t === 'random' ? '#00ffff' : '#ff00ff') : '#444',
-                borderBottom: tab === t ? `2px solid ${t === 'random' ? '#00ffff' : '#ff00ff'}` : '2px solid transparent',
+                fontFamily: 'var(--pixel)', fontSize: '9px', border: 'none', cursor: 'pointer',
+                background: tab === t ? (t === 'random' ? 'rgba(0,229,255,.15)' : 'rgba(255,45,117,.15)') : 'var(--void-2)',
+                color: tab === t ? (t === 'random' ? 'var(--neon-b)' : 'var(--neon-pink)') : 'var(--txt-dim)',
+                borderBottom: tab === t ? `4px solid ${t === 'random' ? 'var(--neon-b)' : 'var(--neon-pink)'}` : '4px solid transparent',
               }}>
-              {t === 'random' ? '🎲 RANDOM MATCH' : '👥 PLAY WITH FRIEND'}
+              {t === 'random' ? '🎲 RANDOM MATCH' : '👥 FRIEND PLAY'}
             </button>
           ))}
         </div>
 
         {/* Random Match */}
         {tab === 'random' && (
-          <div className="p-5 rounded text-center" style={{ background: '#12002a', border: '1px solid #2a0050' }}>
+          <div className="g-panel" style={{ padding: '24px' }}>
+            <div className="corners"><i></i><i></i><i></i><i></i></div>
             {!searching ? (
-              <>
-                <div className="text-4xl mb-3">🎲</div>
-                <div className="font-pixel text-white mb-2" style={{ fontSize: '10px' }}>RANDOM MATCHMAKING</div>
-                <div className="font-mono text-gray-400 text-sm mb-5">
+              <div className="text-center">
+                <span className="g-eyebrow">// RANDOM MATCHMAKING</span>
+                <p style={{ fontFamily: 'var(--body)', fontSize: '20px', color: 'var(--txt-dim)', marginBottom: '24px', maxWidth: '36ch', margin: '0 auto 24px' }}>
                   Get matched with a random fighter. Ranked by Twitter Score.
-                </div>
-
-                {/* Avatars preview */}
-                <div className="flex justify-center gap-2 mb-5">
+                </p>
+                {/* Opponent avatars preview */}
+                <div className="flex justify-center gap-2 mb-6">
                   {DEMO_PROFILES.filter(p => p.username !== player1.profile.username).slice(0, 4).map(p => (
-                    <div key={p.username} className="w-8 h-8 rounded overflow-hidden opacity-60"
-                      style={{ border: '1px solid #2a0050' }}>
+                    <div key={p.username} className="w-9 h-9 overflow-hidden" style={{ border: '2px solid var(--panel-line)', opacity: .7 }}>
                       <img src={p.avatarUrl} className="w-full h-full object-cover"
                         onError={e => { (e.target as HTMLImageElement).src = `https://api.dicebear.com/7.x/pixel-art/svg?seed=${p.username}`; }} />
                     </div>
                   ))}
-                  <div className="w-8 h-8 rounded flex items-center justify-center font-pixel"
-                    style={{ background: '#0d001a', border: '1px solid #2a0050', fontSize: '7px', color: '#666' }}>
+                  <div className="w-9 h-9 flex items-center justify-center" style={{ background: 'var(--void)', border: '2px solid var(--panel-line)', fontFamily: 'var(--pixel)', fontSize: '7px', color: 'var(--txt-dim)' }}>
                     +{onlinePlayers - 4}
                   </div>
                 </div>
-
-                {/* Free match */}
-                <button onClick={() => { setMode('free'); startRandomSearch(); }}
-                  className="w-full font-pixel py-3 mb-3 transition-all hover:scale-[1.02] active:scale-[0.98]"
-                  style={{
-                    background: 'linear-gradient(135deg, #00ffff20, #0080ff20)',
-                    border: '2px solid #00ffff',
-                    color: '#00ffff',
-                    boxShadow: '0 0 20px #00ffff20',
-                    letterSpacing: '1px', fontSize: '10px',
-                  }}>
-                  ▶ FREE MATCH
-                </button>
-
-                {/* P2E match */}
-                <button onClick={() => setShowP2eModal(true)}
-                  className="w-full font-pixel py-3 transition-all hover:scale-[1.02] active:scale-[0.98]"
-                  style={{
-                    background: 'linear-gradient(135deg, #ffd70020, #ff880020)',
-                    border: '2px solid #ffd700',
-                    color: '#ffd700',
-                    boxShadow: '0 0 20px #ffd70020',
-                    letterSpacing: '1px', fontSize: '10px',
-                  }}>
-                  💰 P2E MATCH — $5 STAKE
-                </button>
-              </>
+                <div className="flex flex-col gap-3">
+                  <button onClick={() => { setMode('free'); startRandomSearch(); }} className="g-btn ghost full" style={{ fontSize: '11px' }}>
+                    ▶ FREE MATCH
+                  </button>
+                  <button onClick={() => setShowP2eModal(true)} className="g-btn full" style={{ fontSize: '11px' }}>
+                    💰 P2E MATCH — $5 STAKE
+                  </button>
+                </div>
+              </div>
             ) : (
-              <div className="py-8">
+              <div className="text-center py-4">
                 <div className="relative w-24 h-24 mx-auto mb-6">
                   <div className="absolute inset-0 rounded-full animate-spin"
-                    style={{ border: '2px solid transparent', borderTopColor: '#00ffff', borderRightColor: '#00ffff40' }} />
+                    style={{ border: '3px solid transparent', borderTopColor: 'var(--neon-b)', borderRightColor: 'rgba(0,229,255,.3)' }} />
                   <div className="absolute inset-3 rounded-full animate-spin"
-                    style={{ border: '2px solid transparent', borderTopColor: '#ff00ff', animationDirection: 'reverse', animationDuration: '0.8s' }} />
-                  <div className="absolute inset-0 flex items-center justify-center font-pixel text-xs" style={{ color: '#00ffff' }}>
+                    style={{ border: '3px solid transparent', borderTopColor: 'var(--neon-pink)', animationDirection: 'reverse', animationDuration: '.8s' }} />
+                  <div className="absolute inset-0 flex items-center justify-center"
+                    style={{ fontFamily: 'var(--pixel)', fontSize: '11px', color: 'var(--neon-b)' }}>
                     {countdown > 0 ? countdown : '!'}
                   </div>
                 </div>
-                <div className="font-pixel text-white mb-2" style={{ fontSize: '10px' }}>SEARCHING{searchDots}</div>
-                <div className="font-mono text-gray-500 text-sm mb-6">Scanning {onlinePlayers} fighters...</div>
-                <button onClick={() => setSearching(false)} className="font-mono text-gray-600 hover:text-gray-400 text-sm">
-                  Cancel
-                </button>
+                <div style={{ fontFamily: 'var(--pixel)', fontSize: '11px', color: '#fff', marginBottom: '8px' }}>SEARCHING{searchDots}</div>
+                <div style={{ fontFamily: 'var(--body)', fontSize: '20px', color: 'var(--txt-dim)', marginBottom: '24px' }}>
+                  Scanning {onlinePlayers} fighters...
+                </div>
+                <button onClick={() => setSearching(false)} className="g-btn ghost sm">✕ CANCEL</button>
               </div>
             )}
           </div>
         )}
 
-        {/* Play with Friend */}
+        {/* Friend Play */}
         {tab === 'friend' && (
-          <div className="rounded overflow-hidden" style={{ border: '1px solid #2a0050' }}>
-            <div className="flex" style={{ background: '#0d001a' }}>
+          <div className="g-panel pink" style={{ padding: '0' }}>
+            <div className="corners"><i></i><i></i><i></i><i></i></div>
+            <div className="flex" style={{ borderBottom: '4px solid var(--neon-pink)' }}>
               {(['create', 'join'] as const).map(ft => (
-                <button key={ft}
-                  onClick={() => { setFriendTab(ft); setWaitingFriend(false); setRoomCode(''); }}
-                  className="flex-1 py-2 font-pixel transition-all"
+                <button key={ft} onClick={() => { setFriendTab(ft); setWaitingFriend(false); setRoomCode(''); }}
+                  className="flex-1 py-3"
                   style={{
-                    fontSize: '8px',
-                    color: friendTab === ft ? '#ff00ff' : '#444',
-                    borderBottom: friendTab === ft ? '2px solid #ff00ff' : '2px solid transparent',
-                    background: 'transparent',
+                    fontFamily: 'var(--pixel)', fontSize: '8px', border: 'none', cursor: 'pointer',
+                    background: friendTab === ft ? 'rgba(255,45,117,.2)' : 'var(--void-2)',
+                    color: friendTab === ft ? 'var(--neon-pink)' : 'var(--txt-dim)',
+                    borderBottom: friendTab === ft ? '4px solid var(--neon-pink)' : '4px solid transparent',
                   }}>
                   {ft === 'create' ? '➕ CREATE ROOM' : '🔑 JOIN ROOM'}
                 </button>
               ))}
             </div>
-
-            <div className="p-5 text-center" style={{ background: '#12002a' }}>
+            <div className="text-center p-6">
               {friendTab === 'create' && !waitingFriend && (
                 <>
-                  <div className="text-4xl mb-4">🏠</div>
-                  <div className="font-pixel text-white mb-2" style={{ fontSize: '10px' }}>CREATE A ROOM</div>
-                  <div className="font-mono text-gray-400 text-sm mb-6">
-                    Generate a room code and share it with your friend.
-                  </div>
-                  <button onClick={createRoom}
-                    className="w-full font-pixel py-4 transition-all hover:scale-[1.02] active:scale-[0.98]"
-                    style={{ background: 'linear-gradient(135deg, #ff00ff20, #bf00ff20)', border: '2px solid #ff00ff', color: '#ff00ff', boxShadow: '0 0 20px #ff00ff30' }}>
-                    ➕ GENERATE ROOM CODE
-                  </button>
+                  <span className="g-eyebrow" style={{ color: 'var(--neon-pink)' }}>// CREATE A ROOM</span>
+                  <p style={{ fontFamily: 'var(--body)', fontSize: '20px', color: 'var(--txt-dim)', marginBottom: '24px' }}>
+                    Generate a code and share with your friend.
+                  </p>
+                  <button onClick={createRoom} className="g-btn pink full" style={{ fontSize: '11px' }}>➕ GENERATE ROOM CODE</button>
                 </>
               )}
-
               {friendTab === 'create' && waitingFriend && roomCode && (
                 <div className="py-4">
-                  <div className="font-pixel text-gray-400 mb-3" style={{ fontSize: '8px' }}>YOUR ROOM CODE</div>
-                  <div className="inline-block px-6 py-4 rounded mb-4"
-                    style={{ background: '#0d001a', border: '2px solid #ff00ff', boxShadow: '0 0 20px #ff00ff40' }}>
-                    <div className="font-pixel text-3xl tracking-widest"
-                      style={{ color: '#ff00ff', textShadow: '0 0 15px #ff00ff' }}>{roomCode}</div>
+                  <div style={{ fontFamily: 'var(--pixel)', fontSize: '8px', color: 'var(--txt-dim)', marginBottom: '12px', letterSpacing: '.2em' }}>YOUR ROOM CODE</div>
+                  <div className="inline-block px-6 py-4 mb-4" style={{ border: '4px solid var(--neon-pink)', boxShadow: '0 0 20px rgba(255,45,117,.4)' }}>
+                    <div style={{ fontFamily: 'var(--pixel)', fontSize: '28px', letterSpacing: '.3em', color: 'var(--neon-pink)', textShadow: '0 0 15px var(--neon-pink)' }}>{roomCode}</div>
                   </div>
-                  <div className="font-mono text-gray-400 text-sm mb-4">Share this code with your friend</div>
-                  <button onClick={() => navigator.clipboard?.writeText(roomCode)}
-                    className="font-pixel text-xs px-4 py-2 rounded mb-6"
-                    style={{ background: '#2a0050', color: '#bf00ff', border: '1px solid #bf00ff' }}>
-                    📋 COPY CODE
-                  </button>
-                  <div className="flex items-center justify-center gap-3">
-                    <div className="flex gap-1">
-                      {[0, 1, 2].map(i => (
-                        <div key={i} className="w-2 h-2 rounded-full"
-                          style={{ background: '#ff00ff', animation: `pulse 1s ease-in-out ${i * 0.2}s infinite` }} />
-                      ))}
-                    </div>
-                    <div className="font-pixel text-gray-400" style={{ fontSize: '8px' }}>WAITING{searchDots}</div>
-                  </div>
+                  <p style={{ fontFamily: 'var(--body)', fontSize: '18px', color: 'var(--txt-dim)', marginBottom: '16px' }}>Share this code with your friend</p>
+                  <button onClick={() => navigator.clipboard?.writeText(roomCode)} className="g-btn ghost sm mb-6">📋 COPY CODE</button>
+                  <div style={{ fontFamily: 'var(--pixel)', fontSize: '8px', color: 'var(--txt-dim)', animation: 'g-pulse 1.2s steps(2) infinite' }}>WAITING{searchDots}</div>
                   <button onClick={() => { setWaitingFriend(false); setRoomCode(''); }}
-                    className="mt-4 font-mono text-gray-600 hover:text-gray-400 text-sm block mx-auto">Cancel</button>
+                    className="mt-4 block mx-auto" style={{ fontFamily: 'var(--mono)', fontSize: '12px', color: 'var(--txt-dim)', background: 'none', border: 'none', cursor: 'pointer' }}>Cancel</button>
                 </div>
               )}
-
               {friendTab === 'join' && !waitingFriend && (
                 <>
-                  <div className="text-4xl mb-4">🔑</div>
-                  <div className="font-pixel text-white mb-2" style={{ fontSize: '10px' }}>JOIN A ROOM</div>
-                  <div className="font-mono text-gray-400 text-sm mb-6">Enter the code your friend shared.</div>
+                  <span className="g-eyebrow" style={{ color: 'var(--neon-pink)' }}>// JOIN A ROOM</span>
+                  <p style={{ fontFamily: 'var(--body)', fontSize: '20px', color: 'var(--txt-dim)', marginBottom: '24px' }}>Enter the code your friend shared.</p>
                   <input
-                    className="w-full bg-black font-pixel text-center text-white px-4 py-3 mb-4 rounded outline-none"
-                    style={{ border: '2px solid #2a0050', fontSize: '14px', letterSpacing: '4px' }}
-                    placeholder="GMF-XXX"
-                    value={joinCode}
+                    style={{ width: '100%', background: 'var(--void)', border: '4px solid var(--panel-line)', fontFamily: 'var(--pixel)', fontSize: '18px', color: '#fff', padding: '14px', textAlign: 'center', letterSpacing: '.3em', outline: 'none', marginBottom: '16px' }}
+                    placeholder="GMF-XXX" value={joinCode}
                     onChange={e => setJoinCode(e.target.value.toUpperCase().slice(0, 7))}
-                    onFocus={e => (e.target.style.borderColor = '#ff00ff')}
-                    onBlur={e => (e.target.style.borderColor = '#2a0050')}
+                    onFocus={e => (e.target.style.borderColor = 'var(--neon-pink)')}
+                    onBlur={e => (e.target.style.borderColor = 'var(--panel-line)')}
                     onKeyDown={e => e.key === 'Enter' && joinRoom()}
                   />
-                  <button onClick={joinRoom} disabled={joinCode.trim().length < 3}
-                    className="w-full font-pixel py-4 transition-all hover:scale-[1.02] disabled:opacity-40 disabled:cursor-not-allowed"
-                    style={{ background: 'linear-gradient(135deg, #ff00ff20, #bf00ff20)', border: '2px solid #ff00ff', color: '#ff00ff' }}>
-                    🔑 JOIN ROOM
-                  </button>
+                  <button onClick={joinRoom} disabled={joinCode.trim().length < 3} className="g-btn pink full" style={{ fontSize: '11px' }}>🔑 JOIN ROOM</button>
                 </>
               )}
-
               {friendTab === 'join' && waitingFriend && (
-                <div className="py-8">
-                  <div className="font-pixel text-xl mb-4 tracking-widest"
-                    style={{ color: '#ff00ff', textShadow: '0 0 10px #ff00ff' }}>{joinCode}</div>
-                  <div className="font-pixel text-white mb-2" style={{ fontSize: '10px' }}>CONNECTING{searchDots}</div>
-                  <div className="font-mono text-gray-500 text-sm">Finding your friend's room...</div>
+                <div className="py-6">
+                  <div style={{ fontFamily: 'var(--pixel)', fontSize: '22px', letterSpacing: '.3em', color: 'var(--neon-pink)', textShadow: '0 0 10px var(--neon-pink)', marginBottom: '12px' }}>{joinCode}</div>
+                  <div style={{ fontFamily: 'var(--pixel)', fontSize: '10px', color: '#fff', marginBottom: '8px' }}>CONNECTING{searchDots}</div>
+                  <div style={{ fontFamily: 'var(--body)', fontSize: '18px', color: 'var(--txt-dim)' }}>Finding your friend's room...</div>
                 </div>
               )}
             </div>
@@ -609,32 +414,15 @@ export function ModeSelect() {
         )}
 
         {/* Bottom nav */}
-        <div className="mt-4 flex gap-2">
-          <button onClick={() => setScreen('profile')}
-            className="flex-1 font-pixel py-2.5 rounded transition-all hover:scale-[1.02]"
-            style={{ background: `${p1Tier.color}15`, border: `2px solid ${p1Tier.color}`, color: p1Tier.color, fontSize: '8px' }}>
-            👤 PROFILE
-          </button>
-          <button onClick={() => setScreen('leaderboard')}
-            className="flex-1 font-pixel py-2.5 rounded transition-all hover:scale-[1.02]"
-            style={{ background: '#ffd70010', border: '2px solid #ffd700', color: '#ffd700', fontSize: '8px' }}>
-            🏆 LEADERBOARD
-          </button>
-          <button onClick={() => setScreen('login')}
-            className="font-pixel px-3 py-2.5 rounded transition-all hover:scale-[1.02]"
-            style={{ background: 'transparent', border: '1px solid #333', color: '#555', fontSize: '8px' }}>
-            ← SWITCH
-          </button>
+        <div className="flex gap-2 mt-4">
+          <button onClick={() => setScreen('profile')} className="g-btn ghost sm flex-1">👤 PROFILE</button>
+          <button onClick={() => setScreen('leaderboard')} className="g-btn sm flex-1" style={{ background: 'var(--neon-yel)', color: 'var(--void)' }}>🏆 LEADERBOARD</button>
+          <button onClick={() => setScreen('login')} className="g-btn ghost sm">← SWITCH</button>
         </div>
       </div>
 
-      {/* P2E Modal */}
       {showP2eModal && (
-        <P2eModal
-          username={player1.profile.username}
-          onClose={() => setShowP2eModal(false)}
-          onReady={() => startP2eMatch()}
-        />
+        <P2eModal username={player1.profile.username} onClose={() => setShowP2eModal(false)} onReady={() => { setShowP2eModal(false); setMode('p2e'); startRandomSearch(); }} />
       )}
     </div>
   );
