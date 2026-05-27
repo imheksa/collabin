@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { useGameStore } from '../stores/gameStore';
 import { Fighter } from '../types';
 import { recordMatch, getProfile, getLevelTier, ACHIEVEMENT_RARITY_COLORS } from '../utils/playerProfile';
+import { syncProfile } from '../utils/cloudSync';
 
 const GAME_URL = 'https://gitmuskarena.vercel.app';
 const CARD_W = 600, CARD_H = 315;
@@ -124,7 +125,9 @@ export function Results() {
     const isP1Win = matchResult.winner.profile.username === player1.profile.username;
     const reward = recordMatch(player1.profile.username, isP1Win, matchResult.maxCombo, matchResult.duration, { username: player2.profile.username, archetype: player2.stats.archetype });
     setLastMatchReward(reward);
-    setPlayerProfile(getProfile(player1.profile.username));
+    const updated = getProfile(player1.profile.username);
+    setPlayerProfile(updated);
+    syncProfile(updated, player1).catch(() => {});
   }, []);
 
   useEffect(() => {
