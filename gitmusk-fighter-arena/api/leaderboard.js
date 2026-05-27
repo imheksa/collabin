@@ -13,8 +13,15 @@ export default async function handler(req, res) {
   const supabaseUrl = process.env.SUPABASE_URL;
   const supabaseKey = process.env.SUPABASE_SERVICE_KEY;
 
+  // TEMP DEBUG: /api/leaderboard?debug=1 reports env-var presence (no values) — remove after verifying.
+  const debug = req.query?.debug === '1';
+
   if (!supabaseUrl || !supabaseKey) {
-    return res.status(200).json({ entries: [], configured: false });
+    return res.status(200).json({
+      entries: [],
+      configured: false,
+      ...(debug && { _debug: { hasUrl: Boolean(supabaseUrl), hasKey: Boolean(supabaseKey) } }),
+    });
   }
 
   try {
@@ -34,13 +41,23 @@ export default async function handler(req, res) {
     if (!upstream.ok) {
       const err = await upstream.text();
       console.error('Supabase leaderboard error:', err);
-      return res.status(500).json({ error: 'Failed to fetch leaderboard' });
+      return res.status(500).json({
+        error: 'Failed to fetch leaderboard',
+        ...(debug && { _debug: { hasUrl: true, hasKey: true, upstreamStatus: upstream.status, upstreamError: err.slice(0, 300) } }),
+      });
     }
 
     const data = await upstream.json();
-    return res.status(200).json({ entries: Array.isArray(data) ? data : [], configured: true });
+    return res.status(200).json({
+      entries: Array.isArray(data) ? data : [],
+      configured: true,
+      ...(debug && { _debug: { hasUrl: true, hasKey: true, upstreamStatus: 200, rowCount: Array.isArray(data) ? data.length : 0 } }),
+    });
   } catch (err) {
     console.error('leaderboard error:', err);
-    return res.status(500).json({ error: 'Internal error' });
+    return res.status(500).json({
+      error: 'Internal error',
+      ...(debug && { _debug: { hasUrl: true, hasKey: true, exception: String(err).slice(0, 300) } }),
+    });
   }
 }
