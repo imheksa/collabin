@@ -1,6 +1,7 @@
 import { useGameStore } from '../stores/gameStore';
 import { DEMO_PROFILES } from '../data/mockProfiles';
 import { calculateFighterStats } from '../utils/statsCalculator';
+import { getLevelTier, xpNeededForNextLevel, LEVEL_TIERS } from '../utils/playerProfile';
 import { Fighter } from '../types';
 
 export function Landing() {
@@ -9,6 +10,10 @@ export function Landing() {
 
   const elonProfile = DEMO_PROFILES.find(p => p.username === 'elonmusk')!;
   const elonStats = calculateFighterStats(elonProfile);
+  const elonLevel = 1;
+  const elonTier = getLevelTier(elonLevel);
+  const elonXpMax = xpNeededForNextLevel(elonLevel);
+  const elonNextTier = LEVEL_TIERS.find(t => t.minLevel > elonLevel);
 
   const tryDemo = () => {
     const profile = DEMO_PROFILES[Math.floor(Math.random() * DEMO_PROFILES.length)];
@@ -84,7 +89,7 @@ export function Landing() {
 
         /* Hero */
         .hero{padding:48px 32px 96px;min-height:90vh;display:flex;align-items:center;position:relative;overflow:hidden}
-        .hero-grid{display:grid;grid-template-columns:1.1fr 1fr;gap:48px;align-items:center;width:100%;max-width:1280px;margin:0 auto;position:relative;z-index:2}
+        .hero-grid{display:grid;grid-template-columns:1.1fr 1fr;gap:48px;align-items:start;width:100%;max-width:1280px;margin:0 auto;position:relative;z-index:2}
         .hero h1{font-size:36px;line-height:1.5;text-shadow:4px 4px 0 var(--neon-pink),8px 8px 0 var(--void-3)}
         .hero h1 .lit{color:var(--neon-yel)}
         .hero .sub{font-size:24px;color:var(--txt-dim);margin:32px 0;max-width:38ch}
@@ -314,34 +319,110 @@ export function Landing() {
             </div>
           </div>
 
-          <div className="fighter-card">
-            <div className="fighter-frame">
-              <div className="hud">
-                <div className="hp"><span>P1</span><div className="hp-bar"><i></i></div></div>
-                <div className="hp"><div className="hp-bar" style={{ transform:'scaleX(-1)' }}><i style={{ width:'62%' }}></i></div><span>P2</span></div>
-              </div>
-              {/* Elon Musk profile display */}
-              <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:'10px', animation:'bob 1.2s steps(2) infinite' }}>
-                <div style={{ width:'120px', height:'120px', overflow:'hidden', border:`4px solid ${elonStats.color}`, boxShadow:`0 0 0 2px var(--void), 0 0 28px ${elonStats.color}90`, imageRendering:'pixelated' }}>
-                  <img
-                    src={elonProfile.avatarUrl}
-                    alt="@elonmusk"
-                    style={{ width:'100%', height:'100%', objectFit:'cover', imageRendering:'pixelated', display:'block' }}
-                    onError={e => { (e.target as HTMLImageElement).src = 'https://api.dicebear.com/7.x/pixel-art/svg?seed=elonmusk'; }}
-                  />
+          {/* ── FIGHTER DETAIL CARD ── */}
+          <div style={{ display:'flex', flexDirection:'column', gap:'10px' }}>
+
+            {/* Identity */}
+            <div style={{ background:'var(--panel)', border:`4px solid ${elonTier.color}`, boxShadow:`inset 0 0 0 4px var(--void),0 0 0 4px var(--void),0 0 20px ${elonTier.color}50`, padding:'14px', position:'relative' }}>
+              <i style={{ position:'absolute', width:'10px', height:'10px', background:elonTier.color, top:'-2px', left:'-2px' }}></i>
+              <i style={{ position:'absolute', width:'10px', height:'10px', background:elonTier.color, top:'-2px', right:'-2px' }}></i>
+              <i style={{ position:'absolute', width:'10px', height:'10px', background:elonTier.color, bottom:'-2px', left:'-2px' }}></i>
+              <i style={{ position:'absolute', width:'10px', height:'10px', background:elonTier.color, bottom:'-2px', right:'-2px' }}></i>
+              <div style={{ display:'flex', alignItems:'center', gap:'14px' }}>
+                <div style={{ position:'relative', flexShrink:0 }}>
+                  <div style={{ width:'60px', height:'60px', overflow:'hidden', border:`3px solid ${elonTier.color}`, boxShadow:`0 0 10px ${elonTier.color}` }}>
+                    <img src={elonProfile.avatarUrl} alt="@elonmusk" style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }}
+                      onError={e => { (e.target as HTMLImageElement).src = 'https://api.dicebear.com/7.x/pixel-art/svg?seed=elonmusk'; }} />
+                  </div>
+                  <div style={{ position:'absolute', bottom:'-3px', right:'-3px', background:elonTier.color, color:'#000', fontFamily:'var(--pixel)', fontSize:'6px', padding:'2px 4px', lineHeight:1 }}>LV{elonLevel}</div>
                 </div>
-                <div style={{ textAlign:'center' }}>
-                  <div style={{ fontFamily:'var(--pixel)', fontSize:'9px', color:'var(--neon-yel)', marginBottom:'4px' }}>@ELONMUSK ✓</div>
-                  <div style={{ fontFamily:'var(--pixel)', fontSize:'7px', color:elonStats.color, letterSpacing:'.15em' }}>{elonStats.archetypeLabel.toUpperCase()}</div>
+                <div style={{ flex:1, minWidth:0 }}>
+                  <div style={{ fontFamily:'var(--pixel)', fontSize:'11px', color:'#fff', marginBottom:'3px' }}>@elonmusk</div>
+                  <div style={{ fontFamily:'var(--pixel)', fontSize:'7px', color:elonStats.color, marginBottom:'7px', letterSpacing:'.08em' }}>
+                    {elonStats.archetypeLabel.toUpperCase()} · {elonStats.rarity.toUpperCase()}
+                  </div>
+                  <div>
+                    <div style={{ display:'flex', justifyContent:'space-between', marginBottom:'2px' }}>
+                      <span style={{ fontFamily:'var(--pixel)', fontSize:'6px', color:'var(--txt-dim)' }}>XP</span>
+                      <span style={{ fontFamily:'var(--pixel)', fontSize:'6px', color:elonTier.color }}>0 / {elonXpMax}</span>
+                    </div>
+                    <div style={{ height:'8px', background:'var(--void)', border:'2px solid var(--panel-line)', overflow:'hidden' }}>
+                      <div style={{ height:'100%', width:'0%', background:elonTier.color }} />
+                    </div>
+                  </div>
+                  {elonNextTier && (
+                    <div style={{ fontFamily:'var(--pixel)', fontSize:'6px', color:'var(--txt-dim)', marginTop:'3px' }}>
+                      Next: {elonNextTier.name} @ LV{elonNextTier.minLevel}
+                    </div>
+                  )}
                 </div>
-              </div>
-              <div className="scan"></div>
-              <div style={{ position:'absolute', bottom:'14px', left:'14px', right:'14px', fontFamily:'var(--mono)', fontSize:'11px', color:'var(--txt-dim)', textTransform:'uppercase', letterSpacing:'.2em', textAlign:'center' }}>
-                <b style={{ color:'var(--neon-yel)', display:'block', fontWeight:700, marginBottom:'4px', fontSize:'12px', fontFamily:'var(--pixel)' }}>// FIGHTER_RENDER</b>profile-pic → arcade sprite
               </div>
             </div>
-            <div className="stat-strip">ATK {elonStats.basePower}<br />CRIT {elonStats.critRate}%</div>
-            <div className="stat-strip r">@elonmusk<br />RANK · {elonStats.rarity.toUpperCase()}</div>
+
+            {/* Win/Loss row */}
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:'6px' }}>
+              {([
+                { label:'WINS',   value:0,    color:'var(--neon-grn)' },
+                { label:'LOSSES', value:0,    color:'var(--neon-pink)' },
+                { label:'WIN %',  value:'0%', color:'var(--neon-pink)' },
+                { label:'COMBO',  value:'0x', color:'var(--neon-yel)' },
+              ] as const).map(s => (
+                <div key={s.label} style={{ background:'var(--void-2)', border:'3px solid var(--panel-line)', padding:'8px 4px', textAlign:'center' }}>
+                  <div style={{ fontFamily:'var(--pixel)', fontSize:'6px', color:'var(--txt-dim)', marginBottom:'5px' }}>{s.label}</div>
+                  <div style={{ fontFamily:'var(--pixel)', fontSize:'12px', color:s.color }}>{s.value}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Base stats */}
+            <div style={{ background:'var(--panel)', border:'4px solid var(--neon-p)', boxShadow:'inset 0 0 0 4px var(--void),0 0 0 4px var(--void)', padding:'14px' }}>
+              <div style={{ fontFamily:'var(--pixel)', fontSize:'10px', color:'var(--neon-p)', marginBottom:'10px', display:'flex', alignItems:'center', gap:'8px', letterSpacing:'.1em' }}>
+                <span style={{ width:'18px', height:'3px', background:'var(--neon-p)', display:'inline-block', flexShrink:0 }}></span>
+                BASE STATS
+              </div>
+              {([
+                { label:'POWER',   value:elonStats.basePower, color:'var(--neon-pink)',  fill:'repeating-linear-gradient(90deg,var(--neon-pink) 0 6px,#ff5494 6px 8px)', max:100 },
+                { label:'DEFENSE', value:elonStats.defense,   color:'var(--neon-b)',    fill:'repeating-linear-gradient(90deg,var(--neon-b) 0 6px,#57f1ff 6px 8px)',   max:100 },
+                { label:'SPEED',   value:elonStats.speed,     color:'var(--neon-grn)',  fill:'repeating-linear-gradient(90deg,var(--neon-grn) 0 6px,#66ffc2 6px 8px)', max:100 },
+                { label:'CRIT %',  value:elonStats.critRate,  color:'var(--neon-yel)',  fill:'repeating-linear-gradient(90deg,var(--neon-yel) 0 6px,#ffe666 6px 8px)', max:80 },
+                { label:'STAMINA', value:elonStats.stamina,   color:'var(--neon-pink)', fill:'repeating-linear-gradient(90deg,var(--neon-pink) 0 6px,#ff5494 6px 8px)', max:100 },
+              ] as const).map(({ label, value, color, fill, max }) => (
+                <div key={label} style={{ marginBottom:'8px' }}>
+                  <div style={{ display:'flex', justifyContent:'space-between', marginBottom:'2px' }}>
+                    <span style={{ fontFamily:'var(--pixel)', fontSize:'7px', color:'var(--txt)' }}>{label}</span>
+                    <span style={{ fontFamily:'var(--pixel)', fontSize:'7px', color }}>{value}</span>
+                  </div>
+                  <div style={{ height:'10px', background:'var(--void)', border:'2px solid var(--panel-line)', overflow:'hidden' }}>
+                    <div style={{ height:'100%', width:`${Math.min(1, value / max) * 100}%`, background:fill }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Combat modifiers */}
+            <div style={{ background:'var(--panel)', border:'4px solid var(--neon-p)', boxShadow:'inset 0 0 0 4px var(--void),0 0 0 4px var(--void)', padding:'14px' }}>
+              <div style={{ fontFamily:'var(--pixel)', fontSize:'10px', color:'var(--neon-p)', marginBottom:'10px', display:'flex', alignItems:'center', gap:'8px', letterSpacing:'.1em' }}>
+                <span style={{ width:'18px', height:'3px', background:'var(--neon-p)', display:'inline-block', flexShrink:0 }}></span>
+                COMBAT MODIFIERS
+              </div>
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:'6px', marginBottom:'8px' }}>
+                {([
+                  { label:'ATK BOOST',  value:'+0%', positive:true  },
+                  { label:'DMG SHIELD', value:'-0%', positive:true  },
+                  { label:'WIN STK',    value:'0x',  positive:false },
+                  { label:'XP BOOST',   value:'0%',  positive:false },
+                ] as const).map(({ label, value, positive }) => (
+                  <div key={label} style={{ background:'var(--void)', border:`2px solid ${positive ? 'rgba(0,255,157,.3)' : 'rgba(255,45,117,.3)'}`, padding:'8px 4px', textAlign:'center' }}>
+                    <div style={{ fontFamily:'var(--pixel)', fontSize:'6px', color:'var(--txt-dim)', marginBottom:'4px' }}>{label}</div>
+                    <div style={{ fontFamily:'var(--pixel)', fontSize:'9px', color:positive ? 'var(--neon-grn)' : 'var(--neon-pink)' }}>{value}</div>
+                  </div>
+                ))}
+              </div>
+              <div style={{ fontFamily:'var(--mono)', fontSize:'11px', color:'var(--txt-dim)', textAlign:'center' }}>
+                Win streaks boost your ATK. Loss streaks reduce it.
+              </div>
+            </div>
+
           </div>
         </div>
       </section>
