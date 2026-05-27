@@ -65,13 +65,17 @@ export async function exchangeCodeForToken(
 }
 
 export async function fetchXProfile(accessToken: string): Promise<XProfile> {
-  const fields = 'public_metrics,created_at,description,profile_image_url,verified_type';
-  const res = await fetch(
-    `https://api.twitter.com/2/users/me?user.fields=${fields}`,
-    { headers: { Authorization: `Bearer ${accessToken}` } },
-  );
+  // Use server-side proxy — X API v2 blocks direct browser CORS requests
+  const proxyUrl = `${window.location.origin}/api/x-profile`;
 
-  if (!res.ok) throw new Error('Failed to fetch X profile');
+  const res = await fetch(proxyUrl, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? `Failed to fetch X profile (HTTP ${res.status})`);
+  }
   const { data }: { data: XApiUser } = await res.json();
   return mapXApiUser(data);
 }
