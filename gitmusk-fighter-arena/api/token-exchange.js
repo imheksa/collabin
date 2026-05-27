@@ -1,5 +1,4 @@
 // Vercel serverless function — token exchange proxy for X OAuth 2.0
-// CommonJS format required; avoids browser CORS by proxying to api.twitter.com
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -24,7 +23,7 @@ function readBody(req) {
   });
 }
 
-module.exports = async function handler(req, res) {
+export default async function handler(req, res) {
   setCors(res);
 
   if (req.method === 'OPTIONS') {
@@ -60,4 +59,4 @@ module.exports = async function handler(req, res) {
     res.setHeader('Content-Type', 'application/json');
     return res.status(500).end(JSON.stringify({ error: 'Token exchange failed', detail: String(err) }));
   }
-};
+}

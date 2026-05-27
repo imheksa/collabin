@@ -10,7 +10,7 @@ function setCors(res) {
   Object.entries(CORS).forEach(([k, v]) => res.setHeader(k, v));
 }
 
-module.exports = async function handler(req, res) {
+export default async function handler(req, res) {
   setCors(res);
 
   if (req.method === 'OPTIONS') {
@@ -42,4 +42,4 @@ module.exports = async function handler(req, res) {
     res.setHeader('Content-Type', 'application/json');
     return res.status(500).end(JSON.stringify({ error: 'Profile fetch failed', detail: String(err) }));
   }
-};
+}
