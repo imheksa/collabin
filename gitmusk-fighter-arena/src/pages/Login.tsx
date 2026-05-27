@@ -118,22 +118,27 @@ export function Login() {
           <div className="g-panel pink mb-5" style={{ padding: '16px' }}>
             <div className="corners"><i></i><i></i><i></i><i></i></div>
             <div className="flex items-start justify-between gap-2">
-              <div>
+              <div style={{ flex: 1 }}>
                 <div style={{ fontFamily: 'var(--pixel)', fontSize: '8px', color: 'var(--neon-pink)', marginBottom: '6px' }}>
                   ⚠ X LOGIN FAILED
                 </div>
-                <div style={{ fontFamily: 'var(--mono)', fontSize: '12px', color: 'var(--txt-dim)' }}>
-                  {oauthError.includes('CORS') || oauthError.includes('proxy')
-                    ? 'Backend server not reachable. Try demo mode below.'
-                    : oauthError.includes('redirect_uri')
-                    ? 'Redirect URI mismatch — check X Developer Portal settings.'
-                    : oauthError.includes('access_denied')
+                <div style={{ fontFamily: 'var(--mono)', fontSize: '12px', color: 'var(--txt-dim)', marginBottom: '8px' }}>
+                  {oauthError.includes('access_denied')
                     ? 'Login was cancelled.'
+                    : oauthError.includes('redirect_uri') || oauthError.includes('callback')
+                    ? 'Redirect URI mismatch. The URI below must exactly match your X Developer Portal callback URL.'
+                    : oauthError.includes('CORS') || oauthError.includes('proxy') || oauthError.includes('Failed to fetch')
+                    ? 'Token exchange proxy unreachable. Check Vercel deployment and /api/token-exchange function.'
+                    : oauthError.includes('invalid_client') || oauthError.includes('unauthorized_client')
+                    ? 'Invalid client ID. Check VITE_X_CLIENT_ID in Vercel environment variables.'
                     : oauthError}
+                </div>
+                <div style={{ fontFamily: 'var(--mono)', fontSize: '10px', color: 'var(--txt-dim)', borderTop: '1px dashed var(--panel-line)', paddingTop: '6px' }}>
+                  <span style={{ color: 'var(--neon-yel)' }}>redirect_uri:</span> {REDIRECT_URI}
                 </div>
               </div>
               <button onClick={() => setOauthError('')}
-                style={{ color: 'var(--txt-dim)', fontFamily: 'var(--pixel)', fontSize: '9px' }}>✕</button>
+                style={{ color: 'var(--txt-dim)', fontFamily: 'var(--pixel)', fontSize: '9px', flexShrink: 0 }}>✕</button>
             </div>
           </div>
         )}
