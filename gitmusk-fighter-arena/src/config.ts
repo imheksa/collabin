@@ -8,6 +8,6 @@ export const REDIRECT_URI: string =
 
 export const TOKEN_PROXY_URL: string =
   (import.meta.env.VITE_TOKEN_PROXY_URL as string | undefined) ??
-  '/.netlify/functions/token-exchange';
+  '/api/token-exchange';
 
 export const OAUTH_ENABLED = Boolean(X_CLIENT_ID);
