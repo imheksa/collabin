@@ -145,25 +145,13 @@ export function Login() {
 
         {/* X OAuth button */}
         {OAUTH_ENABLED ? (
-          <>
-            <button onClick={handleConnectX} disabled={oauthLoading}
-              className="g-btn full mb-3" style={{ background: '#1d9bf0', color: '#fff', boxShadow: '0 4px 0 0 #0d5a8a, 0 4px 0 4px var(--void), 0 8px 0 4px #5a1a99', fontSize: '10px', gap: '12px' }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.746l7.73-8.835L1.254 2.25H8.08l4.261 5.635zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-              </svg>
-              {oauthLoading ? 'CONNECTING...' : 'CONNECT WITH X — REAL STATS'}
-            </button>
-            {/* Config debug — verify these match X Developer Portal exactly */}
-            <div className="mb-5" style={{ background: 'var(--void-2)', border: '2px solid var(--panel-line)', padding: '10px 14px' }}>
-              <div style={{ fontFamily: 'var(--pixel)', fontSize: '7px', color: 'var(--txt-dim)', marginBottom: '6px', letterSpacing: '.1em' }}>
-                CONFIG — MUST MATCH X DEVELOPER PORTAL
-              </div>
-              <div style={{ fontFamily: 'var(--mono)', fontSize: '11px', color: 'var(--txt-dim)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <div><span style={{ color: 'var(--neon-yel)' }}>client_id: </span>{X_CLIENT_ID}</div>
-                <div><span style={{ color: 'var(--neon-yel)' }}>redirect_uri: </span>{REDIRECT_URI}</div>
-              </div>
-            </div>
-          </>
+          <button onClick={handleConnectX} disabled={oauthLoading}
+            className="g-btn full mb-5" style={{ background: '#1d9bf0', color: '#fff', boxShadow: '0 4px 0 0 #0d5a8a, 0 4px 0 4px var(--void), 0 8px 0 4px #5a1a99', fontSize: '10px', gap: '12px' }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.746l7.73-8.835L1.254 2.25H8.08l4.261 5.635zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+            </svg>
+            {oauthLoading ? 'CONNECTING...' : 'CONNECT WITH X — REAL STATS'}
+          </button>
         ) : (
           <div className="g-panel dark mb-5" style={{ padding: '16px', textAlign: 'center' }}>
             <div style={{ fontFamily: 'var(--pixel)', fontSize: '8px', color: 'var(--txt-dim)' }}>
