@@ -794,19 +794,19 @@ export function Landing() {
               <span className="eyebrow">// PLAY-TO-EARN</span>
               <h2>PLAY. FIGHT. EARN.</h2>
             </div>
-            <p style={{ fontFamily:'var(--body)', fontSize:'20px', color:'var(--txt-dim)', maxWidth:'36ch' }}>Every ranked match is a verified contest. Win and the pot is yours — sent instantly to your X account via Bankr.</p>
+            <p style={{ fontFamily:'var(--body)', fontSize:'20px', color:'var(--txt-dim)', maxWidth:'36ch' }}>Both fighters deposit to the Vault — it holds funds in escrow until the match resolves. Winner takes the pot, released instantly via Bankr.</p>
           </div>
           <div className="p2e-grid">
             <div>
               <div className="flow">
                 <div className="flow-step"><div className="n">1</div><div className="l">LINK X + BANKR</div><div className="x">X · BANKR</div></div>
-                <div className="flow-step"><div className="n">2</div><div className="l">ENTER MATCH</div><div className="x">PLACE · WAGER</div></div>
+                <div className="flow-step"><div className="n">2</div><div className="l">DEPOSIT TO VAULT</div><div className="x">BANKR → VAULT</div></div>
                 <div className="flow-step"><div className="n">3</div><div className="l">WIN BATTLE</div><div className="x">VERIFIED · INSTANT</div></div>
-                <div className="flow-step"><div className="n">4</div><div className="l">EARN REWARDS</div><div className="x">BANKR · PAYS OUT</div></div>
+                <div className="flow-step"><div className="n">4</div><div className="l">VAULT RELEASES POT</div><div className="x">ESCROW → WINNER</div></div>
               </div>
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'14px', marginTop:'32px' }}>
-                <div style={{ padding:'18px', background:'var(--void-2)', borderLeft:'6px solid var(--neon-yel)' }}><div className="tag" style={{ color:'var(--neon-yel)', marginBottom:'8px' }}>BANKR-POWERED</div><div style={{ fontFamily:'var(--body)', fontSize:'18px', color:'var(--txt-dim)' }}>Both fighters wager. Bankr holds the pot. Winner gets paid via X.</div></div>
-                <div style={{ padding:'18px', background:'var(--void-2)', borderLeft:'6px solid var(--neon-b)' }}><div className="tag" style={{ marginBottom:'8px' }}>X PAYMENTS</div><div style={{ fontFamily:'var(--body)', fontSize:'18px', color:'var(--txt-dim)' }}>No crypto wallet needed — rewards go straight to your X account via Bankr.</div></div>
+                <div style={{ padding:'18px', background:'var(--void-2)', borderLeft:'6px solid var(--neon-yel)' }}><div className="tag" style={{ color:'var(--neon-yel)', marginBottom:'8px' }}>VAULT ESCROW</div><div style={{ fontFamily:'var(--body)', fontSize:'18px', color:'var(--txt-dim)' }}>Both fighters send their wager from Bankr to the Vault. Funds are locked in escrow — released only when the match resolves.</div></div>
+                <div style={{ padding:'18px', background:'var(--void-2)', borderLeft:'6px solid var(--neon-b)' }}><div className="tag" style={{ marginBottom:'8px' }}>INSTANT PAYOUT</div><div style={{ fontFamily:'var(--body)', fontSize:'18px', color:'var(--txt-dim)' }}>Vault releases the full pot to the winner's Bankr account the moment the match ends. No wallet, no wait.</div></div>
                 <div style={{ padding:'18px', background:'var(--void-2)', borderLeft:'6px solid var(--neon-pink)' }}><div className="tag" style={{ color:'var(--neon-pink)', marginBottom:'8px' }}>ANTI-SYBIL</div><div style={{ fontFamily:'var(--body)', fontSize:'18px', color:'var(--txt-dim)' }}>X verification + behavioral signals prevent multi-account abuse.</div></div>
                 <div style={{ padding:'18px', background:'var(--void-2)', borderLeft:'6px solid var(--neon-grn)' }}><div className="tag" style={{ color:'var(--neon-grn)', marginBottom:'8px' }}>TOURNAMENT REWARDS</div><div style={{ fontFamily:'var(--body)', fontSize:'18px', color:'var(--txt-dim)' }}>Weekly cash prizes, NFT trophies, leaderboard payouts.</div></div>
               </div>
@@ -818,20 +818,20 @@ export function Landing() {
               <div className="coin" style={{ bottom:'-12px', right:'24%', animationDelay:'1.2s' }}></div>
               <div className="wallet">
                 <header>
-                  <span>BANKR · @elonmusk</span>
-                  <span className="net">X PAYMENTS</span>
+                  <span>VAULT · @elonmusk</span>
+                  <span className="net">ESCROW ACTIVE</span>
                 </header>
                 <div className="balance">
-                  <div className="l">SEASON 0 EARNINGS</div>
+                  <div className="l">SEASON 0 VAULT RELEASES</div>
                   <div className="amt">$2,847.20</div>
                   <div className="delta">↑ +$184.40 LAST 24H</div>
                 </div>
                 <div className="feed">
-                  <div className="li"><span>RANKED WIN · vs @memelord</span><b>+$24.80</b></div>
-                  <div className="li"><span>TOURNAMENT R3 · BRACKET A</span><b>+$120.00</b></div>
-                  <div className="li loss"><span>RANKED LOSS · vs @builder</span><b>−$12.00</b></div>
+                  <div className="li"><span>VAULT RELEASE · vs @memelord</span><b>+$24.80</b></div>
+                  <div className="li"><span>TOURNAMENT POT · BRACKET A</span><b>+$120.00</b></div>
+                  <div className="li loss"><span>VAULT FORFEIT · vs @builder</span><b>−$12.00</b></div>
                   <div className="li"><span>DAILY STREAK BONUS · DAY 7</span><b>+$8.50</b></div>
-                  <div className="li"><span>GUILD WAR PAYOUT · WEEK 12</span><b>+$58.20</b></div>
+                  <div className="li"><span>GUILD WAR VAULT · WEEK 12</span><b>+$58.20</b></div>
                 </div>
               </div>
             </div>
