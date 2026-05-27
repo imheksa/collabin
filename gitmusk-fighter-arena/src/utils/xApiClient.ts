@@ -31,12 +31,8 @@ export async function exchangeCodeForToken(
     code_verifier: codeVerifier,
   });
 
-  // Try proxy first (required on GitHub Pages — X token endpoint blocks CORS)
-  // Fallback to direct call (works only when app is hosted on Netlify itself)
-  const endpoints = [
-    TOKEN_PROXY_URL,
-    'https://api.twitter.com/2/oauth2/token',
-  ].filter(Boolean);
+  // Only use the proxy — direct X API call blocks CORS and hides real error messages
+  const endpoints = [TOKEN_PROXY_URL].filter(Boolean);
 
   let lastError = '';
   for (const endpoint of endpoints) {
