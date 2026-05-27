@@ -3,7 +3,7 @@ import { useGameStore } from '../stores/gameStore';
 import { Fighter } from '../types';
 import { recordMatch, getProfile, getLevelTier, ACHIEVEMENT_RARITY_COLORS } from '../utils/playerProfile';
 
-const GAME_URL = 'https://imheksa.github.io/collabin/gitmusk-fighter-arena/';
+const GAME_URL = 'https://gitmuskarena.vercel.app';
 const CARD_W = 600, CARD_H = 315;
 
 async function loadImg(username: string, avatarUrl: string): Promise<HTMLImageElement | null> {

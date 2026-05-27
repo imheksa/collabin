@@ -7,7 +7,7 @@ import {
   MatchHistoryEntry,
 } from '../utils/playerProfile';
 
-const GAME_URL = 'https://imheksa.github.io/collabin/gitmusk-fighter-arena/';
+const GAME_URL = 'https://gitmuskarena.vercel.app';
 const CARD_W = 600;
 const CARD_H = 400;
 
