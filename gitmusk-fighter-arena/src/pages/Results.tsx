@@ -61,14 +61,24 @@ async function renderCard(canvas: HTMLCanvasElement, me: Fighter, opponent: Figh
   if (isWin) { ctx.fillStyle = '#00ff9d'; ctx.shadowColor = '#00ff9d'; ctx.shadowBlur = 8; ctx.font = mono(8); ctx.textAlign = 'center'; ctx.fillText('🏆 WINNER', aX, aY - aR - 8); ctx.shadowBlur = 0; }
   ctx.textAlign = 'left'; const sx = 132;
   ctx.fillStyle = '#ffffff'; ctx.shadowColor = me.stats.color; ctx.shadowBlur = 6; ctx.font = mono(14);
-  ctx.fillText(`@${me.profile.username.slice(0, 12)}`, sx, 150); ctx.shadowBlur = 0;
-  ctx.fillStyle = me.stats.color; ctx.font = mono(8); ctx.fillText(me.stats.archetypeLabel.toUpperCase(), sx, 168);
-  ctx.fillStyle = '#ffd60a'; ctx.font = mono(9); ctx.fillText(`PWR ${me.stats.basePower}  |  DEF ${me.stats.defense}`, sx, 184);
-  ctx.fillStyle = '#888'; ctx.font = mono(8); ctx.fillText(`SPD ${me.stats.speed}  |  CRIT ${me.stats.critRate}%`, sx, 198);
-  const bW = 140, bH = 6, bX = sx, bY = 207;
-  ctx.fillStyle = '#22103f'; ctx.fillRect(bX, bY, bW, bH);
-  ctx.fillStyle = me.stats.color; ctx.shadowColor = me.stats.color; ctx.shadowBlur = 4;
-  ctx.fillRect(bX, bY, bW * (me.stats.basePower / 100), bH); ctx.shadowBlur = 0;
+  ctx.fillText(`@${me.profile.username.slice(0, 12)}`, sx, 148); ctx.shadowBlur = 0;
+  ctx.fillStyle = me.stats.color; ctx.font = mono(8); ctx.fillText(me.stats.archetypeLabel.toUpperCase(), sx, 163);
+
+  // Stat bars — 4 rows, clean layout
+  const sBarW = 128;
+  [
+    { label: 'PWR',  value: me.stats.basePower, color: me.stats.color, max: 100 },
+    { label: 'DEF',  value: me.stats.defense,   color: '#00ccff',     max: 100 },
+    { label: 'SPD',  value: me.stats.speed,      color: '#00ff41',     max: 100 },
+    { label: 'CRIT', value: me.stats.critRate,   color: '#ffd60a',     max: 80  },
+  ].forEach(({ label, value, color, max }, i) => {
+    const sy = 176 + i * 14;
+    ctx.fillStyle = '#555'; ctx.font = mono(6); ctx.textAlign = 'left';
+    ctx.fillText(`${label} ${value}`, sx, sy);
+    ctx.fillStyle = '#22103f'; ctx.fillRect(sx + 42, sy - 8, sBarW, 5);
+    ctx.fillStyle = color; ctx.shadowColor = color; ctx.shadowBlur = 3;
+    ctx.fillRect(sx + 42, sy - 8, sBarW * Math.min(1, value / max), 5); ctx.shadowBlur = 0;
+  });
   ctx.globalAlpha = isWin ? 0.4 : 0.8;
   const oX = CARD_W - 80, oY = 175, oR = 30;
   const oppImg = await loadImg(opponent.profile.username, opponent.profile.avatarUrl);
@@ -135,7 +145,29 @@ export function Results() {
   const isP1Win = winner.profile.username === player1.profile.username;
   const tweetText = buildTweetText(player1, player2, isP1Win, maxCombo, duration);
 
-  const shareOnX = () => window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}`, '_blank', 'noopener,noreferrer');
+  const shareWithCard = useCallback(async () => {
+    if (!canvasRef.current) return;
+    const blob = await new Promise<Blob>(res => canvasRef.current!.toBlob(b => res(b!), 'image/png'));
+    const file = new File([blob], 'fighter-result.png', { type: 'image/png' });
+
+    // Mobile: native share sheet — opens X/Twitter app with card image pre-attached
+    if (navigator.canShare?.({ files: [file] })) {
+      try {
+        await navigator.share({ title: '⚔ X Fighter Arena', text: tweetText, files: [file] });
+        return;
+      } catch { /* user dismissed */ }
+    }
+
+    // Desktop fallback: save card then open Twitter compose
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.download = 'fighter-result.png'; a.href = url; a.click();
+    URL.revokeObjectURL(url);
+    setTimeout(() => {
+      window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}`, '_blank', 'noopener,noreferrer');
+    }, 600);
+  }, [canvasRef, tweetText]);
+
   const copyText = async () => { await navigator.clipboard.writeText(tweetText).catch(() => {}); setCopied(true); setTimeout(() => setCopied(false), 2000); };
 
   return (
@@ -246,7 +278,7 @@ export function Results() {
             <button onClick={downloadCard} disabled={!cardReady} className="g-btn ghost sm" style={{ color: player1.stats.color, borderColor: player1.stats.color, boxShadow: 'none', fontSize: '8px' }}>
               📥 SAVE
             </button>
-            <button onClick={shareOnX} className="g-btn flex-1 sm" style={{ background: '#1d9bf0', fontSize: '9px', gap: '8px' }}>
+            <button onClick={shareWithCard} className="g-btn flex-1 sm" style={{ background: '#1d9bf0', fontSize: '9px', gap: '8px' }}>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.746l7.73-8.835L1.254 2.25H8.08l4.261 5.635zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
               </svg>

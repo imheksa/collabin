@@ -9,7 +9,7 @@ import {
 
 const GAME_URL = 'https://imheksa.github.io/collabin/gitmusk-fighter-arena/';
 const CARD_W = 600;
-const CARD_H = 315;
+const CARD_H = 400;
 
 function timeAgo(ts: number): string {
   const s = Math.floor((Date.now() - ts) / 1000);
@@ -58,195 +58,167 @@ async function renderProfileCard(
   maxCombo: number,
   archetypeLabel: string,
   archetypeColor: string,
-  unlockedAchievements: string[],
+  passiveAbility: string,
   basePower: number,
   defense: number,
   speed: number,
+  critRate: number,
+  stamina: number,
+  rageSpeed: number,
+  winStreak: number,
+  attackMult: number,
+  defenseMult: number,
+  xpMult: number,
 ) {
   canvas.width = CARD_W;
   canvas.height = CARD_H;
   const ctx = canvas.getContext('2d')!;
   const tier = getLevelTier(level);
   const [r, g, b] = hexToRgb(tier.color);
-  const mono = (size: number) => `bold ${size}px "Courier New", monospace`;
+  const mono = (sz: number) => `bold ${sz}px "Courier New", monospace`;
 
+  // Background + scanlines
   const bg = ctx.createLinearGradient(0, 0, CARD_W, CARD_H);
-  bg.addColorStop(0, '#06001a');
-  bg.addColorStop(1, '#180030');
-  ctx.fillStyle = bg;
-  ctx.fillRect(0, 0, CARD_W, CARD_H);
+  bg.addColorStop(0, '#06001a'); bg.addColorStop(1, '#180030');
+  ctx.fillStyle = bg; ctx.fillRect(0, 0, CARD_W, CARD_H);
+  for (let y = 0; y < CARD_H; y += 4) { ctx.fillStyle = 'rgba(0,0,0,0.15)'; ctx.fillRect(0, y, CARD_W, 2); }
 
-  for (let y = 0; y < CARD_H; y += 4) {
-    ctx.fillStyle = 'rgba(0,0,0,0.15)';
-    ctx.fillRect(0, y, CARD_W, 2);
-  }
-
-  ctx.strokeStyle = tier.color;
-  ctx.lineWidth = 3;
-  ctx.shadowColor = tier.color;
-  ctx.shadowBlur = 18;
-  ctx.strokeRect(3, 3, CARD_W - 6, CARD_H - 6);
-  ctx.shadowBlur = 0;
-  ctx.strokeStyle = `rgba(${r},${g},${b},0.25)`;
-  ctx.lineWidth = 1;
+  // Border
+  ctx.strokeStyle = tier.color; ctx.lineWidth = 3; ctx.shadowColor = tier.color; ctx.shadowBlur = 18;
+  ctx.strokeRect(3, 3, CARD_W - 6, CARD_H - 6); ctx.shadowBlur = 0;
+  ctx.strokeStyle = `rgba(${r},${g},${b},0.25)`; ctx.lineWidth = 1;
   ctx.strokeRect(8, 8, CARD_W - 16, CARD_H - 16);
 
-  ctx.fillStyle = `rgba(${r},${g},${b},0.14)`;
-  ctx.fillRect(0, 0, CARD_W, 42);
-  ctx.fillStyle = '#ff00ff';
-  ctx.shadowColor = '#ff00ff';
-  ctx.shadowBlur = 8;
-  ctx.font = mono(10);
-  ctx.textAlign = 'center';
-  ctx.fillText('⚔  GITMUSK FIGHTER ARENA  ⚔', CARD_W / 2, 26);
-  ctx.shadowBlur = 0;
-  ctx.fillStyle = tier.color;
-  ctx.shadowColor = tier.color;
-  ctx.shadowBlur = 10;
-  ctx.font = mono(8);
-  ctx.textAlign = 'right';
-  ctx.fillText(tier.name, CARD_W - 18, 26);
-  ctx.shadowBlur = 0;
+  // Header
+  ctx.fillStyle = `rgba(${r},${g},${b},0.14)`; ctx.fillRect(0, 0, CARD_W, 42);
+  ctx.fillStyle = '#ff00ff'; ctx.shadowColor = '#ff00ff'; ctx.shadowBlur = 8;
+  ctx.font = mono(10); ctx.textAlign = 'center';
+  ctx.fillText('⚔  GITMUSK FIGHTER ARENA  ⚔', CARD_W / 2, 26); ctx.shadowBlur = 0;
+  ctx.fillStyle = tier.color; ctx.shadowColor = tier.color; ctx.shadowBlur = 10;
+  ctx.font = mono(8); ctx.textAlign = 'right'; ctx.fillText(tier.name, CARD_W - 18, 26); ctx.shadowBlur = 0;
 
-  const AVX = 95, AVY = 128, AVR = 52;
+  // Avatar
+  const AVX = 95, AVY = 118, AVR = 48;
   const img = await loadImg(username, avatarUrl);
   ctx.save();
-  ctx.beginPath();
-  ctx.arc(AVX, AVY, AVR, 0, Math.PI * 2);
-  ctx.clip();
+  ctx.beginPath(); ctx.arc(AVX, AVY, AVR, 0, Math.PI * 2); ctx.clip();
   if (img) {
     ctx.drawImage(img, AVX - AVR, AVY - AVR, AVR * 2, AVR * 2);
   } else {
-    ctx.fillStyle = tier.color;
-    ctx.fill();
-    ctx.fillStyle = '#000';
-    ctx.font = mono(28);
-    ctx.textAlign = 'center';
-    ctx.fillText(username[0]?.toUpperCase() ?? '?', AVX, AVY + 10);
+    ctx.fillStyle = tier.color; ctx.fill();
+    ctx.fillStyle = '#000'; ctx.font = mono(26); ctx.textAlign = 'center';
+    ctx.fillText(username[0]?.toUpperCase() ?? '?', AVX, AVY + 9);
   }
   ctx.restore();
+  ctx.strokeStyle = tier.color; ctx.shadowColor = tier.color; ctx.shadowBlur = 14; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.arc(AVX, AVY, AVR + 4, 0, Math.PI * 2); ctx.stroke(); ctx.shadowBlur = 0;
 
-  ctx.strokeStyle = tier.color;
-  ctx.shadowColor = tier.color;
-  ctx.shadowBlur = 16;
-  ctx.lineWidth = 3;
-  ctx.beginPath();
-  ctx.arc(AVX, AVY, AVR + 4, 0, Math.PI * 2);
-  ctx.stroke();
-  ctx.shadowBlur = 0;
-
-  const lvW = 42, lvH = 16;
-  ctx.fillStyle = tier.color;
-  ctx.shadowColor = tier.color;
-  ctx.shadowBlur = 8;
-  ctx.fillRect(AVX - lvW / 2, AVY + AVR - 2, lvW, lvH);
-  ctx.shadowBlur = 0;
-  ctx.fillStyle = '#000';
-  ctx.font = mono(8);
-  ctx.textAlign = 'center';
+  // Level badge
+  ctx.fillStyle = tier.color; ctx.shadowColor = tier.color; ctx.shadowBlur = 6;
+  ctx.fillRect(AVX - 21, AVY + AVR - 1, 42, 15); ctx.shadowBlur = 0;
+  ctx.fillStyle = '#000'; ctx.font = mono(7); ctx.textAlign = 'center';
   ctx.fillText(`LV${level}`, AVX, AVY + AVR + 10);
 
-  const xpBarX = 18, xpBarY = AVY + AVR + 26, xpBarW = 160, xpBarH = 7;
+  // XP bar (below avatar)
+  const xpBarX = 18, xpBarY = AVY + AVR + 22, xpBarW = 155, xpBarH = 6;
   const xpPct = xpProgressInLevel(xp, level);
-  const xpLeft = xpForLevel(level);
-  const xpNext = xpForLevel(level + 1);
-  ctx.fillStyle = '#1a0030';
-  ctx.fillRect(xpBarX, xpBarY, xpBarW, xpBarH);
+  const xpLeft = xpForLevel(level); const xpNext = xpForLevel(level + 1);
+  ctx.fillStyle = '#1a0030'; ctx.fillRect(xpBarX, xpBarY, xpBarW, xpBarH);
   const xpGrad = ctx.createLinearGradient(xpBarX, 0, xpBarX + xpBarW, 0);
-  xpGrad.addColorStop(0, tier.color);
-  xpGrad.addColorStop(1, archetypeColor);
-  ctx.fillStyle = xpGrad;
-  ctx.shadowColor = tier.color;
-  ctx.shadowBlur = 6;
-  ctx.fillRect(xpBarX, xpBarY, xpBarW * xpPct, xpBarH);
-  ctx.shadowBlur = 0;
-  ctx.fillStyle = '#444';
-  ctx.font = mono(6);
-  ctx.textAlign = 'left';
-  ctx.fillText(`${xp - xpLeft} / ${xpNext - xpLeft} XP`, xpBarX, xpBarY + xpBarH + 11);
+  xpGrad.addColorStop(0, tier.color); xpGrad.addColorStop(1, archetypeColor);
+  ctx.fillStyle = xpGrad; ctx.shadowColor = tier.color; ctx.shadowBlur = 5;
+  ctx.fillRect(xpBarX, xpBarY, xpBarW * xpPct, xpBarH); ctx.shadowBlur = 0;
+  ctx.fillStyle = '#555'; ctx.font = mono(6); ctx.textAlign = 'left';
+  ctx.fillText(`XP ${xp - xpLeft} / ${xpNext - xpLeft}`, xpBarX, xpBarY + xpBarH + 11);
 
-  const RX = 200;
-  ctx.fillStyle = '#ffffff';
-  ctx.shadowColor = tier.color;
-  ctx.shadowBlur = 8;
-  ctx.font = mono(16);
-  ctx.textAlign = 'left';
-  ctx.fillText(`@${username.slice(0, 14)}`, RX, 76);
-  ctx.shadowBlur = 0;
-  ctx.fillStyle = archetypeColor;
-  ctx.font = mono(8);
-  ctx.fillText(archetypeLabel.toUpperCase(), RX, 94);
+  // Identity (right side)
+  const RX = 196;
+  ctx.fillStyle = '#ffffff'; ctx.shadowColor = tier.color; ctx.shadowBlur = 8;
+  ctx.font = mono(15); ctx.textAlign = 'left'; ctx.fillText(`@${username.slice(0, 14)}`, RX, 68); ctx.shadowBlur = 0;
+  ctx.fillStyle = archetypeColor; ctx.font = mono(8); ctx.fillText(archetypeLabel.toUpperCase(), RX, 84);
 
+  // Win/loss stats row
   const total = wins + losses;
   const wr = total > 0 ? Math.round((wins / total) * 100) : 0;
-  const cells1 = [
-    { label: 'WINS', value: String(wins), color: '#00ff41' },
-    { label: 'LOSSES', value: String(losses), color: '#ff4040' },
-    { label: 'WIN RATE', value: `${wr}%`, color: wr >= 60 ? '#00ff41' : wr >= 40 ? '#ffaa00' : '#ff4040' },
-  ];
-  const colW = (CARD_W - RX - 20) / 3;
-  cells1.forEach(({ label, value, color }, i) => {
-    const cx = RX + colW * i + colW / 2;
-    ctx.fillStyle = '#444'; ctx.font = mono(6); ctx.textAlign = 'center'; ctx.fillText(label, cx, 118);
-    ctx.fillStyle = color; ctx.shadowColor = color; ctx.shadowBlur = 6;
-    ctx.font = mono(14); ctx.fillText(value, cx, 138); ctx.shadowBlur = 0;
+  const cw = (CARD_W - RX - 18) / 4;
+  [
+    { label: 'WINS',   value: String(wins),    color: '#00ff41' },
+    { label: 'LOSSES', value: String(losses),  color: '#ff4040' },
+    { label: 'WIN %',  value: `${wr}%`,        color: wr >= 60 ? '#00ff41' : wr >= 40 ? '#ffaa00' : '#ff4040' },
+    { label: 'COMBO',  value: `${maxCombo}x`,  color: '#ffd60a' },
+  ].forEach(({ label, value, color }, i) => {
+    const cx = RX + cw * i + cw / 2;
+    ctx.fillStyle = '#555'; ctx.font = mono(6); ctx.textAlign = 'center'; ctx.fillText(label, cx, 106);
+    ctx.fillStyle = color; ctx.shadowColor = color; ctx.shadowBlur = 5;
+    ctx.font = mono(13); ctx.fillText(value, cx, 124); ctx.shadowBlur = 0;
   });
 
-  const cells2 = [
-    { label: 'MAX COMBO', value: `${maxCombo}x`, color: '#ffff00' },
-    { label: 'MATCHES', value: String(total), color: '#00ccff' },
-  ];
-  const colW2 = (CARD_W - RX - 20) / 2;
-  cells2.forEach(({ label, value, color }, i) => {
-    const cx = RX + colW2 * i + colW2 / 2;
-    ctx.fillStyle = '#444'; ctx.font = mono(6); ctx.textAlign = 'center'; ctx.fillText(label, cx, 156);
-    ctx.fillStyle = color; ctx.shadowColor = color; ctx.shadowBlur = 6;
-    ctx.font = mono(13); ctx.fillText(value, cx, 174); ctx.shadowBlur = 0;
-  });
-
+  // Divider
   ctx.strokeStyle = `rgba(${r},${g},${b},0.3)`; ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.moveTo(16, 198); ctx.lineTo(CARD_W - 16, 198); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(16, 176); ctx.lineTo(CARD_W - 16, 176); ctx.stroke();
 
-  const bars = [
-    { label: 'PWR', value: basePower, color: archetypeColor },
-    { label: 'DEF', value: defense, color: '#00ccff' },
-    { label: 'SPD', value: speed, color: '#00ff41' },
-  ];
-  const barSW = (CARD_W - 32) / 3;
-  bars.forEach(({ label, value, color }, i) => {
-    const bx = 16 + barSW * i; const bw = barSW - 16;
-    ctx.fillStyle = '#444'; ctx.font = mono(7); ctx.textAlign = 'left'; ctx.fillText(`${label} ${value}`, bx, 218);
-    ctx.fillStyle = '#1a0030'; ctx.fillRect(bx, 222, bw, 6);
-    ctx.fillStyle = color; ctx.shadowColor = color; ctx.shadowBlur = 4;
-    ctx.fillRect(bx, 222, bw * (value / 100), 6); ctx.shadowBlur = 0;
+  // BASE STATS — 6 bars in 2 columns
+  ctx.fillStyle = '#666'; ctx.font = mono(7); ctx.textAlign = 'left'; ctx.fillText('BASE STATS', 16, 191);
+  const colW6 = (CARD_W - 32) / 2;
+  [
+    { label: 'POWER',    value: basePower, color: archetypeColor, max: 100 },
+    { label: 'CRIT %',   value: critRate,  color: '#ffd60a',     max: 80 },
+    { label: 'DEFENSE',  value: defense,   color: '#00ccff',     max: 100 },
+    { label: 'STAMINA',  value: stamina,   color: '#ff6699',     max: 100 },
+    { label: 'SPEED',    value: speed,     color: '#00ff41',     max: 100 },
+    { label: 'RAGE SPD', value: rageSpeed, color: '#ff3300',     max: 100 },
+  ].forEach(({ label, value, color, max }, i) => {
+    const col = i % 2, row = Math.floor(i / 2);
+    const bx = 16 + col * colW6, by = 200 + row * 22, bw = colW6 - 18;
+    ctx.fillStyle = '#555'; ctx.font = mono(6); ctx.textAlign = 'left';
+    ctx.fillText(`${label} ${value}`, bx, by);
+    ctx.fillStyle = '#1a0030'; ctx.fillRect(bx, by + 4, bw, 5);
+    ctx.fillStyle = color; ctx.shadowColor = color; ctx.shadowBlur = 3;
+    ctx.fillRect(bx, by + 4, bw * Math.min(1, value / max), 5); ctx.shadowBlur = 0;
   });
 
-  ctx.strokeStyle = `rgba(${r},${g},${b},0.2)`; ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.moveTo(16, 240); ctx.lineTo(CARD_W - 16, 240); ctx.stroke();
-  ctx.fillStyle = '#444'; ctx.font = mono(6); ctx.textAlign = 'left'; ctx.fillText('ACHIEVEMENTS', 16, 254);
+  // Divider
+  ctx.strokeStyle = `rgba(${r},${g},${b},0.3)`; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(16, 272); ctx.lineTo(CARD_W - 16, 272); ctx.stroke();
 
-  const unlocked = ACHIEVEMENTS.filter(a => unlockedAchievements.includes(a.id));
-  if (unlocked.length === 0) {
-    ctx.fillStyle = '#333'; ctx.font = mono(8); ctx.textAlign = 'center';
-    ctx.fillText('Play matches to unlock!', CARD_W / 2, 270);
-  } else {
-    const show = unlocked.slice(0, 7);
-    show.forEach((ach, i) => {
-      ctx.font = '18px serif'; ctx.textAlign = 'left'; ctx.globalAlpha = 1;
-      ctx.fillText(ach.icon, 100 + i * 62, 272);
-    });
-    if (unlocked.length > 7) {
-      ctx.fillStyle = '#555'; ctx.font = mono(7); ctx.textAlign = 'left';
-      ctx.fillText(`+${unlocked.length - 7}`, 100 + 7 * 62, 272);
-    }
-  }
-  ctx.globalAlpha = 1;
+  // COMBAT MODIFIERS — 4 boxes
+  ctx.fillStyle = '#666'; ctx.font = mono(7); ctx.textAlign = 'left'; ctx.fillText('COMBAT MODIFIERS', 16, 286);
+  const atkPct = Math.round((attackMult - 1) * 100);
+  const defPct = Math.round((1 - defenseMult) * 100);
+  const xpPctMod = Math.round((xpMult - 1) * 100);
+  const modW = (CARD_W - 32) / 4;
+  [
+    { label: 'ATK BOOST',  value: `${atkPct >= 0 ? '+' : ''}${atkPct}%`,  pos: atkPct >= 0 },
+    { label: 'DMG SHIELD', value: `-${Math.max(0, defPct)}%`,              pos: defPct >= 0 },
+    { label: 'WIN STREAK', value: `${winStreak}x`,                         pos: winStreak > 0 },
+    { label: 'XP BONUS',   value: `+${xpPctMod}%`,                        pos: xpMult >= 1 },
+  ].forEach(({ label, value, pos }, i) => {
+    const bx = 16 + modW * i, by = 294, mw = modW - 4;
+    const mc = pos ? '#00ff41' : '#ff4040';
+    ctx.fillStyle = pos ? 'rgba(0,255,65,.07)' : 'rgba(255,45,117,.07)';
+    ctx.fillRect(bx, by, mw, 42);
+    ctx.strokeStyle = mc; ctx.globalAlpha = 0.35; ctx.lineWidth = 1;
+    ctx.strokeRect(bx, by, mw, 42); ctx.globalAlpha = 1;
+    ctx.fillStyle = '#555'; ctx.font = mono(5); ctx.textAlign = 'center';
+    ctx.fillText(label, bx + mw / 2, by + 13);
+    ctx.fillStyle = mc; ctx.shadowColor = mc; ctx.shadowBlur = 5;
+    ctx.font = mono(11); ctx.fillText(value, bx + mw / 2, by + 32); ctx.shadowBlur = 0;
+  });
 
-  ctx.fillStyle = `rgba(${r},${g},${b},0.08)`; ctx.fillRect(0, 283, CARD_W, CARD_H - 283);
+  // Passive ability
+  ctx.strokeStyle = `rgba(${r},${g},${b},0.3)`; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(16, 348); ctx.lineTo(CARD_W - 16, 348); ctx.stroke();
+  ctx.fillStyle = '#666'; ctx.font = mono(6); ctx.textAlign = 'left'; ctx.fillText('PASSIVE', 16, 363);
+  ctx.fillStyle = archetypeColor; ctx.font = mono(7);
+  const pt = passiveAbility.length > 62 ? passiveAbility.slice(0, 60) + '…' : passiveAbility;
+  ctx.fillText(pt, 82, 363);
+
+  // Footer
+  ctx.fillStyle = `rgba(${r},${g},${b},0.08)`; ctx.fillRect(0, 378, CARD_W, CARD_H - 378);
   ctx.strokeStyle = `rgba(${r},${g},${b},0.2)`; ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.moveTo(0, 283); ctx.lineTo(CARD_W, 283); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(0, 378); ctx.lineTo(CARD_W, 378); ctx.stroke();
   ctx.fillStyle = '#555'; ctx.font = mono(7); ctx.textAlign = 'center';
-  ctx.fillText(`⚔️  Think you can beat me?  •  ${GAME_URL}`, CARD_W / 2, 303);
+  ctx.fillText(`⚔  Think you can beat me?  •  ${GAME_URL}`, CARD_W / 2, 394);
 }
 
 const ARCHETYPE_LABELS: Record<string, string> = {
@@ -307,10 +279,15 @@ export function Profile() {
     if (!canvasRef.current || !player1) return;
     setCardReady(false);
     renderProfileCard(
-      canvasRef.current, username, player1.profile.avatarUrl, profile.level, profile.xp,
-      profile.wins, profile.losses, profile.maxCombo, player1.stats.archetypeLabel,
-      player1.stats.color, profile.achievements, player1.stats.basePower,
-      player1.stats.defense, player1.stats.speed,
+      canvasRef.current,
+      username, player1.profile.avatarUrl,
+      profile.level, profile.xp,
+      profile.wins, profile.losses, profile.maxCombo,
+      player1.stats.archetypeLabel, player1.stats.color,
+      player1.stats.passiveAbility,
+      player1.stats.basePower, player1.stats.defense, player1.stats.speed,
+      player1.stats.critRate, player1.stats.stamina, player1.stats.rageSpeed,
+      profile.winStreak, mods.attackMult, mods.defenseMult, mods.xpMult,
     ).then(() => setCardReady(true));
   }, [username, profile.level, profile.wins, profile.losses]);
 
@@ -322,18 +299,38 @@ export function Profile() {
     a.click();
   }, [username]);
 
-  const shareOnX = useCallback(() => {
-    const text = [
-      `🎮 My #GitMuskFighterArena fighter card!`,
-      ``,
-      `@${username} · ${tier.name} · LV${profile.level}`,
-      `⚔ ${profile.wins}W / ${profile.losses}L · ${winRate}% WR`,
-      `💥 Max combo: ${profile.maxCombo}x`,
-      ``,
-      `Think you can beat me? ${GAME_URL}`,
-    ].join('\n');
-    window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer');
-  }, [username, tier, profile, winRate]);
+  const tweetText = [
+    `🎮 My #GitMuskFighterArena fighter card!`,
+    ``,
+    `@${username} · ${tier.name} · LV${profile.level}`,
+    `⚔ ${profile.wins}W / ${profile.losses}L · ${winRate}% WR`,
+    `💥 Max combo: ${profile.maxCombo}x | ${player1?.stats.archetypeLabel}`,
+    ``,
+    `Think you can beat me? ${GAME_URL}`,
+  ].join('\n');
+
+  const shareWithCard = useCallback(async () => {
+    if (!canvasRef.current) return;
+    const blob = await new Promise<Blob>(res => canvasRef.current!.toBlob(b => res(b!), 'image/png'));
+    const file = new File([blob], `gitmusk-${username}.png`, { type: 'image/png' });
+
+    // Mobile: native share sheet with image (opens X/Twitter app with image pre-attached)
+    if (navigator.canShare?.({ files: [file] })) {
+      try {
+        await navigator.share({ title: '⚔ GitMusk Fighter Arena', text: tweetText, files: [file] });
+        return;
+      } catch { /* user dismissed */ }
+    }
+
+    // Desktop fallback: download PNG then open Twitter compose
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.download = `gitmusk-${username}.png`; a.href = url; a.click();
+    URL.revokeObjectURL(url);
+    setTimeout(() => {
+      window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}`, '_blank', 'noopener,noreferrer');
+    }, 600);
+  }, [canvasRef, username, tweetText]);
 
   const copyLink = useCallback(async () => {
     await navigator.clipboard.writeText(GAME_URL).catch(() => {});
@@ -556,7 +553,7 @@ export function Profile() {
             <button onClick={downloadCard} disabled={!cardReady} className="g-btn ghost" style={{ flex: 1, fontSize: '8px' }}>
               📥 SAVE CARD
             </button>
-            <button onClick={shareOnX} className="g-btn" style={{ flex: 1, fontSize: '8px', background: '#1d9bf0', boxShadow: '0 4px 0 0 #0d5a8a, 0 4px 0 4px var(--void), 0 8px 0 4px #5a1a99' }}>
+            <button onClick={shareWithCard} className="g-btn" style={{ flex: 1, fontSize: '8px', background: '#1d9bf0', boxShadow: '0 4px 0 0 #0d5a8a, 0 4px 0 4px var(--void), 0 8px 0 4px #5a1a99' }}>
               <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.746l7.73-8.835L1.254 2.25H8.08l4.261 5.635zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
               </svg>
