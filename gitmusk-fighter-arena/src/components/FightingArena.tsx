@@ -4,6 +4,7 @@ import { calcDamage } from '../utils/statsCalculator';
 import { getProfile, getCombatModifiers } from '../utils/playerProfile';
 import { HPBar } from './HPBar';
 import { playPunch, playKick, playSpecial, playUltimate, playBlock, playCombo, playKO } from '../utils/sounds';
+import { drawArchetypeFighter } from '../utils/fighterSprites';
 
 const W = 800;
 const H = 400;
@@ -453,11 +454,11 @@ function drawFighter(
   f: GameFighterState,
   color: string,
   side: 'left' | 'right',
-  name: string
+  name: string,
+  archetype: string,
 ) {
   const x = f.x;
   const y = f.y;
-  const dir = f.facing;
   ctx.save();
 
   // Shadow on floor
@@ -466,114 +467,52 @@ function drawFighter(
   ctx.ellipse(x + FW / 2, FLOOR_Y + 5, FW * 0.6, 8, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  const isHurt = f.state === 'hurt';
-  const isDead = f.state === 'dead';
-  const isBlocking = f.state === 'block';
-  const isAttacking = ['punch', 'kick', 'special', 'ultimate'].includes(f.state);
-  const isJumping = !f.isGrounded;
+  const isHurt    = f.state === 'hurt';
+  const isDead    = f.state === 'dead';
   const isSpecial = f.state === 'special';
   const isUltimate = f.state === 'ultimate';
+  const isAttacking = ['punch', 'kick', 'special', 'ultimate'].includes(f.state);
 
-  ctx.globalAlpha = isDead ? 0.4 : 1.0;
+  ctx.globalAlpha = isDead ? 0.5 : 1.0;
 
   if (isHurt) {
     ctx.shadowColor = '#ffffff';
     ctx.shadowBlur = 25;
-  } else if (isSpecial) {
-    ctx.shadowColor = color;
-    ctx.shadowBlur = 30;
   } else if (isUltimate) {
     ctx.shadowColor = '#ffff00';
     ctx.shadowBlur = 35;
+  } else if (isSpecial) {
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 30;
   } else {
     ctx.shadowColor = color;
     ctx.shadowBlur = isAttacking ? 15 : 6;
   }
 
-  const bodyColor = isBlocking ? '#446688' : isHurt ? '#ffffff' : isSpecial ? '#ffffff' : color;
-  ctx.fillStyle = bodyColor;
-  const bodyY = y + 28;
-  ctx.fillRect(x + 8, bodyY, FW - 16, 40);
+  // Draw pixel-art archetype sprite
+  drawArchetypeFighter(ctx, archetype, f.state, f.facing, x, y, Date.now(), f.isGrounded);
 
-  // Head
-  const headRadius = 18;
-  const headX = x + FW / 2;
-  const headY = y + headRadius + 2;
-  ctx.beginPath();
-  ctx.arc(headX, headY, headRadius, 0, Math.PI * 2);
-  ctx.fill();
-
-  // Eyes
-  ctx.fillStyle = '#000';
-  const eyeOffsetX = dir === 1 ? 5 : -5;
-  ctx.beginPath();
-  ctx.arc(headX + eyeOffsetX - 3, headY - 3, 3, 0, Math.PI * 2);
-  ctx.arc(headX + eyeOffsetX + 3, headY - 3, 3, 0, Math.PI * 2);
-  ctx.fill();
-
-  // Glowing eyes (extra glow during special/ultimate)
-  const eyeColor = isUltimate ? '#ffff00' : isSpecial ? '#ffffff' : color;
-  ctx.fillStyle = eyeColor;
-  ctx.shadowColor = eyeColor;
-  ctx.shadowBlur = isSpecial || isUltimate ? 12 : 4;
-  ctx.beginPath();
-  ctx.arc(headX + eyeOffsetX - 3, headY - 3, 1.8, 0, Math.PI * 2);
-  ctx.arc(headX + eyeOffsetX + 3, headY - 3, 1.8, 0, Math.PI * 2);
-  ctx.fill();
-
-  ctx.shadowBlur = isAttacking ? 15 : 6;
-  ctx.shadowColor = color;
-  ctx.fillStyle = bodyColor;
-
-  // Arms
-  const armY = bodyY + 10;
-  if (isAttacking && f.state === 'punch') {
-    const armExtend = dir === 1 ? FW + 22 : -22;
-    ctx.fillRect(x + FW / 2, armY, armExtend, 10);
-    ctx.fillRect(x + 2, armY + 5, 10, 25);
-  } else if (isAttacking && (f.state === 'kick' || f.state === 'special')) {
-    ctx.fillRect(x + 2, armY, 10, 25);
-    ctx.fillRect(x + FW - 12, armY, 10, 25);
-    const legExtend = dir === 1 ? FW + 28 : -28;
-    ctx.fillRect(x + FW / 2, bodyY + 35, legExtend, 10);
-  } else if (isBlocking) {
-    ctx.fillRect(x + FW / 2 - 5, armY - 5, 12, 35);
-    ctx.fillRect(x + 2, armY, 10, 25);
-  } else if (isUltimate) {
-    // Arms raised for ultimate
-    ctx.fillRect(x + 2, armY - 15, 10, 30);
-    ctx.fillRect(x + FW - 12, armY - 15, 10, 30);
-  } else {
-    ctx.fillRect(x + 2, armY, 10, isJumping ? 20 : 30);
-    ctx.fillRect(x + FW - 12, armY, 10, isJumping ? 20 : 30);
+  // Hurt white flash overlay
+  if (isHurt) {
+    ctx.globalAlpha = 0.45;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(x, y, FW, FH);
   }
 
-  // Legs
-  const legY = bodyY + 40;
-  if (isJumping) {
-    ctx.fillRect(x + 10, legY, 12, 20);
-    ctx.fillRect(x + FW - 22, legY, 12, 20);
-  } else if (f.state === 'walk_fwd' || f.state === 'walk_back') {
-    const t = Date.now() / 200;
-    const legSwing = Math.sin(t) * 12;
-    ctx.fillRect(x + 10, legY + legSwing, 12, 28);
-    ctx.fillRect(x + FW - 22, legY - legSwing, 12, 28);
-  } else {
-    ctx.fillRect(x + 10, legY, 12, 30);
-    ctx.fillRect(x + FW - 22, legY, 12, 30);
-  }
+  ctx.globalAlpha = 1.0;
 
   // Ultimate aura
   if (isUltimate) {
+    ctx.save();
     ctx.globalAlpha = 0.25;
     ctx.fillStyle = '#ffff00';
     ctx.beginPath();
     ctx.arc(x + FW / 2, y + FH / 2, 60, 0, Math.PI * 2);
     ctx.fill();
-    ctx.globalAlpha = 1;
+    ctx.restore();
   }
 
-  // Special ready indicator (aura outline)
+  // Special ready indicator
   if (f.specialReady && !['special', 'ultimate', 'dead'].includes(f.state)) {
     ctx.save();
     ctx.globalAlpha = 0.4 + Math.sin(Date.now() / 150) * 0.2;
@@ -1005,8 +944,8 @@ export function FightingArena({ player1, player2, onMatchEnd }: ArenaProps) {
       // Fighters
       const p1Color = ARCHETYPE_COLORS[player1.stats.archetype] || '#00ffff';
       const p2Color = ARCHETYPE_COLORS[player2.stats.archetype] || '#ff00ff';
-      drawFighter(ctx, p1, p1Color, 'left', player1.profile.username);
-      drawFighter(ctx, p2, p2Color, 'right', player2.profile.username);
+      drawFighter(ctx, p1, p1Color, 'left',  player1.profile.username, player1.stats.archetype);
+      drawFighter(ctx, p2, p2Color, 'right', player2.profile.username, player2.stats.archetype);
 
       // Hit rings
       for (const ring of hitRingsRef.current) {

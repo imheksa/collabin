@@ -120,7 +120,7 @@ export const ARCHETYPES: Record<Archetype, ArchetypeData> = {
     passiveAbility: 'OG Status: -30% damage received from all sources',
     ultimateName: 'Old Guard',
     ultimateDescription: 'Enter invincibility for 4s and deal steady chip damage',
-    color: '#gold',
+    color: '#ffd700',
     glowColor: '#ffcc00',
     keywords: ['og', 'early', '2010', '2011', '2012', '2013', '2014', 'veteran', 'since'],
     attackMod: 0.9,
