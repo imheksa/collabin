@@ -87,6 +87,16 @@ export type FighterState =
   | 'hurt'
   | 'dead';
 
+export interface DamageOverTime {
+  dmgPerTick: number;
+  ticks: number;
+  interval: number;
+  counter: number;
+  color: string;
+  label: string;
+  random?: [number, number];
+}
+
 export interface GameFighterState {
   x: number;
   y: number;
@@ -106,4 +116,7 @@ export interface GameFighterState {
   side: 'left' | 'right';
   specialHitCount: number;
   specialReady: boolean;
+  stunTimer: number;
+  invincibleTimer: number;
+  dots: DamageOverTime[];
 }

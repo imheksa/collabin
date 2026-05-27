@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { Fighter, GameFighterState, MatchResult } from '../types';
 import { calcDamage } from '../utils/statsCalculator';
+import { applyUltimate } from '../utils/ultimates';
 import { getProfile, getCombatModifiers } from '../utils/playerProfile';
 import { HPBar } from './HPBar';
 import { playPunch, playKick, playSpecial, playUltimate, playBlock, playCombo, playKO } from '../utils/sounds';
@@ -603,6 +604,9 @@ function makeInitialState(side: 'left' | 'right', maxHp: number): GameFighterSta
     side,
     specialHitCount: 0,
     specialReady: false,
+    stunTimer: 0,
+    invincibleTimer: 0,
+    dots: [],
   };
 }
 
@@ -610,9 +614,10 @@ interface ArenaProps {
   player1: Fighter;
   player2: Fighter;
   onMatchEnd: (result: MatchResult) => void;
+  p2AI?: boolean;
 }
 
-export function FightingArena({ player1, player2, onMatchEnd }: ArenaProps) {
+export function FightingArena({ player1, player2, onMatchEnd, p2AI = true }: ArenaProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const p1Ref = useRef<GameFighterState>(makeInitialState('left', 100));
@@ -624,6 +629,7 @@ export function FightingArena({ player1, player2, onMatchEnd }: ArenaProps) {
   const maxComboRef = useRef(0);
   const gameOverRef = useRef(false);
   const koFiredRef = useRef(false);
+  const aiRef = useRef<{ think: number; intent: 'idle' | 'approach' | 'retreat' | 'block' }>({ think: 0, intent: 'idle' });
 
   // Visual effects
   const particlesRef = useRef<Particle[]>([]);
@@ -679,10 +685,60 @@ export function FightingArena({ player1, player2, onMatchEnd }: ArenaProps) {
     const dist = Math.abs((attacker.x + FW / 2) - (defender.x + FW / 2));
     const hitX = defender.x + FW / 2;
     const hitY = defender.y + FH / 3;
+    const inRange = dist < range[move];
+    const attackerMods = attacker.side === 'left' ? p1ModsRef.current : undefined;
+    const defenderMods = defender.side === 'left' ? p1ModsRef.current : undefined;
 
-    if (dist < range[move]) {
-      const attackerMods = attacker.side === 'left' ? p1ModsRef.current : undefined;
-      const defenderMods = defender.side === 'left' ? p1ModsRef.current : undefined;
+    // ── Ultimate: unique per-archetype effect ──────────────────
+    if (move === 'ultimate') {
+      const res = applyUltimate(
+        attackerFighter.stats.archetype,
+        attacker, defender,
+        attackerFighter.stats, defenderFighter.stats,
+        attackerMods, defenderMods,
+        inRange,
+      );
+      attacker.rage = 0;
+      if (res.selfDamage > 0) {
+        attacker.hp = Math.max(0, attacker.hp - res.selfDamage);
+        hitTextRef.current.push({ x: attacker.x + FW / 2, y: attacker.y + FH / 3, text: `-${res.selfDamage}`, timer: 45, color: '#ff4444', size: 14 });
+      }
+      if (res.damage > 0) {
+        defender.hp = Math.max(0, defender.hp - res.damage);
+        defender.comboCount = 0;
+        if (defender.state !== 'dead') { defender.state = 'hurt'; defender.stateTimer = 25; }
+        hitTextRef.current.push({ x: hitX + (Math.random() - 0.5) * 20, y: hitY - 10, text: `💥${res.damage}!`, timer: 50, color: '#ffff00', size: 16 });
+      } else if (inRange && defender.invincibleTimer > 0) {
+        hitTextRef.current.push({ x: hitX, y: hitY - 10, text: 'IMMUNE', timer: 45, color: '#88ddff', size: 13 });
+      }
+
+      const ucolor = ARCHETYPE_COLORS[attackerFighter.stats.archetype] || '#ffff00';
+      const bannerX = attacker.side === 'left' ? W * 0.3 : W * 0.7;
+      hitTextRef.current.push({ x: bannerX, y: FLOOR_Y - 150, text: res.text, timer: 90, color: ucolor, size: 14 });
+
+      const effect = spawnSpecialEffect(attacker.x, attacker.y, defender.x, defender.y, attackerFighter.stats.archetype, '#ffff00');
+      effect.particles.push(...Array.from({ length: 20 }, () => {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 4 + Math.random() * 8;
+        return makeParticle(hitX, hitY, Math.cos(angle) * speed, Math.sin(angle) * speed - 2, 5 + Math.random() * 10, ucolor, 0.02, 'star', 0.08);
+      }));
+      specialEffectsRef.current.push(effect);
+      screenFlashRef.current = { alpha: 0.5, color: '#ffff00' };
+      hitRingsRef.current.push({ x: attacker.x + FW / 2, y: attacker.y + FH / 2, radius: 5, maxRadius: 100, alpha: 1, color: ucolor, width: 3 });
+      shakeRef.current.amount = Math.max(shakeRef.current.amount, 14);
+      playUltimate();
+      return;
+    }
+
+    // ── Normal moves vs an invincible defender: no effect ───────
+    if (inRange && defender.invincibleTimer > 0) {
+      hitTextRef.current.push({ x: hitX, y: hitY - 10, text: 'IMMUNE', timer: 40, color: '#88ddff', size: 12 });
+      playBlock();
+      if (move === 'special') { attacker.specialHitCount = 0; attacker.specialReady = false; }
+      return;
+    }
+
+    if (inRange) {
       const dmg = calcDamage(
         attackerFighter.stats,
         defenderFighter.stats,
@@ -697,7 +753,7 @@ export function FightingArena({ player1, player2, onMatchEnd }: ArenaProps) {
 
       if (defender.state !== 'block') {
         defender.state = 'hurt';
-        defender.stateTimer = move === 'ultimate' ? 25 : 15;
+        defender.stateTimer = 15;
         attacker.comboCount++;
         attacker.comboTimer = 60;
         maxComboRef.current = Math.max(maxComboRef.current, attacker.comboCount);
@@ -733,10 +789,9 @@ export function FightingArena({ player1, player2, onMatchEnd }: ArenaProps) {
         attacker.specialReady = false;
       }
 
-      // Rage fill
-      const rageFill = { punch: 8, kick: 12, special: 0, ultimate: 0 };
-      attacker.rage = Math.min(100, attacker.rage + rageFill[move]);
-      if (move === 'ultimate') attacker.rage = 0;
+      // Rage fill (ultimate is handled earlier and never reaches here)
+      const rageFill: Record<string, number> = { punch: 8, kick: 12, special: 0 };
+      attacker.rage = Math.min(100, attacker.rage + (rageFill[move] ?? 0));
 
       // ── Spawn visual effects ──────────────────────────────────
       const color = ARCHETYPE_COLORS[attackerFighter.stats.archetype] || '#00ffff';
@@ -764,7 +819,6 @@ export function FightingArena({ player1, player2, onMatchEnd }: ArenaProps) {
       if (move === 'punch') playPunch();
       else if (move === 'kick') playKick();
       else if (move === 'special') playSpecial();
-      else if (move === 'ultimate') playUltimate();
 
       // Special elemental effect
       if (move === 'special') {
@@ -778,33 +832,15 @@ export function FightingArena({ player1, player2, onMatchEnd }: ArenaProps) {
         screenFlashRef.current = { alpha: 0.3, color };
       }
 
-      // Ultimate mega effect
-      if (move === 'ultimate') {
-        const effect = spawnSpecialEffect(
-          attacker.x, attacker.y,
-          defender.x, defender.y,
-          attackerFighter.stats.archetype,
-          '#ffff00'
-        );
-        effect.particles.push(...Array.from({ length: 20 }, () => {
-          const angle = Math.random() * Math.PI * 2;
-          const speed = 4 + Math.random() * 8;
-          return makeParticle(hitX, hitY, Math.cos(angle) * speed, Math.sin(angle) * speed - 2, 5 + Math.random() * 10, '#ffff00', 0.02, 'star', 0.08);
-        }));
-        specialEffectsRef.current.push(effect);
-        screenFlashRef.current = { alpha: 0.5, color: '#ffff00' };
-        hitRingsRef.current.push({ x: hitX, y: hitY, radius: 5, maxRadius: 100, alpha: 1, color: '#ffff00', width: 3 });
-      }
-
       // Damage text
       const isCrit = dmg > 15;
       hitTextRef.current.push({
         x: hitX + (Math.random() - 0.5) * 20,
         y: hitY - 10,
-        text: move === 'ultimate' ? `💥${dmg}!` : isCrit ? `CRIT! ${dmg}` : `${dmg}`,
+        text: isCrit ? `CRIT! ${dmg}` : `${dmg}`,
         timer: 45,
-        color: move === 'ultimate' ? '#ffff00' : isCrit ? '#ff4444' : color,
-        size: move === 'ultimate' ? 16 : isCrit ? 14 : 12,
+        color: isCrit ? '#ff4444' : color,
+        size: isCrit ? 14 : 12,
       });
     } else if (move === 'special') {
       // Miss — still consume special
@@ -817,6 +853,11 @@ export function FightingArena({ player1, player2, onMatchEnd }: ArenaProps) {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d')!;
+
+    // AI tuning scales with the opponent's derived combat stats
+    const aiThinkBase = Math.round(13 - (player2.stats.speed / 100) * 7); // 13 (slow) → 6 (fast)
+    const aiAggression = 0.45 + (player2.stats.basePower / 100) * 0.4;     // 0.45 → 0.85
+    const aiBlockChance = 0.18 + (player2.stats.defense / 100) * 0.5;      // 0.18 → 0.68
 
     const onKey = (e: KeyboardEvent) => { keysRef.current.add(e.key); e.preventDefault(); };
     const onKeyUp = (e: KeyboardEvent) => keysRef.current.delete(e.key);
@@ -868,8 +909,8 @@ export function FightingArena({ player1, player2, onMatchEnd }: ArenaProps) {
       }
 
       if (!gameOverRef.current) {
-      // P1 controls: WASD + F/G/H/V + S=block
-      if (p1.stateTimer <= 0) {
+      // P1 controls: WASD + F/G/H/V + S=block (locked out while stunned)
+      if (p1.stateTimer <= 0 && p1.stunTimer <= 0) {
         if (keys.has('a') || keys.has('A')) { p1.vx = -WALK_SPEED; p1.state = 'walk_back'; p1.facing = -1; }
         else if (keys.has('d') || keys.has('D')) { p1.vx = WALK_SPEED; p1.state = 'walk_fwd'; p1.facing = 1; }
         else { p1.vx = 0; }
@@ -881,21 +922,81 @@ export function FightingArena({ player1, player2, onMatchEnd }: ArenaProps) {
         if (keys.has('v') || keys.has('V')) doAttack(p1, p2, player1, player2, 'ultimate');
       }
 
-      // P2 controls: Arrow keys + 1/2/3/4
-      if (p2.stateTimer <= 0) {
-        if (keys.has('ArrowLeft')) { p2.vx = -WALK_SPEED; p2.state = 'walk_back'; p2.facing = -1; }
-        else if (keys.has('ArrowRight')) { p2.vx = WALK_SPEED; p2.state = 'walk_fwd'; p2.facing = 1; }
-        else { p2.vx = 0; }
-        if (keys.has('ArrowUp') && p2.isGrounded) { p2.vy = JUMP_FORCE; p2.isGrounded = false; }
-        if (keys.has('ArrowDown')) { p2.state = 'block'; p2.vx = 0; }
-        if (keys.has('1')) doAttack(p2, p1, player2, player1, 'punch');
-        if (keys.has('2')) doAttack(p2, p1, player2, player1, 'kick');
-        if (keys.has('3')) doAttack(p2, p1, player2, player1, 'special');
-        if (keys.has('4')) doAttack(p2, p1, player2, player1, 'ultimate');
+      // P2: AI controller (difficulty scales with stats) or local keyboard
+      if (p2.stateTimer <= 0 && p2.stunTimer <= 0) {
+        if (p2AI) {
+          const ai = aiRef.current;
+          const pdist = Math.abs((p2.x + FW / 2) - (p1.x + FW / 2));
+          const p1Attacking = p1.state === 'punch' || p1.state === 'kick' || p1.state === 'special' || p1.state === 'ultimate';
+
+          ai.think--;
+          if (ai.think <= 0) {
+            ai.think = aiThinkBase + Math.floor(Math.random() * 5);
+            if (p1Attacking && pdist < 115 && Math.random() < aiBlockChance) {
+              ai.intent = 'block';
+            } else if (p2.rage >= 100 && pdist < 150) {
+              doAttack(p2, p1, player2, player1, 'ultimate'); ai.intent = 'idle';
+            } else if (p2.specialReady && pdist < 120 && Math.random() < 0.6) {
+              doAttack(p2, p1, player2, player1, 'special'); ai.intent = 'idle';
+            } else if (pdist < 80) {
+              if (Math.random() < aiAggression) {
+                doAttack(p2, p1, player2, player1, Math.random() < 0.5 ? 'punch' : 'kick'); ai.intent = 'idle';
+              } else {
+                ai.intent = 'retreat';
+              }
+            } else {
+              ai.intent = 'approach';
+              if (pdist > 150 && Math.random() < 0.04 && p2.isGrounded) { p2.vy = JUMP_FORCE; p2.isGrounded = false; }
+            }
+          }
+
+          // Apply movement intent each frame (attacks set state via doAttack)
+          if (p2.stateTimer <= 0) {
+            if (ai.intent === 'approach') {
+              const dir = p1.x > p2.x ? 1 : -1; p2.vx = WALK_SPEED * dir; p2.state = 'walk_fwd';
+            } else if (ai.intent === 'retreat') {
+              const dir = p1.x > p2.x ? -1 : 1; p2.vx = WALK_SPEED * 0.7 * dir; p2.state = 'walk_back';
+            } else if (ai.intent === 'block') {
+              p2.vx = 0; p2.state = 'block';
+            } else {
+              p2.vx = 0;
+            }
+          }
+        } else {
+          // Local 2-player keyboard: Arrow keys + 1/2/3/4
+          if (keys.has('ArrowLeft')) { p2.vx = -WALK_SPEED; p2.state = 'walk_back'; p2.facing = -1; }
+          else if (keys.has('ArrowRight')) { p2.vx = WALK_SPEED; p2.state = 'walk_fwd'; p2.facing = 1; }
+          else { p2.vx = 0; }
+          if (keys.has('ArrowUp') && p2.isGrounded) { p2.vy = JUMP_FORCE; p2.isGrounded = false; }
+          if (keys.has('ArrowDown')) { p2.state = 'block'; p2.vx = 0; }
+          if (keys.has('1')) doAttack(p2, p1, player2, player1, 'punch');
+          if (keys.has('2')) doAttack(p2, p1, player2, player1, 'kick');
+          if (keys.has('3')) doAttack(p2, p1, player2, player1, 'special');
+          if (keys.has('4')) doAttack(p2, p1, player2, player1, 'ultimate');
+        }
       }
 
       // Physics
       for (const f of [p1, p2]) {
+        // Damage-over-time ticks (drones, burn, chip, etc.)
+        if (f.dots.length > 0) {
+          for (const dot of f.dots) {
+            dot.counter++;
+            if (dot.counter >= dot.interval) {
+              dot.counter = 0; dot.ticks--;
+              if (f.invincibleTimer <= 0 && f.hp > 0) {
+                const d = dot.random
+                  ? dot.random[0] + Math.floor(Math.random() * (dot.random[1] - dot.random[0] + 1))
+                  : dot.dmgPerTick;
+                f.hp = Math.max(0, f.hp - d);
+                hitTextRef.current.push({ x: f.x + FW / 2 + (Math.random() - 0.5) * 16, y: f.y + FH / 3, text: `${d}`, timer: 28, color: dot.color, size: 11 });
+                particlesRef.current.push(makeParticle(f.x + FW / 2, f.y + FH / 3, (Math.random() - 0.5) * 3, -1 - Math.random() * 2, 4 + Math.random() * 4, dot.color, 0.03, 'spark', 0.05));
+              }
+            }
+          }
+          f.dots = f.dots.filter(dt => dt.ticks > 0);
+        }
+
         f.x += f.vx; f.y += f.vy; f.vy += GRAVITY;
         if (f.y >= FLOOR_Y - FH) { f.y = FLOOR_Y - FH; f.vy = 0; f.isGrounded = true; }
         f.x = Math.max(10, Math.min(W - FW - 10, f.x));
@@ -905,6 +1006,9 @@ export function FightingArena({ player1, player2, onMatchEnd }: ArenaProps) {
         if (f.comboTimer > 0) { f.comboTimer--; } else { f.comboCount = 0; }
         f.rage = Math.min(100, f.rage + 0.05);
         if (f.hp <= 0) f.state = 'dead';
+        // Stun: locked out, forced into hurt pose; snap back to idle when it ends
+        if (f.stunTimer > 0) { f.stunTimer--; f.vx = 0; if (f.state !== 'dead') f.state = f.stunTimer > 0 ? 'hurt' : 'idle'; }
+        if (f.invincibleTimer > 0) f.invincibleTimer--;
       }
 
       if (['idle', 'walk_fwd', 'walk_back'].includes(p1.state)) p1.facing = p2.x > p1.x ? 1 : -1;
@@ -946,6 +1050,35 @@ export function FightingArena({ player1, player2, onMatchEnd }: ArenaProps) {
       const p2Color = ARCHETYPE_COLORS[player2.stats.archetype] || '#ff00ff';
       drawFighter(ctx, p1, p1Color, 'left',  player1.profile.username, player1.stats.archetype);
       drawFighter(ctx, p2, p2Color, 'right', player2.profile.username, player2.stats.archetype);
+
+      // Status indicators: invincibility aura + stun stars
+      for (const f of [p1, p2]) {
+        const cx = f.x + FW / 2;
+        if (f.invincibleTimer > 0) {
+          const pulse = 0.5 + 0.5 * Math.sin(Date.now() / 90);
+          ctx.save();
+          ctx.globalAlpha = 0.4 + pulse * 0.4;
+          ctx.strokeStyle = '#ffd700';
+          ctx.shadowColor = '#ffd700';
+          ctx.shadowBlur = 16;
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.ellipse(cx, f.y + FH / 2, FW * 0.75, FH * 0.6, 0, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.restore();
+        }
+        if (f.stunTimer > 0 && f.state !== 'dead') {
+          ctx.save();
+          ctx.font = '10px "Press Start 2P", monospace';
+          ctx.textAlign = 'center';
+          for (let s = 0; s < 3; s++) {
+            const a = Date.now() / 200 + (s * Math.PI * 2) / 3;
+            ctx.fillStyle = '#ffe666';
+            ctx.fillText('✦', cx + Math.cos(a) * 16, f.y - 6 + Math.sin(a) * 4);
+          }
+          ctx.restore();
+        }
+      }
 
       // Hit rings
       for (const ring of hitRingsRef.current) {
@@ -1021,7 +1154,7 @@ export function FightingArena({ player1, player2, onMatchEnd }: ArenaProps) {
       window.removeEventListener('keydown', onKey);
       window.removeEventListener('keyup', onKeyUp);
     };
-  }, [player1, player2, doAttack, onMatchEnd]);
+  }, [player1, player2, doAttack, onMatchEnd, p2AI]);
 
   const p1Color = ARCHETYPE_COLORS[player1.stats.archetype] || '#00ffff';
   const p2Color = ARCHETYPE_COLORS[player2.stats.archetype] || '#ff00ff';

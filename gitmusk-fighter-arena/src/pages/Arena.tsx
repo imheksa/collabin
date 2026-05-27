@@ -22,6 +22,7 @@ export function Arena() {
         player1={player1}
         player2={player2}
         onMatchEnd={handleMatchEnd}
+        p2AI={true}
       />
     </div>
   );
