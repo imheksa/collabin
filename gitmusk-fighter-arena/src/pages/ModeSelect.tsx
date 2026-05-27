@@ -70,7 +70,7 @@ function P2eModal({ username, onClose, onReady }: { username: string; onClose: (
             PLAY. FIGHT. EARN.
           </div>
           <div style={{ fontFamily: 'var(--body)', fontSize: '18px', color: 'var(--txt-dim)', marginTop: '8px' }}>
-            Minimum ${P2E_MIN_USD} on Base · 90% to winner
+            Minimum ${P2E_MIN_USD} via Bankr · 90% to winner
           </div>
         </div>
 
@@ -79,7 +79,7 @@ function P2eModal({ username, onClose, onReady }: { username: string; onClose: (
             <div className="flex gap-2">
               {[0,1,2].map(i => <div key={i} className="w-3 h-3 animate-bounce" style={{ background: 'var(--neon-yel)', animationDelay: `${i*.15}s` }} />)}
             </div>
-            <div style={{ fontFamily: 'var(--body)', fontSize: '18px', color: 'var(--txt-dim)' }}>Checking @{username}'s Bankr wallet...</div>
+            <div style={{ fontFamily: 'var(--body)', fontSize: '18px', color: 'var(--txt-dim)' }}>Linking @{username}'s X account with Bankr...</div>
           </div>
         )}
 
@@ -108,7 +108,7 @@ function P2eModal({ username, onClose, onReady }: { username: string; onClose: (
               <>
                 <div className="text-center py-3 mb-4" style={{ background: 'rgba(255,45,117,.08)', border: '3px solid var(--neon-pink)' }}>
                   <div style={{ fontFamily: 'var(--pixel)', fontSize: '8px', color: 'var(--neon-pink)' }}>
-                    NEED ${(P2E_MIN_USD - balance.totalUsd).toFixed(2)} MORE ON BASE
+                    NEED ${(P2E_MIN_USD - balance.totalUsd).toFixed(2)} MORE IN BANKR
                   </div>
                 </div>
                 <button onClick={runAutoCheck} className="g-btn ghost full sm">🔄 RECHECK BALANCE</button>
@@ -120,8 +120,8 @@ function P2eModal({ username, onClose, onReady }: { username: string; onClose: (
         {step === 'not_connected' && (
           <div>
             <div className="g-panel dark text-center mb-4" style={{ padding: '20px' }}>
-              <div style={{ fontFamily: 'var(--pixel)', fontSize: '9px', color: 'var(--neon-yel)', marginBottom: '8px' }}>NO BANKR WALLET FOUND</div>
-              <div style={{ fontFamily: 'var(--body)', fontSize: '18px', color: 'var(--txt-dim)' }}>Open bankr.bot/terminal → login with X → fund $5+ USDC on Base</div>
+              <div style={{ fontFamily: 'var(--pixel)', fontSize: '9px', color: 'var(--neon-yel)', marginBottom: '8px' }}>X NOT LINKED TO BANKR</div>
+              <div style={{ fontFamily: 'var(--body)', fontSize: '18px', color: 'var(--txt-dim)' }}>Sign in at bankr.bot with your X account, then add $5+ to play</div>
             </div>
             <div className="flex gap-2">
               <a href="https://bankr.bot/terminal" target="_blank" rel="noopener" className="g-btn sm flex-1" style={{ textDecoration: 'none', justifyContent: 'center' }}>🌐 BANKR.BOT</a>
@@ -259,7 +259,7 @@ export function ModeSelect() {
                 <span style={{ fontFamily: 'var(--pixel)', fontSize: '9px', color: '#fff' }}>@{player1.profile.username}</span>
                 <span style={{ fontFamily: 'var(--pixel)', fontSize: '6px', color: p1Tier.color }}>{p1Tier.name}</span>
                 {bankrExists && <span style={{ fontFamily: 'var(--pixel)', fontSize: '6px', color: 'var(--neon-yel)' }}>● BANKR</span>}
-                {walletAddress && <span style={{ fontFamily: 'var(--pixel)', fontSize: '6px', color: 'var(--neon-grn)' }}>● WALLET</span>}
+                {walletAddress && <span style={{ fontFamily: 'var(--pixel)', fontSize: '6px', color: 'var(--neon-grn)' }}>● BANKR</span>}
               </div>
               <div style={{ fontFamily: 'var(--pixel)', fontSize: '7px', color: player1.stats.color, marginBottom: '6px' }}>
                 {player1.stats.archetypeLabel.toUpperCase()}
