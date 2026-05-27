@@ -1,8 +1,10 @@
+import { useRef, useEffect } from 'react';
 import { useGameStore } from '../stores/gameStore';
 import { DEMO_PROFILES } from '../data/mockProfiles';
 import { calculateFighterStats } from '../utils/statsCalculator';
 import { getLevelTier, xpNeededForNextLevel, LEVEL_TIERS } from '../utils/playerProfile';
 import { Fighter } from '../types';
+import { drawArchetypeFighter } from '../utils/fighterSprites';
 
 export function Landing() {
   const { setScreen, setPlayer1 } = useGameStore();
@@ -14,6 +16,193 @@ export function Landing() {
   const elonTier = getLevelTier(elonLevel);
   const elonXpMax = xpNeededForNextLevel(elonLevel);
   const elonNextTier = LEVEL_TIERS.find(t => t.minLevel > elonLevel);
+
+  const vitalikProfile = DEMO_PROFILES.find(p => p.username === 'VitalikButerin')!;
+  const vitalikStats = calculateFighterStats(vitalikProfile);
+  const gpCanvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const canvas = gpCanvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d')!;
+    const W = 800, H = 500;
+    canvas.width = W;
+    canvas.height = H;
+
+    // Capture archetype data once — DEMO_PROFILES is static
+    const eArch = elonStats.archetype;
+    const eColor = elonStats.color;
+    const eLabel = elonStats.archetypeLabel;
+    const vArch = vitalikStats.archetype;
+    const vColor = vitalikStats.color;
+    const vLabel = vitalikStats.archetypeLabel;
+
+    let p1Hp = 100, p2Hp = 62;
+    let combo = 0, ultPct = 0, timer = 42;
+    let p1State = 'idle', p2State = 'idle';
+    let phase = 0;
+    let lastPhase = performance.now();
+    let lastTimerTick = performance.now();
+    let raf: number;
+
+    function drawHPBar(x: number, y: number, w: number, h: number, pct: number, color: string, reversed = false) {
+      ctx.fillStyle = '#0a0118';
+      ctx.fillRect(x, y, w, h);
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(x, y, w, h);
+      const bw = Math.max(0, (w - 4) * Math.min(pct, 100) / 100);
+      ctx.fillStyle = color;
+      if (reversed) {
+        ctx.fillRect(x + w - 2 - bw, y + 2, bw, h - 4);
+      } else {
+        ctx.fillRect(x + 2, y + 2, bw, h - 4);
+      }
+    }
+
+    function frame(now: number) {
+      // Phase cycle: idle → p1atk → p2hurt → p2atk → p1hurt → idle → …
+      if (now - lastPhase > 720) {
+        phase = (phase + 1) % 6;
+        lastPhase = now;
+        switch (phase) {
+          case 1: p1State = 'punch'; p2State = 'idle'; break;
+          case 2: p1State = 'idle'; p2State = 'hurt'; p2Hp = Math.max(0, p2Hp - 9); combo++; ultPct = Math.min(100, ultPct + 16); break;
+          case 3: p1State = 'idle'; p2State = 'kick'; break;
+          case 4: p1State = 'hurt'; p2State = 'idle'; p1Hp = Math.max(38, p1Hp - 5); ultPct = Math.min(100, ultPct + 8); break;
+          case 5: p1State = 'idle'; p2State = 'idle'; combo = 0; break;
+          default: p1State = 'idle'; p2State = 'idle';
+        }
+        if (p2Hp <= 0) { p2Hp = 80; p1Hp = 100; combo = 0; ultPct = 0; timer = 42; }
+      }
+      if (now - lastTimerTick > 1000) {
+        timer = Math.max(0, timer - 1);
+        lastTimerTick = now;
+        if (timer === 0) { timer = 42; p1Hp = 100; p2Hp = 62; combo = 0; ultPct = 0; }
+      }
+
+      // Background
+      ctx.clearRect(0, 0, W, H);
+      const bgLin = ctx.createLinearGradient(0, 0, 0, H);
+      bgLin.addColorStop(0, '#1a0834');
+      bgLin.addColorStop(1, '#0c0220');
+      ctx.fillStyle = bgLin;
+      ctx.fillRect(0, 0, W, H);
+      const bgRad = ctx.createRadialGradient(W / 2, H * 0.85, 0, W / 2, H * 0.85, W * 0.55);
+      bgRad.addColorStop(0, 'rgba(255,45,117,.2)');
+      bgRad.addColorStop(1, 'transparent');
+      ctx.fillStyle = bgRad;
+      ctx.fillRect(0, 0, W, H);
+
+      // Ground
+      const groundY = Math.round(H * 0.72);
+      const grdFill = ctx.createLinearGradient(0, groundY, 0, H);
+      grdFill.addColorStop(0, 'transparent');
+      grdFill.addColorStop(0.4, 'rgba(176,38,255,.35)');
+      grdFill.addColorStop(1, 'rgba(176,38,255,.5)');
+      ctx.fillStyle = grdFill;
+      ctx.fillRect(0, groundY, W, H - groundY);
+      ctx.strokeStyle = '#b026ff';
+      ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(0, groundY); ctx.lineTo(W, groundY); ctx.stroke();
+      ctx.strokeStyle = 'rgba(0,0,0,.22)';
+      ctx.lineWidth = 1;
+      for (let gx = 0; gx < W; gx += 32) {
+        ctx.beginPath(); ctx.moveTo(gx, groundY); ctx.lineTo(gx, H); ctx.stroke();
+      }
+
+      // HUD — P1
+      ctx.textAlign = 'left';
+      ctx.font = '10px "Press Start 2P", monospace';
+      ctx.fillStyle = '#ffd60a';
+      ctx.fillText('@elonmusk', 16, 18);
+      ctx.font = '7px "Press Start 2P", monospace';
+      ctx.fillStyle = eColor;
+      ctx.fillText(eLabel.toUpperCase() + ' · LV1', 16, 31);
+      drawHPBar(16, 36, 200, 15, p1Hp, eColor);
+
+      // HUD — P2
+      ctx.textAlign = 'right';
+      ctx.font = '10px "Press Start 2P", monospace';
+      ctx.fillStyle = '#ff2d75';
+      ctx.fillText('@VitalikButerin', W - 16, 18);
+      ctx.font = '7px "Press Start 2P", monospace';
+      ctx.fillStyle = vColor;
+      ctx.fillText('LV1 · ' + vLabel.toUpperCase(), W - 16, 31);
+      drawHPBar(W - 216, 36, 200, 15, p2Hp, vColor, true);
+
+      // Timer
+      ctx.textAlign = 'center';
+      ctx.font = '26px "Press Start 2P", monospace';
+      ctx.fillStyle = '#ffd60a';
+      ctx.shadowColor = '#000';
+      ctx.shadowBlur = 6;
+      ctx.fillText(String(timer).padStart(2, '0'), W / 2, 44);
+      ctx.shadowBlur = 0;
+
+      // Fighter shadows
+      const FLOOR = groundY - 1;
+      const FH = 90, FW = 50;
+      const p1ox = Math.round(W * 0.22) - FW / 2;
+      const p1oy = FLOOR - FH;
+      const p2ox = Math.round(W * 0.78) - FW / 2;
+      const p2oy = FLOOR - FH;
+      ctx.fillStyle = 'rgba(0,0,0,.38)';
+      ctx.beginPath(); ctx.ellipse(p1ox + FW / 2, FLOOR + 4, 22, 6, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(p2ox + FW / 2, FLOOR + 4, 22, 6, 0, 0, Math.PI * 2); ctx.fill();
+
+      // Fighters
+      drawArchetypeFighter(ctx, eArch, p1State, 1, p1ox, p1oy, now, true);
+      drawArchetypeFighter(ctx, vArch, p2State, -1, p2ox, p2oy, now, true);
+
+      // Combo counter
+      if (combo > 0) {
+        const pulse = Math.floor(now / 200) % 2 === 0 ? 1.05 : 1.0;
+        ctx.save();
+        ctx.translate(Math.round(W * 0.15), Math.round(H * 0.48));
+        ctx.scale(pulse, pulse);
+        ctx.textAlign = 'center';
+        ctx.font = '11px "Press Start 2P", monospace';
+        ctx.fillStyle = '#ffd60a';
+        ctx.shadowColor = '#ff2d75'; ctx.shadowBlur = 8;
+        ctx.fillText('x' + combo, 0, -18);
+        ctx.font = '30px "Press Start 2P", monospace';
+        ctx.fillStyle = '#ff2d75';
+        ctx.fillText(combo + '!', 0, 12);
+        ctx.font = '8px "Press Start 2P", monospace';
+        ctx.fillStyle = '#ffd60a'; ctx.shadowBlur = 0;
+        ctx.fillText('HIT COMBO', 0, 28);
+        ctx.restore();
+      }
+
+      // ULT meter
+      const ultX = Math.round(W / 2 - 180);
+      const ultY = H - 26;
+      const ultW = 360;
+      ctx.font = '7px "Press Start 2P", monospace';
+      ctx.textAlign = 'left';
+      ctx.fillStyle = '#00e5ff';
+      ctx.fillText('ULT', ultX - 34, ultY + 10);
+      ctx.fillStyle = '#0a0118';
+      ctx.fillRect(ultX, ultY, ultW, 13);
+      ctx.strokeStyle = '#00e5ff'; ctx.lineWidth = 2;
+      ctx.strokeRect(ultX, ultY, ultW, 13);
+      const uw = (ultW - 4) * ultPct / 100;
+      for (let ux = 0; ux < uw; ux += 12) {
+        ctx.fillStyle = (Math.floor(ux / 6) % 2 === 0) ? '#00e5ff' : '#57f1ff';
+        ctx.fillRect(ultX + 2 + ux, ultY + 2, Math.min(6, uw - ux), 9);
+      }
+      ctx.font = '7px "Press Start 2P", monospace';
+      ctx.textAlign = 'right';
+      ctx.fillStyle = ultPct >= 100 ? '#ff2d75' : '#00e5ff';
+      ctx.fillText(ultPct >= 100 ? 'MAX' : Math.round(ultPct) + '%', ultX + ultW + 40, ultY + 10);
+
+      raf = requestAnimationFrame(frame);
+    }
+
+    raf = requestAnimationFrame(frame);
+    return () => cancelAnimationFrame(raf);
+  }, []); // DEMO_PROFILES is static — safe to omit deps
 
   const tryDemo = () => {
     const profile = DEMO_PROFILES[Math.floor(Math.random() * DEMO_PROFILES.length)];
@@ -588,20 +777,10 @@ export function Landing() {
               </div>
             </div>
             <div className="gp-screen">
-              <div className="gp-hud">
-                <div className="gp-player"><div className="name">@TRADER · LVL 47</div><div className="gp-hpbar"><i style={{ width:'78%' }}></i></div></div>
-                <div className="gp-timer">42</div>
-                <div className="gp-player r"><div className="name">@MEMELORD · LVL 39</div><div className="gp-hpbar r"><i style={{ width:'42%' }}></i></div></div>
-              </div>
-              <div className="combo">x<b>17</b>HIT COMBO</div>
-              <div className="gp-fighter l"></div>
-              <div className="gp-fighter r"></div>
-              <div className="ground"></div>
-              <div className="ult-meter">
-                <span className="ult-label">ULT</span>
-                <div className="ult-bar"><i></i></div>
-                <span className="ult-label" style={{ color:'var(--neon-pink)' }}>MAX</span>
-              </div>
+              <canvas
+                ref={gpCanvasRef}
+                style={{ display: 'block', width: '100%', height: '100%', imageRendering: 'pixelated' }}
+              />
             </div>
           </div>
         </div>
