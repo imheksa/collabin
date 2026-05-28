@@ -52,6 +52,40 @@ CREATE TABLE IF NOT EXISTS player_stats (
 ALTER TABLE player_stats ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Allow all on player_stats" ON player_stats FOR ALL USING (true);
 
--- Enable Realtime for match tables
-ALTER PUBLICATION supabase_realtime ADD TABLE match_queue;
-ALTER PUBLICATION supabase_realtime ADD TABLE matches;
+-- Season columns (add if upgrading existing table)
+ALTER TABLE player_stats ADD COLUMN IF NOT EXISTS season_number  INTEGER     NOT NULL DEFAULT 1;
+ALTER TABLE player_stats ADD COLUMN IF NOT EXISTS season_wins    INTEGER     NOT NULL DEFAULT 0;
+ALTER TABLE player_stats ADD COLUMN IF NOT EXISTS season_losses  INTEGER     NOT NULL DEFAULT 0;
+ALTER TABLE player_stats ADD COLUMN IF NOT EXISTS season_pvp_wins INTEGER    NOT NULL DEFAULT 0;
+ALTER TABLE player_stats ADD COLUMN IF NOT EXISTS badges         TEXT[]      NOT NULL DEFAULT '{}';
+
+-- Season config: single row tracks the active season window
+CREATE TABLE IF NOT EXISTS season_config (
+  id            INTEGER PRIMARY KEY DEFAULT 1,
+  season_number INTEGER      NOT NULL DEFAULT 1,
+  started_at    TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+  ends_at       TIMESTAMPTZ  NOT NULL DEFAULT (NOW() + INTERVAL '30 days')
+);
+-- Seed the first season (no-op if already exists)
+INSERT INTO season_config (id, season_number, started_at, ends_at)
+VALUES (1, 1, NOW(), NOW() + INTERVAL '30 days')
+ON CONFLICT (id) DO NOTHING;
+
+ALTER TABLE season_config ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow read on season_config" ON season_config FOR SELECT USING (true);
+
+-- Season history: snapshot of top players at the end of every season
+CREATE TABLE IF NOT EXISTS season_history (
+  id            BIGSERIAL    PRIMARY KEY,
+  season_number INTEGER      NOT NULL,
+  username      TEXT         NOT NULL,
+  display_name  TEXT,
+  avatar_url    TEXT         DEFAULT '',
+  rank          INTEGER      NOT NULL,
+  wins          INTEGER      NOT NULL DEFAULT 0,
+  pvp_wins      INTEGER      NOT NULL DEFAULT 0,
+  badge         TEXT         NOT NULL,
+  recorded_at   TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+);
+ALTER TABLE season_history ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow read on season_history" ON season_history FOR SELECT USING (true);

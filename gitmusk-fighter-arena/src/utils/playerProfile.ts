@@ -24,6 +24,12 @@ export interface PlayerProfile {
   maxWinStreak: number;
   achievements: string[];
   matchHistory: MatchHistoryEntry[];
+  // Season tracking
+  currentSeason: number;
+  seasonWins: number;
+  seasonLosses: number;
+  seasonPvpWins: number;
+  badges: string[];
 }
 
 export interface CombatModifiers {
@@ -217,10 +223,15 @@ export function getProfile(username: string): PlayerProfile {
       const p = JSON.parse(raw) as PlayerProfile;
       if (!p.matchHistory) p.matchHistory = [];
       if (p.pvpWins === undefined) p.pvpWins = 0;
+      if (p.currentSeason === undefined) p.currentSeason = 1;
+      if (p.seasonWins === undefined) p.seasonWins = 0;
+      if (p.seasonLosses === undefined) p.seasonLosses = 0;
+      if (p.seasonPvpWins === undefined) p.seasonPvpWins = 0;
+      if (!p.badges) p.badges = [];
       return p;
     }
   } catch { /* blocked */ }
-  return { username, xp: 0, level: 1, wins: 0, losses: 0, pvpWins: 0, maxCombo: 0, winStreak: 0, lossStreak: 0, maxWinStreak: 0, achievements: [], matchHistory: [] };
+  return { username, xp: 0, level: 1, wins: 0, losses: 0, pvpWins: 0, maxCombo: 0, winStreak: 0, lossStreak: 0, maxWinStreak: 0, achievements: [], matchHistory: [], currentSeason: 1, seasonWins: 0, seasonLosses: 0, seasonPvpWins: 0, badges: [] };
 }
 
 export function saveProfile(p: PlayerProfile): void {
@@ -253,19 +264,29 @@ export interface CloudStats {
   maxCombo: number;
   winStreak: number;
   maxWinStreak: number;
+  badges?: string[];
+  currentSeason?: number;
+  seasonWins?: number;
+  seasonLosses?: number;
+  seasonPvpWins?: number;
 }
 
 export function mergeCloudProfile(username: string, cloud: CloudStats): PlayerProfile {
   const local = getProfile(username);
   const merged: PlayerProfile = {
     ...local,
-    xp:           Math.max(local.xp, cloud.xp),
-    wins:         Math.max(local.wins, cloud.wins),
-    losses:       Math.max(local.losses, cloud.losses),
-    pvpWins:      Math.max(local.pvpWins ?? 0, cloud.pvpWins ?? 0),
-    maxCombo:     Math.max(local.maxCombo, cloud.maxCombo),
-    winStreak:    Math.max(local.winStreak, cloud.winStreak),
-    maxWinStreak: Math.max(local.maxWinStreak, cloud.maxWinStreak),
+    xp:            Math.max(local.xp, cloud.xp),
+    wins:          Math.max(local.wins, cloud.wins),
+    losses:        Math.max(local.losses, cloud.losses),
+    pvpWins:       Math.max(local.pvpWins ?? 0, cloud.pvpWins ?? 0),
+    maxCombo:      Math.max(local.maxCombo, cloud.maxCombo),
+    winStreak:     Math.max(local.winStreak, cloud.winStreak),
+    maxWinStreak:  Math.max(local.maxWinStreak, cloud.maxWinStreak),
+    badges:        Array.from(new Set([...(local.badges ?? []), ...(cloud.badges ?? [])])),
+    currentSeason: cloud.currentSeason ?? local.currentSeason ?? 1,
+    seasonWins:    cloud.seasonWins    ?? local.seasonWins    ?? 0,
+    seasonLosses:  cloud.seasonLosses  ?? local.seasonLosses  ?? 0,
+    seasonPvpWins: cloud.seasonPvpWins ?? local.seasonPvpWins ?? 0,
   };
   merged.level = levelFromXp(merged.xp);
   const earned = ACHIEVEMENTS.map(a => a.id).filter(id => checkCondition(id, merged));
@@ -283,8 +304,20 @@ export function recordMatch(
   durationSec: number,
   opponent?: { username: string; archetype: string },
   isPvP?: boolean,
+  currentSeason?: number,
 ): MatchReward {
   const profile = getProfile(username);
+
+  // Reset season counters when entering a new season
+  if (currentSeason && currentSeason > (profile.currentSeason ?? 1)) {
+    profile.currentSeason = currentSeason;
+    profile.seasonWins = 0;
+    profile.seasonLosses = 0;
+    profile.seasonPvpWins = 0;
+  } else if (!profile.currentSeason) {
+    profile.currentSeason = currentSeason ?? 1;
+  }
+
   const mods = getCombatModifiers(profile);
   const baseXp = calcMatchXp(won, maxCombo, durationSec);
   const xpGained = Math.round(baseXp * mods.xpMult);
@@ -295,12 +328,17 @@ export function recordMatch(
 
   if (won) {
     profile.wins++;
-    if (isPvP) profile.pvpWins = (profile.pvpWins ?? 0) + 1;
+    profile.seasonWins = (profile.seasonWins ?? 0) + 1;
+    if (isPvP) {
+      profile.pvpWins = (profile.pvpWins ?? 0) + 1;
+      profile.seasonPvpWins = (profile.seasonPvpWins ?? 0) + 1;
+    }
     profile.winStreak++;
     profile.lossStreak = 0;
     profile.maxWinStreak = Math.max(profile.maxWinStreak, profile.winStreak);
   } else {
     profile.losses++;
+    profile.seasonLosses = (profile.seasonLosses ?? 0) + 1;
     profile.winStreak = 0;
     profile.lossStreak++;
   }

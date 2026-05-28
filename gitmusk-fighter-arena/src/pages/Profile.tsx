@@ -396,6 +396,32 @@ export function Profile() {
           </div>
         </div>
 
+        {/* Season badges */}
+        {profile.badges && profile.badges.length > 0 && (
+          <div className="g-panel dark mb-4" style={{ padding: '14px 16px' }}>
+            <span className="g-eyebrow" style={{ color: 'var(--neon-yel)', marginBottom: '10px', display: 'block' }}>// SEASON BADGES</span>
+            <div className="flex flex-wrap gap-2">
+              {profile.badges.map(badge => {
+                const m = badge.match(/^s(\d+)_(champ|gold|silver|bronze)$/);
+                if (!m) return null;
+                const styles: Record<string, { color: string; label: string }> = {
+                  champ:  { color: '#ffd60a', label: '👑 CHAMPION' },
+                  gold:   { color: '#ffb700', label: '🥇 GOLD'     },
+                  silver: { color: '#c0c0c0', label: '🥈 SILVER'   },
+                  bronze: { color: '#cd7f32', label: '🥉 BRONZE'   },
+                };
+                const s = styles[m[2]];
+                if (!s) return null;
+                return (
+                  <div key={badge} style={{ fontFamily: 'var(--pixel)', fontSize: '7px', padding: '4px 10px', color: s.color, border: `2px solid ${s.color}60`, background: `${s.color}12` }}>
+                    {s.label} <span style={{ color: 'var(--txt-dim)' }}>S{m[1]}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Match record stats */}
         <div className="grid grid-cols-4 gap-2 mb-4">
           {[

@@ -3,7 +3,30 @@ import { useGameStore } from '../stores/gameStore';
 import { DEMO_PROFILES } from '../data/mockProfiles';
 import { calculateFighterStats } from '../utils/statsCalculator';
 import { getAllLocalStats } from '../utils/leaderboard';
-import { fetchLeaderboard, LeaderboardResult } from '../utils/cloudSync';
+import { fetchLeaderboard, fetchSeasonInfo, LeaderboardResult, SeasonInfo } from '../utils/cloudSync';
+
+const BADGE_META: Record<string, { color: string; emoji: string }> = {
+  champ:  { color: '#ffd60a', emoji: '👑' },
+  gold:   { color: '#ffb700', emoji: '🥇' },
+  silver: { color: '#c0c0c0', emoji: '🥈' },
+  bronze: { color: '#cd7f32', emoji: '🥉' },
+};
+
+function BadgeChip({ badge }: { badge: string }) {
+  const m = badge.match(/^s(\d+)_(champ|gold|silver|bronze)$/);
+  if (!m) return null;
+  const meta = BADGE_META[m[2]];
+  if (!meta) return null;
+  return (
+    <span style={{
+      fontFamily: 'var(--pixel)', fontSize: '6px', padding: '1px 4px',
+      color: meta.color, border: `1px solid ${meta.color}50`,
+      background: `${meta.color}15`, whiteSpace: 'nowrap',
+    }}>
+      {meta.emoji}S{m[1]}
+    </span>
+  );
+}
 
 const RANK_COLORS = ['#ffd60a', '#c0c0c0', '#cd7f32', '#b026ff', '#00e5ff', '#ff2d75', '#00ff9d', '#b026ff', '#00e5ff', '#ffd60a'];
 const RANK_LABELS = ['👑', '🥈', '🥉', '4TH', '5TH', '6TH', '7TH', '8TH', '9TH', '10TH'];
@@ -24,23 +47,28 @@ interface EntryRow {
   wins: number;
   losses: number;
   pvpWins: number;
+  seasonWins: number;
+  seasonPvpWins: number;
   maxCombo: number;
   power: number;
   color: string;
   archetype: string;
   level: number;
+  badges: string[];
 }
 
 export function Leaderboard() {
   const { setScreen, player1 } = useGameStore();
   const [cloudResult, setCloudResult] = useState<LeaderboardResult | null>(null);
+  const [seasonInfo, setSeasonInfo] = useState<SeasonInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [sortMode, setSortMode] = useState<'wins' | 'pvp'>('wins');
 
   const loadData = useCallback(async (sort: 'wins' | 'pvp' = sortMode) => {
     setLoading(true);
-    const result = await fetchLeaderboard(sort);
+    const [result, season] = await Promise.all([fetchLeaderboard(sort), fetchSeasonInfo()]);
     setCloudResult(result);
+    setSeasonInfo(season);
     setLoading(false);
   }, [sortMode]);
 
@@ -62,11 +90,14 @@ export function Leaderboard() {
         wins: e.wins,
         losses: e.losses,
         pvpWins: e.pvpWins,
+        seasonWins: e.seasonWins,
+        seasonPvpWins: e.seasonPvpWins,
         maxCombo: e.maxCombo,
         power: e.basePower,
         color: e.color,
         archetype: e.archetypeLabel,
         level: e.level,
+        badges: e.badges,
       }));
 
       if (player1 && !cloudUsernames.has(player1.profile.username)) {
@@ -78,11 +109,14 @@ export function Leaderboard() {
             wins: local.wins,
             losses: local.losses,
             pvpWins: 0,
+            seasonWins: 0,
+            seasonPvpWins: 0,
             maxCombo: local.maxCombo,
             power: player1.stats.basePower,
             color: player1.stats.color,
             archetype: player1.stats.archetypeLabel,
             level: 1,
+            badges: [],
           });
         }
       }
@@ -104,11 +138,14 @@ export function Leaderboard() {
         wins: (local?.wins ?? 0) + seeded.wins,
         losses: (local?.losses ?? 0) + seeded.losses,
         pvpWins: 0,
+        seasonWins: 0,
+        seasonPvpWins: 0,
         maxCombo: Math.max(local?.maxCombo ?? 0, seeded.maxCombo),
         power: stats.basePower,
         color: stats.color,
         archetype: stats.archetypeLabel,
         level: 1,
+        badges: [],
       };
     });
 
@@ -121,11 +158,14 @@ export function Leaderboard() {
           wins: local.wins,
           losses: local.losses,
           pvpWins: 0,
+          seasonWins: 0,
+          seasonPvpWins: 0,
           maxCombo: local.maxCombo,
           power: player1.stats.basePower,
           color: player1.stats.color,
           archetype: player1.stats.archetypeLabel,
           level: 1,
+          badges: [],
         });
       }
     }
@@ -197,9 +237,22 @@ export function Leaderboard() {
               </button>
             ))}
           </div>
-          <div className="mt-1" style={{ fontFamily: 'var(--body)', fontSize: '18px', color: 'var(--txt-dim)' }}>
-            SEASON 1 · MAY 2026
-          </div>
+          {seasonInfo?.configured && (
+            <div className="mt-2 flex items-center justify-center gap-3">
+              <div style={{ fontFamily: 'var(--pixel)', fontSize: '8px', color: 'var(--neon-yel)', background: 'rgba(255,214,10,.1)', border: '2px solid rgba(255,214,10,.4)', padding: '3px 10px' }}>
+                SEASON {seasonInfo.season}
+              </div>
+              {seasonInfo.daysLeft > 0 ? (
+                <div style={{ fontFamily: 'var(--pixel)', fontSize: '7px', color: 'var(--txt-dim)' }}>
+                  {seasonInfo.daysLeft}d LEFT
+                </div>
+              ) : (
+                <div style={{ fontFamily: 'var(--pixel)', fontSize: '7px', color: 'var(--neon-pink)' }}>
+                  RESETTING...
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Crowd bar */}
@@ -249,12 +302,21 @@ export function Leaderboard() {
                         LV{e.level}
                       </div>
                     )}
-                    <div style={{ fontFamily: 'var(--pixel)', fontSize: '9px', color: 'var(--neon-grn)' }}>{e.wins}W</div>
-                    {sortMode === 'pvp' && (
-                      <div style={{ fontFamily: 'var(--pixel)', fontSize: '8px', color: '#00ccff' }}>⚔ {e.pvpWins} P2P</div>
+                    {isLive ? (
+                      <div style={{ fontFamily: 'var(--pixel)', fontSize: '10px', color: 'var(--neon-grn)' }}>
+                        {sortMode === 'pvp' ? e.seasonPvpWins : e.seasonWins}W
+                        <span style={{ fontSize: '6px', color: 'var(--txt-dim)', marginLeft: '3px' }}>S{seasonInfo?.season ?? 1}</span>
+                      </div>
+                    ) : (
+                      <div style={{ fontFamily: 'var(--pixel)', fontSize: '9px', color: 'var(--neon-grn)' }}>{e.wins}W</div>
                     )}
                     <div style={{ fontFamily: 'var(--mono)', fontSize: '9px', color: winRate >= 60 ? 'var(--neon-grn)' : winRate >= 40 ? 'var(--neon-yel)' : 'var(--neon-pink)' }}>{winRate}%</div>
                     <div style={{ fontFamily: 'var(--mono)', fontSize: '10px', color: 'var(--txt-dim)' }}>{e.maxCombo}x COMBO</div>
+                    {e.badges.length > 0 && (
+                      <div className="flex flex-wrap gap-1 justify-center mt-1">
+                        {e.badges.slice(0, 3).map(b => <BadgeChip key={b} badge={b} />)}
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -282,18 +344,24 @@ export function Leaderboard() {
                         onError={ev => { (ev.target as HTMLImageElement).src = `https://api.dicebear.com/7.x/pixel-art/svg?seed=${e.username}`; }} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div style={{ fontFamily: 'var(--pixel)', fontSize: '8px', color: isMe ? 'var(--neon-yel)' : '#fff' }}>
-                        @{e.username.slice(0, 12)}{isMe ? ' ★' : ''}
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span style={{ fontFamily: 'var(--pixel)', fontSize: '8px', color: isMe ? 'var(--neon-yel)' : '#fff' }}>
+                          @{e.username.slice(0, 10)}{isMe ? ' ★' : ''}
+                        </span>
+                        {e.badges.slice(0, 2).map(b => <BadgeChip key={b} badge={b} />)}
                       </div>
                       <div style={{ fontFamily: 'var(--pixel)', fontSize: '6px', color: e.color }}>
                         {e.archetype.toUpperCase().slice(0, 12)} · PWR {e.power}{isLive ? ` · LV${e.level}` : ''}
                       </div>
                     </div>
                     <div className="text-right flex-shrink-0 flex items-center gap-3">
-                      {sortMode === 'pvp' && e.pvpWins > 0 && (
-                        <div style={{ fontFamily: 'var(--pixel)', fontSize: '8px', color: '#00ccff' }}>⚔{e.pvpWins}</div>
+                      {isLive ? (
+                        <div style={{ fontFamily: 'var(--pixel)', fontSize: '9px', color: 'var(--neon-grn)' }}>
+                          {sortMode === 'pvp' ? e.seasonPvpWins : e.seasonWins}W
+                        </div>
+                      ) : (
+                        <div style={{ fontFamily: 'var(--pixel)', fontSize: '9px', color: 'var(--neon-grn)' }}>{e.wins}W</div>
                       )}
-                      <div style={{ fontFamily: 'var(--pixel)', fontSize: '9px', color: 'var(--neon-grn)' }}>{e.wins}W</div>
                       <div style={{ fontFamily: 'var(--pixel)', fontSize: '9px', color: 'var(--neon-pink)' }}>{e.losses}L</div>
                       <div style={{ fontFamily: 'var(--pixel)', fontSize: '9px', color: winRate >= 60 ? 'var(--neon-grn)' : winRate >= 40 ? 'var(--neon-yel)' : 'var(--neon-pink)' }}>
                         {winRate}%

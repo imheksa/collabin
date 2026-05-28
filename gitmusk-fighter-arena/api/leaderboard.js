@@ -18,9 +18,9 @@ export default async function handler(req, res) {
   }
 
   try {
-    const sortBy = req.query?.sort === 'pvp' ? 'pvp_wins.desc,wins.desc' : 'wins.desc,base_power.desc';
+    const sortBy = req.query?.sort === 'pvp' ? 'season_pvp_wins.desc,pvp_wins.desc' : 'season_wins.desc,wins.desc';
     const params = new URLSearchParams({
-      select: 'username,display_name,avatar_url,level,wins,losses,pvp_wins,max_combo,win_streak,archetype_label,fighter_color,base_power',
+      select: 'username,display_name,avatar_url,level,wins,losses,pvp_wins,season_wins,season_pvp_wins,max_combo,win_streak,archetype_label,fighter_color,base_power,badges',
       order: sortBy,
       limit: '25',
     });

@@ -18,7 +18,7 @@ export default async function handler(req, res) {
   }
 
   const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-  const { username, displayName, avatarUrl, level, xp, wins, losses, pvpWins, maxCombo, winStreak, maxWinStreak, archetype, archetypeLabel, color, basePower } = body ?? {};
+  const { username, displayName, avatarUrl, level, xp, wins, losses, pvpWins, maxCombo, winStreak, maxWinStreak, archetype, archetypeLabel, color, basePower, seasonWins, seasonLosses, seasonPvpWins, currentSeason } = body ?? {};
 
   if (!username) return res.status(400).json({ error: 'username required' });
 
@@ -47,6 +47,10 @@ export default async function handler(req, res) {
         archetype_label: archetypeLabel ?? '',
         fighter_color: color ?? '#b026ff',
         base_power: basePower ?? 0,
+        season_number: currentSeason ?? 1,
+        season_wins: seasonWins ?? 0,
+        season_losses: seasonLosses ?? 0,
+        season_pvp_wins: seasonPvpWins ?? 0,
         updated_at: new Date().toISOString(),
       }),
     });

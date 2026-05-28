@@ -56,6 +56,11 @@ export default async function handler(req, res) {
         lossStreak: 0,
         achievements: [],
         matchHistory: [],
+        badges: Array.isArray(row.badges) ? row.badges : [],
+        currentSeason: row.season_number ?? 1,
+        seasonWins: row.season_wins ?? 0,
+        seasonLosses: row.season_losses ?? 0,
+        seasonPvpWins: row.season_pvp_wins ?? 0,
       },
     });
   } catch (err) {
