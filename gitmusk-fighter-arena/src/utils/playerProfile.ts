@@ -8,6 +8,7 @@ export interface MatchHistoryEntry {
   durationSec: number;
   xpGained: number;
   timestamp: number;
+  isPvP?: boolean;
 }
 
 export interface PlayerProfile {
@@ -277,6 +278,7 @@ export function recordMatch(
   maxCombo: number,
   durationSec: number,
   opponent?: { username: string; archetype: string },
+  isPvP?: boolean,
 ): MatchReward {
   const profile = getProfile(username);
   const mods = getCombatModifiers(profile);
@@ -308,6 +310,7 @@ export function recordMatch(
       durationSec,
       xpGained,
       timestamp: Date.now(),
+      ...(isPvP ? { isPvP: true } : {}),
     };
     profile.matchHistory = [entry, ...(profile.matchHistory ?? [])].slice(0, 3);
   }

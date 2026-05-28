@@ -237,6 +237,9 @@ function MatchHistoryRow({ entry }: { entry: MatchHistoryEntry }) {
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap mb-0.5">
           <span style={{ fontFamily: 'var(--pixel)', fontSize: '8px', color: wonColor }}>{entry.won ? 'WIN' : 'LOSS'}</span>
+          {entry.isPvP && (
+            <span style={{ fontFamily: 'var(--pixel)', fontSize: '6px', color: '#00ccff', background: 'rgba(0,204,255,.12)', border: '1px solid rgba(0,204,255,.4)', padding: '1px 4px' }}>VS</span>
+          )}
           <span style={{ fontFamily: 'var(--mono)', fontSize: '10px', color: 'var(--txt-dim)' }}>vs @{entry.opponent}</span>
         </div>
         <div style={{ fontFamily: 'var(--mono)', fontSize: '9px', color: 'var(--txt-dim)' }}>

@@ -112,7 +112,7 @@ function buildTweetText(me: Fighter, opponent: Fighter, isWin: boolean, maxCombo
 }
 
 export function Results() {
-  const { matchResult, resetMatch, setScreen, player1, player2, lastMatchReward, setLastMatchReward, setPlayerProfile } = useGameStore();
+  const { matchResult, resetMatch, setScreen, player1, player2, lastMatchReward, setLastMatchReward, setPlayerProfile, matchId } = useGameStore();
   const [show, setShow] = useState(false);
   const [copied, setCopied] = useState(false);
   const [cardReady, setCardReady] = useState(false);
@@ -123,11 +123,23 @@ export function Results() {
   useEffect(() => {
     if (!matchResult || !player1 || !player2) return;
     const isP1Win = matchResult.winner.profile.username === player1.profile.username;
-    const reward = recordMatch(player1.profile.username, isP1Win, matchResult.maxCombo, matchResult.duration, { username: player2.profile.username, archetype: player2.stats.archetype });
+    const isPvP = !!matchId;
+    const reward = recordMatch(
+      player1.profile.username, isP1Win, matchResult.maxCombo, matchResult.duration,
+      { username: player2.profile.username, archetype: player2.stats.archetype },
+      isPvP,
+    );
     setLastMatchReward(reward);
     const updated = getProfile(player1.profile.username);
     setPlayerProfile(updated);
     syncProfile(updated, player1).catch(() => {});
+    if (isPvP) {
+      fetch('/api/match-finish', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ matchId, winnerUsername: matchResult.winner.profile.username }),
+      }).catch(() => {});
+    }
   }, []);
 
   useEffect(() => {
