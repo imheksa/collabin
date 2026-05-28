@@ -937,13 +937,9 @@ export function Landing() {
             X FIGHTER ARENA
           </div>
           <div>
-            <a href="#">DOCS</a>
-            <a href="#">DISCORD</a>
-            <a href="#">X / TWITTER</a>
-            <a href="#">SUPPORT</a>
-            <a href="#">PRESS KIT</a>
+            <a href="https://x.com/GitMusk_Arena" target="_blank" rel="noopener noreferrer">X / TWITTER</a>
           </div>
-          <div style={{ color:'var(--txt-dim)', fontSize:'9px' }}>© 2026 · ALL RIGHTS RESERVED · INSERT COIN</div>
+          <div style={{ color:'var(--txt-dim)', fontSize:'9px' }}>© 2026 · ALL RIGHTS RESERVED</div>
         </div>
       </footer>
     </div>
