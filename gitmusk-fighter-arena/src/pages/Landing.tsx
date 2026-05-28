@@ -463,6 +463,41 @@ export function Landing() {
           .lp h2{font-size:18px}
           .bracket,.tour-tags,.gp-features{grid-template-columns:1fr 1fr}
         }
+        @media(max-width:640px){
+          .lp nav{padding:10px 16px}
+          .logo{font-size:11px;gap:8px}
+          .logo .badge{width:26px;height:26px;font-size:11px}
+          .status{font-size:7px}
+          .lp section{padding:48px 16px}
+          .hero{padding:24px 16px 56px;min-height:auto}
+          .hero h1{font-size:18px;line-height:1.6}
+          .hero .sub{font-size:18px;margin:18px 0}
+          .hero .cta{gap:16px;margin-top:28px}
+          .hero .meta{gap:16px;flex-wrap:wrap;margin-top:32px;font-size:7px}
+          .hero .meta span b{font-size:12px}
+          .lp h2{font-size:15px}
+          .lp h3{font-size:12px}
+          .how-grid{grid-template-columns:1fr}
+          .archetype-grid{grid-template-columns:1fr 1fr;gap:14px}
+          .arch .body{padding:14px}
+          .arch .portrait .glyph{font-size:30px}
+          .flow-strip{padding:16px;gap:10px;font-size:9px}
+          .flow-strip b{padding:6px 10px}
+          .stat-row{grid-template-columns:auto auto auto;padding:12px 14px;gap:8px}
+          .bracket,.tour-tags{grid-template-columns:1fr}
+          .gp-features{grid-template-columns:1fr}
+          .gp-features li{font-size:9px;padding:14px}
+          .final{padding:64px 16px}
+          .final h2{font-size:18px}
+          .final .cta{gap:16px}
+          .lp footer{padding:28px 16px}
+          .lp footer .row{flex-direction:column;text-align:center;gap:12px}
+          .sec-head{margin-bottom:32px}
+          .pxbtn{font-size:9px;padding:12px 16px}
+          .panel{padding:18px}
+          .step .ico{width:48px;height:48px;font-size:14px}
+          .step .num{font-size:36px}
+        }
       `}</style>
 
       {/* NAV */}

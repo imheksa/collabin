@@ -305,14 +305,14 @@ export function ModeSelect() {
             <div className="badge">X</div>
             FIGHTER ARENA
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
               <span className="g-dot"></span>
-              <span style={{ fontFamily: 'var(--pixel)', fontSize: '8px', color: 'var(--neon-grn)' }}>{onlinePlayers.toLocaleString()} ONLINE</span>
+              <span style={{ fontFamily: 'var(--pixel)', fontSize: '7px', color: 'var(--neon-grn)' }}>{onlinePlayers.toLocaleString()}</span>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
               <span className="g-dot" style={{ background: 'var(--neon-pink)', animationDelay: '.5s' }}></span>
-              <span style={{ fontFamily: 'var(--pixel)', fontSize: '8px', color: 'var(--neon-pink)' }}>{activeMatches} IN BATTLE</span>
+              <span style={{ fontFamily: 'var(--pixel)', fontSize: '7px', color: 'var(--neon-pink)' }}>{activeMatches}</span>
             </div>
           </div>
         </nav>

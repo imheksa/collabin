@@ -153,25 +153,25 @@ export function VSScreen() {
         ))}
       </div>
 
-      <div className="relative z-10 w-full max-w-5xl px-4">
+      <div className="relative z-10 w-full max-w-5xl px-3 md:px-4">
         {/* P2P Ready labels */}
-        <div className="flex items-center justify-between mb-4">
-          <div style={{ fontFamily: 'var(--pixel)', fontSize: '10px', color: 'var(--neon-b)', textShadow: '0 0 10px var(--neon-b)', letterSpacing: '.2em' }}>
-            PLAYER 1 {isP2P && p1Ready && <span style={{ color: 'var(--neon-grn)' }}>✓</span>}
+        <div className="flex items-center justify-between mb-3 md:mb-4">
+          <div style={{ fontFamily: 'var(--pixel)', fontSize: 'clamp(7px,2vw,10px)', color: 'var(--neon-b)', textShadow: '0 0 10px var(--neon-b)', letterSpacing: '.1em' }}>
+            P1 {isP2P && p1Ready && <span style={{ color: 'var(--neon-grn)' }}>✓</span>}
           </div>
           {isP2P && phase === 'ready_wait' && (
             <div style={{ fontFamily: 'var(--pixel)', fontSize: '8px', color: 'var(--neon-yel)' }}>
               {readyTimer}s
             </div>
           )}
-          <div style={{ fontFamily: 'var(--pixel)', fontSize: '10px', color: 'var(--neon-pink)', textShadow: '0 0 10px var(--neon-pink)', letterSpacing: '.2em' }}>
-            {isP2P && p2Ready && <span style={{ color: 'var(--neon-grn)' }}>✓ </span>}PLAYER 2
+          <div style={{ fontFamily: 'var(--pixel)', fontSize: 'clamp(7px,2vw,10px)', color: 'var(--neon-pink)', textShadow: '0 0 10px var(--neon-pink)', letterSpacing: '.1em' }}>
+            {isP2P && p2Ready && <span style={{ color: 'var(--neon-grn)' }}>✓ </span>}P2
           </div>
         </div>
 
-        <div className="flex items-center gap-4 md:gap-8">
+        <div className="flex items-center gap-2 md:gap-8">
           {/* P1 */}
-          <div className="flex-1 transition-all duration-700"
+          <div className="flex-1 min-w-0 transition-all duration-700"
             style={{ transform: phase === 'enter' ? 'translateX(-80px)' : 'translateX(0)', opacity: phase === 'enter' ? 0 : 1 }}>
             <div style={{ boxShadow: `0 0 0 4px var(--void), 0 0 0 8px ${p1Glow}, 0 0 40px ${p1Glow}60` }}>
               <FighterCard fighter={player1} />
@@ -189,7 +189,7 @@ export function VSScreen() {
             {phase !== 'countdown' && phase !== 'fight' ? (
               <div style={{
                 fontFamily: 'var(--pixel)',
-                fontSize: phase === 'enter' ? '0px' : '56px',
+                fontSize: phase === 'enter' ? '0px' : 'clamp(28px, 8vw, 56px)',
                 color: 'var(--neon-yel)',
                 textShadow: '4px 4px 0 var(--neon-pink), 0 0 30px var(--neon-yel)',
                 transition: 'font-size .3s ease',
@@ -198,7 +198,7 @@ export function VSScreen() {
             ) : (
               <div key={countdown} style={{
                 fontFamily: 'var(--pixel)',
-                fontSize: countdown === 0 ? '32px' : '64px',
+                fontSize: countdown === 0 ? 'clamp(22px,6vw,32px)' : 'clamp(36px,10vw,64px)',
                 color: countdown === 0 ? 'var(--neon-pink)' : 'var(--neon-yel)',
                 textShadow: '4px 4px 0 var(--neon-pink), 0 0 40px currentColor',
                 animation: 'countdown-pop 0.8s ease-out forwards',
@@ -233,7 +233,7 @@ export function VSScreen() {
           </div>
 
           {/* P2 */}
-          <div className="flex-1 transition-all duration-700"
+          <div className="flex-1 min-w-0 transition-all duration-700"
             style={{ transform: phase === 'enter' ? 'translateX(80px)' : 'translateX(0)', opacity: phase === 'enter' ? 0 : 1 }}>
             <div style={{ boxShadow: `0 0 0 4px var(--void), 0 0 0 8px ${p2Glow}, 0 0 40px ${p2Glow}60` }}>
               <FighterCard fighter={player2} />
@@ -249,12 +249,12 @@ export function VSScreen() {
 
         {/* Archetype matchup */}
         {phase !== 'enter' && (
-          <div className="text-center mt-6 flex items-center justify-center gap-3">
-            <span style={{ fontFamily: 'var(--pixel)', fontSize: '10px', color: player1.stats.color }}>{player1.stats.archetypeLabel.toUpperCase()}</span>
-            <div style={{ width: '32px', height: '2px', background: 'var(--panel-line)' }} />
-            <span style={{ fontFamily: 'var(--pixel)', fontSize: '10px', color: 'var(--neon-yel)' }}>VS</span>
-            <div style={{ width: '32px', height: '2px', background: 'var(--panel-line)' }} />
-            <span style={{ fontFamily: 'var(--pixel)', fontSize: '10px', color: player2.stats.color }}>{player2.stats.archetypeLabel.toUpperCase()}</span>
+          <div className="text-center mt-4 flex items-center justify-center gap-2 flex-wrap">
+            <span style={{ fontFamily: 'var(--pixel)', fontSize: 'clamp(7px,2vw,10px)', color: player1.stats.color }}>{player1.stats.archetypeLabel.toUpperCase()}</span>
+            <div style={{ width: '24px', height: '2px', background: 'var(--panel-line)', flexShrink: 0 }} />
+            <span style={{ fontFamily: 'var(--pixel)', fontSize: 'clamp(7px,2vw,10px)', color: 'var(--neon-yel)' }}>VS</span>
+            <div style={{ width: '24px', height: '2px', background: 'var(--panel-line)', flexShrink: 0 }} />
+            <span style={{ fontFamily: 'var(--pixel)', fontSize: 'clamp(7px,2vw,10px)', color: player2.stats.color }}>{player2.stats.archetypeLabel.toUpperCase()}</span>
           </div>
         )}
 

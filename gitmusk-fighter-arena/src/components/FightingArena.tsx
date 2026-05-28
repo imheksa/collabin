@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { Fighter, GameFighterState, MatchResult, P2PInput } from '../types';
 import { supabase } from '../lib/supabase';
 import { calcDamage } from '../utils/statsCalculator';
@@ -636,6 +636,7 @@ export function FightingArena({ player1, player2, onMatchEnd, p2AI = true, p2pMo
   const frameCountRef = useRef(0);
   const disconnectedRef = useRef(false);
   const p2RemoteInputRef = useRef<P2PInput>({ left: false, right: false, up: false, down: false, block: false, punch: false, kick: false, special: false, ultimate: false, ts: 0 });
+  const sendInputRef = useRef<() => void>(() => {});
   const lastRemoteSignalRef = useRef(Date.now());
   const fightChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
@@ -941,6 +942,8 @@ export function FightingArena({ player1, player2, onMatchEnd, p2AI = true, p2pMo
         } satisfies P2PInput,
       });
     };
+
+    sendInputRef.current = sendP2Input;
 
     const onKey = (e: KeyboardEvent) => {
       keysRef.current.add(e.key);
@@ -1316,24 +1319,50 @@ export function FightingArena({ player1, player2, onMatchEnd, p2AI = true, p2pMo
   const p1Color = ARCHETYPE_COLORS[player1.stats.archetype] || '#00ffff';
   const p2Color = ARCHETYPE_COLORS[player2.stats.archetype] || '#ff00ff';
 
+  const touchPress = useCallback((key: string) => {
+    keysRef.current.add(key);
+    sendInputRef.current();
+  }, []);
+
+  const touchRelease = useCallback((key: string) => {
+    keysRef.current.delete(key);
+    sendInputRef.current();
+  }, []);
+
+  const dpadBtnStyle = (color: string): React.CSSProperties => ({
+    position: 'absolute',
+    width: '46px', height: '46px',
+    background: `${color}18`,
+    border: `2px solid ${color}60`,
+    color,
+    fontFamily: 'var(--pixel)',
+    fontSize: '14px',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    cursor: 'pointer',
+    WebkitTapHighlightColor: 'transparent',
+    userSelect: 'none',
+    touchAction: 'none',
+    outline: 'none',
+  });
+
   return (
-    <div className="flex flex-col items-center w-full select-none">
+    <div className="flex flex-col items-center w-full select-none" style={{ touchAction: 'none' }}>
       {/* HUD */}
-      <div className="w-full max-w-4xl flex items-center gap-3 mb-2 px-2">
+      <div className="w-full flex items-center gap-1 sm:gap-3 mb-1 sm:mb-2 px-1 sm:px-2" style={{ maxWidth: '800px' }}>
         <HPBar
           hp={p1Hp} maxHp={100} name={player1.profile.username}
           side="left" color={p1Color} rage={p1Rage}
           specialHits={p1Hits} specialReady={p1SpecialReady}
         />
 
-        <div className="flex flex-col items-center flex-shrink-0 w-24">
-          <div className="font-pixel text-white text-xs mb-1">R{round}</div>
-          <div className="font-pixel text-2xl"
-            style={{ color: timeLeft <= 10 ? '#ff0040' : '#ffff00', textShadow: `0 0 12px ${timeLeft <= 10 ? '#ff0040' : '#ffff00'}` }}>
+        <div className="flex flex-col items-center flex-shrink-0" style={{ width: 'clamp(52px,10vw,96px)' }}>
+          <div className="font-pixel text-white" style={{ fontSize: 'clamp(7px,1.5vw,11px)', marginBottom: '1px' }}>R{round}</div>
+          <div className="font-pixel"
+            style={{ fontSize: 'clamp(18px,5vw,28px)', color: timeLeft <= 10 ? '#ff0040' : '#ffff00', textShadow: `0 0 12px ${timeLeft <= 10 ? '#ff0040' : '#ffff00'}` }}>
             {timeLeft}
           </div>
-          <div className="font-pixel text-xs mt-1" style={{ color: '#bf00ff', fontSize: '7px' }}>
-            {combo1 > 2 ? `P1 ${combo1}x COMBO!` : combo2 > 2 ? `P2 ${combo2}x COMBO!` : 'FIGHT!'}
+          <div className="font-pixel" style={{ color: '#bf00ff', fontSize: 'clamp(5px,1.2vw,7px)', marginTop: '1px', textAlign: 'center' }}>
+            {combo1 > 2 ? `P1 ${combo1}x` : combo2 > 2 ? `P2 ${combo2}x` : 'FIGHT!'}
           </div>
         </div>
 
@@ -1345,22 +1374,22 @@ export function FightingArena({ player1, player2, onMatchEnd, p2AI = true, p2pMo
       </div>
 
       {/* Canvas */}
-      <div className="relative" ref={wrapperRef}>
-        <canvas ref={canvasRef} width={W} height={H} className="block"
-          style={{ border: '2px solid #bf00ff', boxShadow: '0 0 30px #bf00ff50', maxWidth: '100%' }}
+      <div className="relative w-full" ref={wrapperRef} style={{ maxWidth: '800px' }}>
+        <canvas ref={canvasRef} width={W} height={H} className="block w-full"
+          style={{ border: '2px solid #bf00ff', boxShadow: '0 0 30px #bf00ff50', height: 'auto' }}
         />
         {showAnnounce && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <div className="font-pixel text-4xl animate-pulse"
-              style={{ color: '#ffff00', textShadow: '0 0 30px #ffff00, 0 0 60px #ffaa00' }}>
+            <div className="font-pixel animate-pulse"
+              style={{ fontSize: 'clamp(20px,6vw,36px)', color: '#ffff00', textShadow: '0 0 30px #ffff00, 0 0 60px #ffaa00' }}>
               ROUND 1
             </div>
           </div>
         )}
       </div>
 
-      {/* Controls */}
-      <div className="flex gap-6 mt-3 text-xs font-mono text-gray-600 flex-wrap justify-center">
+      {/* Keyboard controls hint — hidden on mobile */}
+      <div className="hidden sm:flex gap-6 mt-2 text-xs font-mono text-gray-600 flex-wrap justify-center">
         <div>
           <span style={{ color: p1Color }}>P1:</span>{' '}
           WASD=move · F=punch · G=kick · <span style={{ color: '#ffff00' }}>H=special(5hits)</span> · V=ult · S=block
@@ -1368,6 +1397,86 @@ export function FightingArena({ player1, player2, onMatchEnd, p2AI = true, p2pMo
         <div>
           <span style={{ color: p2Color }}>P2:</span>{' '}
           ←→↑=move · 1=punch · 2=kick · <span style={{ color: '#ffff00' }}>3=special(5hits)</span> · 4=ult · ↓=block
+        </div>
+      </div>
+
+      {/* Virtual Touch Gamepad — mobile only */}
+      <div className="arena-touch-pad w-full justify-between items-center px-3 mt-2"
+        style={{ maxWidth: '800px', touchAction: 'none', userSelect: 'none' }}>
+
+        {/* D-pad */}
+        <div style={{ position: 'relative', width: '138px', height: '138px', flexShrink: 0 }}>
+          <div style={{
+            position: 'absolute', top: '50%', left: '50%',
+            transform: 'translate(-50%,-50%)',
+            width: '46px', height: '46px',
+            background: 'rgba(255,255,255,.04)',
+            border: '2px solid rgba(255,255,255,.06)',
+          }} />
+          {/* UP — jump */}
+          <button
+            onTouchStart={(e) => { e.preventDefault(); touchPress('w'); }}
+            onTouchEnd={(e) => { e.preventDefault(); touchRelease('w'); }}
+            onTouchCancel={(e) => { e.preventDefault(); touchRelease('w'); }}
+            style={{ ...dpadBtnStyle('var(--neon-b)'), top: 0, left: '50%', transform: 'translateX(-50%)' }}>
+            ▲
+          </button>
+          {/* LEFT */}
+          <button
+            onTouchStart={(e) => { e.preventDefault(); touchPress('a'); }}
+            onTouchEnd={(e) => { e.preventDefault(); touchRelease('a'); }}
+            onTouchCancel={(e) => { e.preventDefault(); touchRelease('a'); }}
+            style={{ ...dpadBtnStyle('var(--neon-b)'), top: '50%', left: 0, transform: 'translateY(-50%)' }}>
+            ◀
+          </button>
+          {/* RIGHT */}
+          <button
+            onTouchStart={(e) => { e.preventDefault(); touchPress('d'); }}
+            onTouchEnd={(e) => { e.preventDefault(); touchRelease('d'); }}
+            onTouchCancel={(e) => { e.preventDefault(); touchRelease('d'); }}
+            style={{ ...dpadBtnStyle('var(--neon-b)'), top: '50%', right: 0, transform: 'translateY(-50%)' }}>
+            ▶
+          </button>
+          {/* DOWN — block */}
+          <button
+            onTouchStart={(e) => { e.preventDefault(); touchPress('s'); }}
+            onTouchEnd={(e) => { e.preventDefault(); touchRelease('s'); }}
+            onTouchCancel={(e) => { e.preventDefault(); touchRelease('s'); }}
+            style={{ ...dpadBtnStyle('var(--neon-pink)'), bottom: 0, left: '50%', transform: 'translateX(-50%)' }}>
+            <span style={{ fontSize: '8px' }}>BLK</span>
+          </button>
+        </div>
+
+        {/* Action buttons */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', flexShrink: 0 }}>
+          {([
+            { label: 'P', key: 'f', color: '#ff2d75' },
+            { label: 'K', key: 'g', color: '#00e5ff' },
+            { label: 'SP', key: 'h', color: '#ffd60a' },
+            { label: 'ULT', key: 'v', color: '#b026ff' },
+          ] as const).map(({ label, key, color }) => (
+            <button
+              key={label}
+              onTouchStart={(e) => { e.preventDefault(); touchPress(key); }}
+              onTouchEnd={(e) => { e.preventDefault(); touchRelease(key); }}
+              onTouchCancel={(e) => { e.preventDefault(); touchRelease(key); }}
+              style={{
+                width: '62px', height: '62px',
+                background: `${color}1a`,
+                border: `3px solid ${color}70`,
+                color,
+                fontFamily: 'var(--pixel)',
+                fontSize: '9px',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                cursor: 'pointer',
+                WebkitTapHighlightColor: 'transparent',
+                userSelect: 'none',
+                touchAction: 'none',
+                outline: 'none',
+              }}>
+              {label}
+            </button>
+          ))}
         </div>
       </div>
     </div>
