@@ -17,6 +17,8 @@ interface GameStore {
   walletAddress: string | null;
   playerProfile: PlayerProfile | null;
   lastMatchReward: MatchReward | null;
+  matchId: string | null;
+  isHost: boolean;
 
   setScreen: (screen: GameScreen) => void;
   setMode: (mode: GameMode) => void;
@@ -32,6 +34,8 @@ interface GameStore {
   setWalletAddress: (addr: string | null) => void;
   setPlayerProfile: (p: PlayerProfile | null) => void;
   setLastMatchReward: (r: MatchReward | null) => void;
+  setMatchId: (id: string | null) => void;
+  setIsHost: (v: boolean) => void;
   resetMatch: () => void;
 }
 
@@ -50,6 +54,8 @@ export const useGameStore = create<GameStore>((set) => ({
   walletAddress: null,
   playerProfile: null,
   lastMatchReward: null,
+  matchId: null,
+  isHost: false,
 
   setScreen: (screen) => set({ screen }),
   setMode: (mode) => set({ mode }),
@@ -65,5 +71,10 @@ export const useGameStore = create<GameStore>((set) => ({
   setWalletAddress: (walletAddress) => set({ walletAddress }),
   setPlayerProfile: (playerProfile) => set({ playerProfile }),
   setLastMatchReward: (lastMatchReward) => set({ lastMatchReward }),
-  resetMatch: () => set({ player1: null, player2: null, matchResult: null, screen: 'mode_select' }),
+  setMatchId: (matchId) => set({ matchId }),
+  setIsHost: (isHost) => set({ isHost }),
+  resetMatch: () => set({
+    player1: null, player2: null, matchResult: null,
+    matchId: null, isHost: false, screen: 'mode_select',
+  }),
 }));

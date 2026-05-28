@@ -195,6 +195,11 @@ export function Results() {
           <div style={{ fontFamily: 'var(--pixel)', fontSize: '18px', color: isP1Win ? 'var(--neon-grn)' : 'var(--neon-pink)', marginTop: '8px', textShadow: `0 0 20px ${isP1Win ? 'var(--neon-grn)' : 'var(--neon-pink)'}` }}>
             {isP1Win ? '🏆 VICTORY!' : '💀 DEFEATED'}
           </div>
+          {matchResult.disconnected && (
+            <div style={{ fontFamily: 'var(--pixel)', fontSize: '9px', color: '#ff8800', marginTop: '10px', letterSpacing: '.1em', textShadow: '0 0 10px #ff8800' }}>
+              ⚠ LAWAN TERPUTUS — KAMU MENANG!
+            </div>
+          )}
         </div>
 
         {/* Stats strip */}

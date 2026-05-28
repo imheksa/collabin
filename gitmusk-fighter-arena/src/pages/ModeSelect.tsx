@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useGameStore } from '../stores/gameStore';
 import { DEMO_PROFILES } from '../data/mockProfiles';
 import { calculateFighterStats } from '../utils/statsCalculator';
@@ -6,16 +6,13 @@ import { Fighter } from '../types';
 import { connectBankrKey, checkBankrExists, lookupBankrUser } from '../utils/bankrClient';
 import { getWalletBalance } from '../utils/baseRpc';
 import { getProfile, getLevelTier, xpProgressInLevel } from '../utils/playerProfile';
+import { useMatchmaking } from '../hooks/useMatchmaking';
+import { usePresence } from '../hooks/usePresence';
+import { supabase } from '../lib/supabase';
 
 const P2E_MIN_USD = 1;
 
-function generateRoomCode(): string {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  return 'GMF-' + Array.from({ length: 3 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
-}
-
 /* ─── P2E Modal ─────────────────────────────────────────────────── */
-
 type P2eStep = 'checking' | 'eligible' | 'insufficient' | 'not_connected' | 'manual_fallback';
 interface BalanceSnapshot { address: string; usdc: number; eth: number; ethPriceUsd: number; totalUsd: number; }
 
@@ -153,24 +150,29 @@ function P2eModal({ username, onClose, onReady }: { username: string; onClose: (
 /* ─── ModeSelect ─────────────────────────────────────────────────── */
 
 export function ModeSelect() {
-  const { player1, setPlayer2, setScreen, setMode, setMatchMode, onlinePlayers, activeMatches, setOnlinePlayers, setActiveMatches, roomCode, setRoomCode, walletAddress } = useGameStore();
+  const {
+    player1, setPlayer2, setScreen, setMode, setMatchMode,
+    onlinePlayers, activeMatches, walletAddress,
+    setMatchId, setIsHost, matchId,
+  } = useGameStore();
+
   const [tab, setTab] = useState<'random' | 'friend'>('random');
-  const [friendTab, setFriendTab] = useState<'create' | 'join'>('create');
-  const [joinCode, setJoinCode] = useState('');
-  const [searching, setSearching] = useState(false);
-  const [waitingFriend, setWaitingFriend] = useState(false);
   const [searchDots, setSearchDots] = useState('');
-  const [countdown, setCountdown] = useState(0);
   const [showP2eModal, setShowP2eModal] = useState(false);
   const [bankrExists, setBankrExists] = useState<boolean | null>(null);
 
-  useEffect(() => {
-    const iv = setInterval(() => {
-      setOnlinePlayers(onlinePlayers + Math.floor((Math.random() - .4) * 5));
-      setActiveMatches(Math.max(5, activeMatches + Math.floor((Math.random() - .4) * 3)));
-    }, 3000);
-    return () => clearInterval(iv);
-  }, [onlinePlayers, activeMatches, setOnlinePlayers, setActiveMatches]);
+  // Friend room states
+  const [creatingRoom, setCreatingRoom] = useState(false);
+  const [inviteLink, setInviteLink] = useState('');
+  const [waitingFriend, setWaitingFriend] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
+  const roomChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const currentMatchIdRef = useRef<string | null>(null);
+
+  const { status: mmStatus, joinQueue, leaveQueue } = useMatchmaking();
+  const searching = mmStatus === 'waiting';
+
+  usePresence(player1?.profile.username);
 
   useEffect(() => {
     if (!searching && !waitingFriend) return;
@@ -183,32 +185,108 @@ export function ModeSelect() {
     checkBankrExists(player1.profile.username).then(setBankrExists);
   }, [player1]);
 
-  const pickRandomOpponent = useCallback(() => {
+  // Cleanup room channel on unmount
+  useEffect(() => {
+    return () => {
+      if (roomChannelRef.current) supabase.removeChannel(roomChannelRef.current);
+    };
+  }, []);
+
+  const pickDemoOpponent = useCallback(() => {
     const others = DEMO_PROFILES.filter(p => p.username !== player1?.profile.username);
     const picked = others[Math.floor(Math.random() * others.length)];
     setPlayer2({ profile: picked, stats: calculateFighterStats(picked) } as Fighter);
     setMatchMode('random');
+    setMatchId(null);
+    setIsHost(false);
     setScreen('vs_screen');
-  }, [player1, setPlayer2, setMatchMode, setScreen]);
+  }, [player1, setPlayer2, setMatchMode, setMatchId, setIsHost, setScreen]);
 
-  const startRandomSearch = () => {
-    setSearching(true);
-    const delay = 1500 + Math.random() * 2000;
-    setCountdown(Math.ceil(delay / 1000));
-    const cd = setInterval(() => setCountdown(c => c - 1), 1000);
-    setTimeout(() => { clearInterval(cd); setSearching(false); pickRandomOpponent(); }, delay);
+  const startRandomSearch = async () => {
+    setMode('free');
+    if (!import.meta.env.VITE_SUPABASE_URL) {
+      // Fallback to demo mode if Supabase not configured
+      const delay = 1500 + Math.random() * 2000;
+      setTimeout(() => pickDemoOpponent(), delay);
+      return;
+    }
+    await joinQueue();
   };
 
-  const createRoom = () => {
-    setRoomCode(generateRoomCode());
-    setWaitingFriend(true);
-    setTimeout(() => { setWaitingFriend(false); pickRandomOpponent(); setMatchMode('friend'); }, 4000 + Math.random() * 4000);
+  const createRoom = async () => {
+    if (!player1) return;
+    setCreatingRoom(true);
+    try {
+      const res = await fetch('/api/room-create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: player1.profile.username,
+          fighterData: { profile: player1.profile, stats: player1.stats },
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+
+      const link = `${window.location.origin}${window.location.pathname}?join=${data.matchId}`;
+      setInviteLink(link);
+      currentMatchIdRef.current = data.matchId;
+      setWaitingFriend(true);
+      subscribeToRoomMatch(data.matchId);
+    } catch (err) {
+      console.error('Room create error:', err);
+    } finally {
+      setCreatingRoom(false);
+    }
   };
 
-  const joinRoom = () => {
-    if (joinCode.trim().length < 3) return;
-    setWaitingFriend(true);
-    setTimeout(() => { setWaitingFriend(false); pickRandomOpponent(); setMatchMode('friend'); }, 2000);
+  const subscribeToRoomMatch = (mId: string) => {
+    const ch = supabase
+      .channel(`room_watch:${mId}`)
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'matches', filter: `id=eq.${mId}` },
+        (payload) => {
+          if (payload.new.status === 'active' && payload.new.player2_data) {
+            const opponent = payload.new.player2_data as Fighter;
+            setPlayer2(opponent);
+            setMatchId(mId);
+            setIsHost(true);
+            setMatchMode('friend');
+            setWaitingFriend(false);
+            setScreen('vs_screen');
+            supabase.removeChannel(ch);
+            roomChannelRef.current = null;
+          }
+        }
+      )
+      .subscribe();
+    roomChannelRef.current = ch;
+  };
+
+  const cancelRoom = () => {
+    setWaitingFriend(false);
+    setInviteLink('');
+    currentMatchIdRef.current = null;
+    if (roomChannelRef.current) {
+      supabase.removeChannel(roomChannelRef.current);
+      roomChannelRef.current = null;
+    }
+  };
+
+  const copyLink = () => {
+    navigator.clipboard?.writeText(inviteLink).then(() => {
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
+    });
+  };
+
+  const shareLink = () => {
+    if (navigator.share) {
+      navigator.share({ title: 'X Fighter Arena — Tantangan!', text: 'Lawan aku di X Fighter Arena!', url: inviteLink });
+    } else {
+      copyLink();
+    }
   };
 
   if (!player1) return null;
@@ -280,7 +358,8 @@ export function ModeSelect() {
         {/* Mode tabs */}
         <div className="flex mb-4" style={{ border: '3px solid var(--panel-line)' }}>
           {(['random', 'friend'] as const).map(t => (
-            <button key={t} onClick={() => { setTab(t); setSearching(false); setWaitingFriend(false); }}
+            <button key={t}
+              onClick={() => { setTab(t); if (searching) leaveQueue(); setWaitingFriend(false); setInviteLink(''); }}
               className="flex-1 py-3"
               style={{
                 fontFamily: 'var(--pixel)', fontSize: '9px', border: 'none', cursor: 'pointer',
@@ -303,7 +382,6 @@ export function ModeSelect() {
                 <p style={{ fontFamily: 'var(--body)', fontSize: '20px', color: 'var(--txt-dim)', marginBottom: '24px', maxWidth: '36ch', margin: '0 auto 24px' }}>
                   Get matched with a random fighter. Ranked by Twitter Score.
                 </p>
-                {/* Opponent avatars preview */}
                 <div className="flex justify-center gap-2 mb-6">
                   {DEMO_PROFILES.filter(p => p.username !== player1.profile.username).slice(0, 4).map(p => (
                     <div key={p.username} className="w-9 h-9 overflow-hidden" style={{ border: '2px solid var(--panel-line)', opacity: .7 }}>
@@ -312,7 +390,7 @@ export function ModeSelect() {
                     </div>
                   ))}
                   <div className="w-9 h-9 flex items-center justify-center" style={{ background: 'var(--void)', border: '2px solid var(--panel-line)', fontFamily: 'var(--pixel)', fontSize: '7px', color: 'var(--txt-dim)' }}>
-                    +{onlinePlayers - 4}
+                    +{Math.max(0, onlinePlayers - 4)}
                   </div>
                 </div>
                 <div className="flex flex-col gap-3">
@@ -333,14 +411,14 @@ export function ModeSelect() {
                     style={{ border: '3px solid transparent', borderTopColor: 'var(--neon-pink)', animationDirection: 'reverse', animationDuration: '.8s' }} />
                   <div className="absolute inset-0 flex items-center justify-center"
                     style={{ fontFamily: 'var(--pixel)', fontSize: '11px', color: 'var(--neon-b)' }}>
-                    {countdown > 0 ? countdown : '!'}
+                    ⚡
                   </div>
                 </div>
                 <div style={{ fontFamily: 'var(--pixel)', fontSize: '11px', color: '#fff', marginBottom: '8px' }}>SEARCHING{searchDots}</div>
                 <div style={{ fontFamily: 'var(--body)', fontSize: '20px', color: 'var(--txt-dim)', marginBottom: '24px' }}>
                   Scanning {onlinePlayers} fighters...
                 </div>
-                <button onClick={() => setSearching(false)} className="g-btn ghost sm">✕ CANCEL</button>
+                <button onClick={leaveQueue} className="g-btn ghost sm">✕ CANCEL</button>
               </div>
             )}
           </div>
@@ -348,68 +426,56 @@ export function ModeSelect() {
 
         {/* Friend Play */}
         {tab === 'friend' && (
-          <div className="g-panel pink" style={{ padding: '0' }}>
+          <div className="g-panel pink" style={{ padding: '24px' }}>
             <div className="corners"><i></i><i></i><i></i><i></i></div>
-            <div className="flex" style={{ borderBottom: '4px solid var(--neon-pink)' }}>
-              {(['create', 'join'] as const).map(ft => (
-                <button key={ft} onClick={() => { setFriendTab(ft); setWaitingFriend(false); setRoomCode(''); }}
-                  className="flex-1 py-3"
-                  style={{
-                    fontFamily: 'var(--pixel)', fontSize: '8px', border: 'none', cursor: 'pointer',
-                    background: friendTab === ft ? 'rgba(255,45,117,.2)' : 'var(--void-2)',
-                    color: friendTab === ft ? 'var(--neon-pink)' : 'var(--txt-dim)',
-                    borderBottom: friendTab === ft ? '4px solid var(--neon-pink)' : '4px solid transparent',
-                  }}>
-                  {ft === 'create' ? '➕ CREATE ROOM' : '🔑 JOIN ROOM'}
+
+            {!waitingFriend ? (
+              <div className="text-center">
+                <span className="g-eyebrow" style={{ color: 'var(--neon-pink)' }}>// FRIEND MATCH</span>
+                <p style={{ fontFamily: 'var(--body)', fontSize: '20px', color: 'var(--txt-dim)', marginBottom: '24px' }}>
+                  Generate an invite link and share with your friend. No code needed — just click!
+                </p>
+                <button
+                  onClick={createRoom}
+                  disabled={creatingRoom}
+                  className="g-btn pink full"
+                  style={{ fontSize: '11px' }}>
+                  {creatingRoom ? '...' : '🔗 CREATE INVITE LINK'}
                 </button>
-              ))}
-            </div>
-            <div className="text-center p-6">
-              {friendTab === 'create' && !waitingFriend && (
-                <>
-                  <span className="g-eyebrow" style={{ color: 'var(--neon-pink)' }}>// CREATE A ROOM</span>
-                  <p style={{ fontFamily: 'var(--body)', fontSize: '20px', color: 'var(--txt-dim)', marginBottom: '24px' }}>
-                    Generate a code and share with your friend.
-                  </p>
-                  <button onClick={createRoom} className="g-btn pink full" style={{ fontSize: '11px' }}>➕ GENERATE ROOM CODE</button>
-                </>
-              )}
-              {friendTab === 'create' && waitingFriend && roomCode && (
-                <div className="py-4">
-                  <div style={{ fontFamily: 'var(--pixel)', fontSize: '8px', color: 'var(--txt-dim)', marginBottom: '12px', letterSpacing: '.2em' }}>YOUR ROOM CODE</div>
-                  <div className="inline-block px-6 py-4 mb-4" style={{ border: '4px solid var(--neon-pink)', boxShadow: '0 0 20px rgba(255,45,117,.4)' }}>
-                    <div style={{ fontFamily: 'var(--pixel)', fontSize: '28px', letterSpacing: '.3em', color: 'var(--neon-pink)', textShadow: '0 0 15px var(--neon-pink)' }}>{roomCode}</div>
+              </div>
+            ) : (
+              <div className="py-2">
+                <div style={{ fontFamily: 'var(--pixel)', fontSize: '8px', color: 'var(--txt-dim)', marginBottom: '12px', letterSpacing: '.2em', textAlign: 'center' }}>
+                  SHARE THIS LINK WITH YOUR FRIEND
+                </div>
+
+                {/* Link box */}
+                <div className="mb-4 p-3 flex items-center gap-2"
+                  style={{ background: 'var(--void)', border: '3px solid var(--neon-pink)', boxShadow: '0 0 12px rgba(255,45,117,.3)' }}>
+                  <div style={{ flex: 1, fontFamily: 'var(--mono)', fontSize: '11px', color: 'var(--neon-pink)', wordBreak: 'break-all', lineHeight: 1.5 }}>
+                    {inviteLink}
                   </div>
-                  <p style={{ fontFamily: 'var(--body)', fontSize: '18px', color: 'var(--txt-dim)', marginBottom: '16px' }}>Share this code with your friend</p>
-                  <button onClick={() => navigator.clipboard?.writeText(roomCode)} className="g-btn ghost sm mb-6">📋 COPY CODE</button>
-                  <div style={{ fontFamily: 'var(--pixel)', fontSize: '8px', color: 'var(--txt-dim)', animation: 'g-pulse 1.2s steps(2) infinite' }}>WAITING{searchDots}</div>
-                  <button onClick={() => { setWaitingFriend(false); setRoomCode(''); }}
-                    className="mt-4 block mx-auto" style={{ fontFamily: 'var(--mono)', fontSize: '12px', color: 'var(--txt-dim)', background: 'none', border: 'none', cursor: 'pointer' }}>Cancel</button>
                 </div>
-              )}
-              {friendTab === 'join' && !waitingFriend && (
-                <>
-                  <span className="g-eyebrow" style={{ color: 'var(--neon-pink)' }}>// JOIN A ROOM</span>
-                  <p style={{ fontFamily: 'var(--body)', fontSize: '20px', color: 'var(--txt-dim)', marginBottom: '24px' }}>Enter the code your friend shared.</p>
-                  <input
-                    style={{ width: '100%', background: 'var(--void)', border: '4px solid var(--panel-line)', fontFamily: 'var(--pixel)', fontSize: '18px', color: '#fff', padding: '14px', textAlign: 'center', letterSpacing: '.3em', outline: 'none', marginBottom: '16px' }}
-                    placeholder="GMF-XXX" value={joinCode}
-                    onChange={e => setJoinCode(e.target.value.toUpperCase().slice(0, 7))}
-                    onFocus={e => (e.target.style.borderColor = 'var(--neon-pink)')}
-                    onBlur={e => (e.target.style.borderColor = 'var(--panel-line)')}
-                    onKeyDown={e => e.key === 'Enter' && joinRoom()}
-                  />
-                  <button onClick={joinRoom} disabled={joinCode.trim().length < 3} className="g-btn pink full" style={{ fontSize: '11px' }}>🔑 JOIN ROOM</button>
-                </>
-              )}
-              {friendTab === 'join' && waitingFriend && (
-                <div className="py-6">
-                  <div style={{ fontFamily: 'var(--pixel)', fontSize: '22px', letterSpacing: '.3em', color: 'var(--neon-pink)', textShadow: '0 0 10px var(--neon-pink)', marginBottom: '12px' }}>{joinCode}</div>
-                  <div style={{ fontFamily: 'var(--pixel)', fontSize: '10px', color: '#fff', marginBottom: '8px' }}>CONNECTING{searchDots}</div>
-                  <div style={{ fontFamily: 'var(--body)', fontSize: '18px', color: 'var(--txt-dim)' }}>Finding your friend's room...</div>
+
+                <div className="flex gap-2 mb-5">
+                  <button onClick={copyLink} className="g-btn pink sm flex-1" style={{ fontSize: '9px' }}>
+                    {linkCopied ? '✓ COPIED!' : '📋 COPY LINK'}
+                  </button>
+                  <button onClick={shareLink} className="g-btn ghost sm flex-1" style={{ fontSize: '9px' }}>
+                    📤 SHARE
+                  </button>
                 </div>
-              )}
-            </div>
+
+                <div className="text-center" style={{ fontFamily: 'var(--pixel)', fontSize: '8px', color: 'var(--txt-dim)', animation: 'g-pulse 1.2s steps(2) infinite' }}>
+                  WAITING FOR FRIEND{searchDots}
+                </div>
+                <button onClick={cancelRoom}
+                  className="mt-4 block mx-auto"
+                  style={{ fontFamily: 'var(--mono)', fontSize: '12px', color: 'var(--txt-dim)', background: 'none', border: 'none', cursor: 'pointer' }}>
+                  Cancel
+                </button>
+              </div>
+            )}
           </div>
         )}
 

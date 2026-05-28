@@ -72,6 +72,22 @@ export interface MatchResult {
   duration: number;
   maxCombo: number;
   mode: GameMode;
+  disconnected?: boolean;
+}
+
+export type P2PRole = 'host' | 'client';
+
+export interface P2PInput {
+  left: boolean;
+  right: boolean;
+  up: boolean;
+  down: boolean;
+  block: boolean;
+  punch: boolean;
+  kick: boolean;
+  special: boolean;
+  ultimate: boolean;
+  ts: number;
 }
 
 export type FighterState =

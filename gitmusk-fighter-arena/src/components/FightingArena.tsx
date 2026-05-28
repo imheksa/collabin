@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { Fighter, GameFighterState, MatchResult } from '../types';
+import { Fighter, GameFighterState, MatchResult, P2PInput } from '../types';
+import { supabase } from '../lib/supabase';
 import { calcDamage } from '../utils/statsCalculator';
 import { applyUltimate } from '../utils/ultimates';
 import { getProfile, getCombatModifiers } from '../utils/playerProfile';
@@ -615,9 +616,11 @@ interface ArenaProps {
   player2: Fighter;
   onMatchEnd: (result: MatchResult) => void;
   p2AI?: boolean;
+  p2pMode?: 'host' | 'client' | null;
+  matchId?: string | null;
 }
 
-export function FightingArena({ player1, player2, onMatchEnd, p2AI = true }: ArenaProps) {
+export function FightingArena({ player1, player2, onMatchEnd, p2AI = true, p2pMode = null, matchId = null }: ArenaProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const p1Ref = useRef<GameFighterState>(makeInitialState('left', 100));
@@ -630,6 +633,11 @@ export function FightingArena({ player1, player2, onMatchEnd, p2AI = true }: Are
   const gameOverRef = useRef(false);
   const koFiredRef = useRef(false);
   const aiRef = useRef<{ think: number; intent: 'idle' | 'approach' | 'retreat' | 'block' }>({ think: 0, intent: 'idle' });
+  const frameCountRef = useRef(0);
+  const disconnectedRef = useRef(false);
+  const p2RemoteInputRef = useRef<P2PInput>({ left: false, right: false, up: false, down: false, block: false, punch: false, kick: false, special: false, ultimate: false, ts: 0 });
+  const lastRemoteSignalRef = useRef(Date.now());
+  const fightChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
   // Visual effects
   const particlesRef = useRef<Particle[]>([]);
@@ -664,6 +672,60 @@ export function FightingArena({ player1, player2, onMatchEnd, p2AI = true }: Are
     const t = setTimeout(() => setShowAnnounce(false), 2000);
     return () => clearTimeout(t);
   }, []);
+
+  // P2P channel setup
+  useEffect(() => {
+    if (!p2pMode || !matchId) return;
+
+    const ch = supabase.channel(`match_fight:${matchId}`);
+    fightChannelRef.current = ch;
+    lastRemoteSignalRef.current = Date.now();
+
+    if (p2pMode === 'host') {
+      ch.on('broadcast', { event: 'input' }, ({ payload }: { payload: P2PInput }) => {
+        Object.assign(p2RemoteInputRef.current, payload);
+        lastRemoteSignalRef.current = Date.now();
+      });
+      ch.on('broadcast', { event: 'heartbeat' }, () => {
+        lastRemoteSignalRef.current = Date.now();
+      });
+    } else {
+      ch.on('broadcast', { event: 'state' }, ({ payload }: { payload: { p1: Partial<GameFighterState>; p2: Partial<GameFighterState> } }) => {
+        if (payload.p1) Object.assign(p1Ref.current, payload.p1);
+        if (payload.p2) Object.assign(p2Ref.current, payload.p2);
+        lastRemoteSignalRef.current = Date.now();
+      });
+      ch.on('broadcast', { event: 'game_over' }, ({ payload }: { payload: { winnerSide: 'left' | 'right'; maxCombo: number; duration: number; disconnected?: boolean } }) => {
+        if (gameOverRef.current || koFiredRef.current) return;
+        gameOverRef.current = true;
+        koFiredRef.current = true;
+        disconnectedRef.current = payload.disconnected ?? false;
+        const winner = payload.winnerSide === 'left' ? player1 : player2;
+        const loser = payload.winnerSide === 'left' ? player2 : player1;
+        playKO();
+        screenFlashRef.current = { alpha: 0.7, color: '#ffffff' };
+        setTimeout(() => {
+          onMatchEnd({ winner, loser, rounds: 1, duration: payload.duration, maxCombo: payload.maxCombo, mode: 'free', disconnected: payload.disconnected });
+        }, 2200);
+      });
+    }
+
+    ch.subscribe();
+
+    // P2 client heartbeat
+    let heartbeatInterval: ReturnType<typeof setInterval> | undefined;
+    if (p2pMode === 'client') {
+      heartbeatInterval = setInterval(() => {
+        ch.send({ type: 'broadcast', event: 'heartbeat', payload: { ts: Date.now() } });
+      }, 2000);
+    }
+
+    return () => {
+      clearInterval(heartbeatInterval);
+      supabase.removeChannel(ch);
+      fightChannelRef.current = null;
+    };
+  }, [p2pMode, matchId, player1, player2, onMatchEnd]);
 
   const doAttack = useCallback((
     attacker: GameFighterState,
@@ -859,56 +921,100 @@ export function FightingArena({ player1, player2, onMatchEnd, p2AI = true }: Are
     const aiAggression = 0.45 + (player2.stats.basePower / 100) * 0.4;     // 0.45 → 0.85
     const aiBlockChance = 0.18 + (player2.stats.defense / 100) * 0.5;      // 0.18 → 0.68
 
-    const onKey = (e: KeyboardEvent) => { keysRef.current.add(e.key); e.preventDefault(); };
-    const onKeyUp = (e: KeyboardEvent) => keysRef.current.delete(e.key);
+    const sendP2Input = () => {
+      if (p2pMode !== 'client' || !fightChannelRef.current) return;
+      const k = keysRef.current;
+      fightChannelRef.current.send({
+        type: 'broadcast',
+        event: 'input',
+        payload: {
+          left:    k.has('ArrowLeft')  || k.has('a') || k.has('A'),
+          right:   k.has('ArrowRight') || k.has('d') || k.has('D'),
+          up:      k.has('ArrowUp')    || k.has('w') || k.has('W'),
+          down:    k.has('ArrowDown')  || k.has('s') || k.has('S'),
+          block:   k.has('ArrowDown')  || k.has('s') || k.has('S'),
+          punch:   k.has('1') || k.has('f') || k.has('F'),
+          kick:    k.has('2') || k.has('g') || k.has('G'),
+          special: k.has('3') || k.has('h') || k.has('H'),
+          ultimate:k.has('4') || k.has('v') || k.has('V'),
+          ts: Date.now(),
+        } satisfies P2PInput,
+      });
+    };
+
+    const onKey = (e: KeyboardEvent) => {
+      keysRef.current.add(e.key);
+      e.preventDefault();
+      if (p2pMode === 'client') sendP2Input();
+    };
+    const onKeyUp = (e: KeyboardEvent) => {
+      keysRef.current.delete(e.key);
+      if (p2pMode === 'client') sendP2Input();
+    };
     window.addEventListener('keydown', onKey);
     window.addEventListener('keyup', onKeyUp);
+
+    const firKO = (winner: Fighter, loser: Fighter, elapsed: number, disconnected = false) => {
+      if (koFiredRef.current) return;
+      koFiredRef.current = true;
+      disconnectedRef.current = disconnected;
+      playKO();
+      screenFlashRef.current = { alpha: 0.7, color: '#ffffff' };
+      shakeRef.current.amount = 18;
+      const loserState = winner === player1 ? p2Ref.current : p1Ref.current;
+      const burstX = loserState.x + FW / 2;
+      const burstY = loserState.y + FH / 2;
+      for (let i = 0; i < 60; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 3 + Math.random() * 9;
+        const colors = ['#ff0040', '#ffff00', '#ff8800', '#ffffff', '#ff00ff'];
+        particlesRef.current.push(makeParticle(
+          burstX, burstY,
+          Math.cos(angle) * speed, Math.sin(angle) * speed - 3,
+          3 + Math.random() * 8,
+          colors[Math.floor(Math.random() * colors.length)],
+          0.015 + Math.random() * 0.01,
+          Math.random() > 0.5 ? 'star' : 'circle',
+          0.12
+        ));
+      }
+      setTimeout(() => {
+        onMatchEnd({ winner, loser, rounds: 1, duration: Math.floor(elapsed), maxCombo: maxComboRef.current, mode: 'free', disconnected });
+      }, disconnected ? 1500 : 2200);
+    };
 
     const loop = () => {
       const p1 = p1Ref.current;
       const p2 = p2Ref.current;
       const keys = keysRef.current;
+      frameCountRef.current++;
 
       if (!gameOverRef.current) {
         const elapsed = (Date.now() - startTimeRef.current) / 1000;
         const remaining = Math.max(0, ROUND_TIME - elapsed);
         setTimeLeft(Math.ceil(remaining));
 
-        if (remaining <= 0 || p1.hp <= 0 || p2.hp <= 0) {
-          gameOverRef.current = true;
-          if (!koFiredRef.current) {
-            koFiredRef.current = true;
-            playKO();
-            screenFlashRef.current = { alpha: 0.7, color: '#ffffff' };
-            shakeRef.current.amount = 18;
-            // KO particle burst around loser
-            const loserState = p1.hp <= p2.hp ? p1 : p2;
-            const burstX = loserState.x + FW / 2;
-            const burstY = loserState.y + FH / 2;
-            for (let i = 0; i < 60; i++) {
-              const angle = Math.random() * Math.PI * 2;
-              const speed = 3 + Math.random() * 9;
-              const colors = ['#ff0040', '#ffff00', '#ff8800', '#ffffff', '#ff00ff'];
-              particlesRef.current.push(makeParticle(
-                burstX, burstY,
-                Math.cos(angle) * speed, Math.sin(angle) * speed - 3,
-                3 + Math.random() * 8,
-                colors[Math.floor(Math.random() * colors.length)],
-                0.015 + Math.random() * 0.01,
-                Math.random() > 0.5 ? 'star' : 'circle',
-                0.12
-              ));
-            }
+        // HOST or single-player: run full game logic
+        if (p2pMode !== 'client') {
+          if (remaining <= 0 || p1.hp <= 0 || p2.hp <= 0) {
+            gameOverRef.current = true;
             const winner = p1.hp > p2.hp ? player1 : player2;
             const loser = p1.hp > p2.hp ? player2 : player1;
-            setTimeout(() => {
-              onMatchEnd({ winner, loser, rounds: 1, duration: Math.floor((Date.now() - matchStartRef.current) / 1000), maxCombo: maxComboRef.current, mode: 'free' });
-            }, 2200);
+            if (p2pMode === 'host' && fightChannelRef.current) {
+              fightChannelRef.current.send({
+                type: 'broadcast',
+                event: 'game_over',
+                payload: { winnerSide: p1.hp > p2.hp ? 'left' : 'right', maxCombo: maxComboRef.current, duration: Math.floor(elapsed), disconnected: false },
+              });
+            }
+            firKO(winner, loser, elapsed);
           }
         }
       }
 
       if (!gameOverRef.current) {
+      // HOST / single-player: process inputs + physics
+      if (p2pMode !== 'client') {
       // P1 controls: WASD + F/G/H/V + S=block (locked out while stunned)
       if (p1.stateTimer <= 0 && p1.stunTimer <= 0) {
         if (keys.has('a') || keys.has('A')) { p1.vx = -WALK_SPEED; p1.state = 'walk_back'; p1.facing = -1; }
@@ -922,9 +1028,20 @@ export function FightingArena({ player1, player2, onMatchEnd, p2AI = true }: Are
         if (keys.has('v') || keys.has('V')) doAttack(p1, p2, player1, player2, 'ultimate');
       }
 
-      // P2: AI controller (difficulty scales with stats) or local keyboard
+      // P2: AI, local keyboard, or remote (P2P host reads remote inputs)
       if (p2.stateTimer <= 0 && p2.stunTimer <= 0) {
-        if (p2AI) {
+        if (p2pMode === 'host') {
+          const ri = p2RemoteInputRef.current;
+          if (ri.left) { p2.vx = -WALK_SPEED; p2.state = 'walk_back'; p2.facing = -1; }
+          else if (ri.right) { p2.vx = WALK_SPEED; p2.state = 'walk_fwd'; p2.facing = 1; }
+          else { p2.vx = 0; }
+          if (ri.up && p2.isGrounded) { p2.vy = JUMP_FORCE; p2.isGrounded = false; }
+          if (ri.block || ri.down) { p2.state = 'block'; p2.vx = 0; }
+          if (ri.punch)   doAttack(p2, p1, player2, player1, 'punch');
+          if (ri.kick)    doAttack(p2, p1, player2, player1, 'kick');
+          if (ri.special) doAttack(p2, p1, player2, player1, 'special');
+          if (ri.ultimate)doAttack(p2, p1, player2, player1, 'ultimate');
+        } else if (p2AI) {
           const ai = aiRef.current;
           const pdist = Math.abs((p2.x + FW / 2) - (p1.x + FW / 2));
           const p1Attacking = p1.state === 'punch' || p1.state === 'kick' || p1.state === 'special' || p1.state === 'ultimate';
@@ -950,7 +1067,6 @@ export function FightingArena({ player1, player2, onMatchEnd, p2AI = true }: Are
             }
           }
 
-          // Apply movement intent each frame (attacks set state via doAttack)
           if (p2.stateTimer <= 0) {
             if (ai.intent === 'approach') {
               const dir = p1.x > p2.x ? 1 : -1; p2.vx = WALK_SPEED * dir; p2.state = 'walk_fwd';
@@ -1014,12 +1130,45 @@ export function FightingArena({ player1, player2, onMatchEnd, p2AI = true }: Are
       if (['idle', 'walk_fwd', 'walk_back'].includes(p1.state)) p1.facing = p2.x > p1.x ? 1 : -1;
       if (['idle', 'walk_fwd', 'walk_back'].includes(p2.state)) p2.facing = p1.x > p2.x ? 1 : -1;
 
+      // P2P host: broadcast state every 2 frames
+      if (p2pMode === 'host' && fightChannelRef.current && frameCountRef.current % 2 === 0) {
+        fightChannelRef.current.send({
+          type: 'broadcast',
+          event: 'state',
+          payload: {
+            p1: { x: p1.x, y: p1.y, vx: p1.vx, vy: p1.vy, hp: p1.hp, rage: p1.rage, state: p1.state, stateTimer: p1.stateTimer, facing: p1.facing, isGrounded: p1.isGrounded, attackCooldown: p1.attackCooldown, blockCooldown: p1.blockCooldown, comboCount: p1.comboCount, comboTimer: p1.comboTimer, specialHitCount: p1.specialHitCount, specialReady: p1.specialReady, stunTimer: p1.stunTimer, invincibleTimer: p1.invincibleTimer, dots: p1.dots },
+            p2: { x: p2.x, y: p2.y, vx: p2.vx, vy: p2.vy, hp: p2.hp, rage: p2.rage, state: p2.state, stateTimer: p2.stateTimer, facing: p2.facing, isGrounded: p2.isGrounded, attackCooldown: p2.attackCooldown, blockCooldown: p2.blockCooldown, comboCount: p2.comboCount, comboTimer: p2.comboTimer, specialHitCount: p2.specialHitCount, specialReady: p2.specialReady, stunTimer: p2.stunTimer, invincibleTimer: p2.invincibleTimer, dots: p2.dots },
+          },
+        });
+      }
+
+      // P2P host: detect P2 disconnect (10 seconds no signal)
+      if (p2pMode === 'host' && Date.now() - lastRemoteSignalRef.current > 10000) {
+        const elapsed = (Date.now() - startTimeRef.current) / 1000;
+        gameOverRef.current = true;
+        fightChannelRef.current?.send({
+          type: 'broadcast',
+          event: 'game_over',
+          payload: { winnerSide: 'left', maxCombo: maxComboRef.current, duration: Math.floor(elapsed), disconnected: true },
+        });
+        firKO(player1, player2, elapsed, true);
+      }
+
+      } // end p2pMode !== 'client'
+
+      // P2P client: detect host disconnect
+      if (p2pMode === 'client' && Date.now() - lastRemoteSignalRef.current > 10000) {
+        const elapsed = (Date.now() - startTimeRef.current) / 1000;
+        gameOverRef.current = true;
+        firKO(player2, player1, elapsed, true);
+      }
+
       setP1Hp(p1.hp); setP2Hp(p2.hp);
       setP1Rage(p1.rage); setP2Rage(p2.rage);
       setP1Hits(p1.specialHitCount); setP2Hits(p2.specialHitCount);
       setP1SpecialReady(p1.specialReady); setP2SpecialReady(p2.specialReady);
       setCombo1(p1.comboCount); setCombo2(p2.comboCount);
-      } // end !gameOverRef.current input+physics block
+      } // end !gameOverRef.current block
 
       // ── Screen shake ────────────────────────────────────────
       const sh = shakeRef.current;
@@ -1143,6 +1292,14 @@ export function FightingArena({ player1, player2, onMatchEnd, p2AI = true }: Are
         ctx.shadowColor = winnerColor;
         ctx.shadowBlur = 20;
         ctx.fillText(`${winnerName.toUpperCase()} WINS!`, W / 2, H / 2 + 28);
+
+        if (disconnectedRef.current) {
+          ctx.font = 'bold 11px "Press Start 2P", monospace';
+          ctx.fillStyle = '#ff8800';
+          ctx.shadowColor = '#ff8800';
+          ctx.shadowBlur = 10;
+          ctx.fillText('LAWAN TERPUTUS', W / 2, H / 2 + 60);
+        }
       }
 
       frameRef.current = requestAnimationFrame(loop);

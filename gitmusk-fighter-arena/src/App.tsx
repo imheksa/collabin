@@ -16,7 +16,7 @@ import { restoreProfileFromCloud } from './utils/cloudSync';
 import { Fighter } from './types';
 
 export default function App() {
-  const { screen, setScreen, setPlayer1, setXAccessToken, setOauthError, setPlayerProfile } = useGameStore();
+  const { screen, setScreen, setPlayer1, setXAccessToken, setOauthError, setPlayerProfile, player1, setPlayer2, setMatchId, setIsHost } = useGameStore();
   const [oauthProcessing, setOauthProcessing] = useState(false);
 
   useEffect(() => {
@@ -24,6 +24,7 @@ export default function App() {
     const code = params.get('code');
     const state = params.get('state');
     const errorParam = params.get('error');
+    const joinId = params.get('join');
 
     if (errorParam) {
       window.history.replaceState({}, '', window.location.pathname);
@@ -34,8 +35,47 @@ export default function App() {
 
     if (code && state) {
       handleOAuthCallback(code, state);
+      return;
+    }
+
+    if (joinId) {
+      window.history.replaceState({}, '', window.location.pathname);
+      sessionStorage.setItem('pending_join', joinId);
     }
   }, []);
+
+  // Handle pending room join after login
+  useEffect(() => {
+    const pendingJoin = sessionStorage.getItem('pending_join');
+    if (!pendingJoin || !player1) return;
+    sessionStorage.removeItem('pending_join');
+    handleRoomJoin(pendingJoin);
+  }, [player1]);
+
+  async function handleRoomJoin(matchId: string) {
+    if (!player1) return;
+    try {
+      const res = await fetch('/api/room-join', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          matchId,
+          username: player1.profile.username,
+          fighterData: { profile: player1.profile, stats: player1.stats },
+        }),
+      });
+      if (!res.ok) { setScreen('mode_select'); return; }
+      const data = await res.json();
+      const opponent = data.player1Data as Fighter;
+      setPlayer2(opponent);
+      setMatchId(matchId);
+      setIsHost(false);
+      setScreen('vs_screen');
+    } catch (err) {
+      console.error('Room join error:', err);
+      setScreen('mode_select');
+    }
+  }
 
   async function handleOAuthCallback(code: string, state: string) {
     const storedState = sessionStorage.getItem('oauth_state');
