@@ -18,7 +18,7 @@ export default async function handler(req, res) {
   }
 
   const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-  const { username, displayName, avatarUrl, level, xp, wins, losses, maxCombo, winStreak, maxWinStreak, archetype, archetypeLabel, color, basePower } = body ?? {};
+  const { username, displayName, avatarUrl, level, xp, wins, losses, pvpWins, maxCombo, winStreak, maxWinStreak, archetype, archetypeLabel, color, basePower } = body ?? {};
 
   if (!username) return res.status(400).json({ error: 'username required' });
 
@@ -39,6 +39,7 @@ export default async function handler(req, res) {
         xp: xp ?? 0,
         wins: wins ?? 0,
         losses: losses ?? 0,
+        pvp_wins: pvpWins ?? 0,
         max_combo: maxCombo ?? 0,
         win_streak: winStreak ?? 0,
         max_win_streak: maxWinStreak ?? 0,

@@ -18,10 +18,11 @@ export default async function handler(req, res) {
   }
 
   try {
+    const sortBy = req.query?.sort === 'pvp' ? 'pvp_wins.desc,wins.desc' : 'wins.desc,base_power.desc';
     const params = new URLSearchParams({
-      select: 'username,display_name,avatar_url,level,wins,losses,max_combo,win_streak,archetype_label,fighter_color,base_power',
-      order: 'wins.desc,base_power.desc',
-      limit: '20',
+      select: 'username,display_name,avatar_url,level,wins,losses,pvp_wins,max_combo,win_streak,archetype_label,fighter_color,base_power',
+      order: sortBy,
+      limit: '25',
     });
 
     const upstream = await fetch(`${supabaseUrl}/rest/v1/player_stats?${params}`, {

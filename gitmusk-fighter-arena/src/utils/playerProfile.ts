@@ -17,6 +17,7 @@ export interface PlayerProfile {
   level: number;
   wins: number;
   losses: number;
+  pvpWins: number;
   maxCombo: number;
   winStreak: number;
   lossStreak: number;
@@ -215,10 +216,11 @@ export function getProfile(username: string): PlayerProfile {
     if (raw) {
       const p = JSON.parse(raw) as PlayerProfile;
       if (!p.matchHistory) p.matchHistory = [];
+      if (p.pvpWins === undefined) p.pvpWins = 0;
       return p;
     }
   } catch { /* blocked */ }
-  return { username, xp: 0, level: 1, wins: 0, losses: 0, maxCombo: 0, winStreak: 0, lossStreak: 0, maxWinStreak: 0, achievements: [], matchHistory: [] };
+  return { username, xp: 0, level: 1, wins: 0, losses: 0, pvpWins: 0, maxCombo: 0, winStreak: 0, lossStreak: 0, maxWinStreak: 0, achievements: [], matchHistory: [] };
 }
 
 export function saveProfile(p: PlayerProfile): void {
@@ -247,6 +249,7 @@ export interface CloudStats {
   xp: number;
   wins: number;
   losses: number;
+  pvpWins: number;
   maxCombo: number;
   winStreak: number;
   maxWinStreak: number;
@@ -259,6 +262,7 @@ export function mergeCloudProfile(username: string, cloud: CloudStats): PlayerPr
     xp:           Math.max(local.xp, cloud.xp),
     wins:         Math.max(local.wins, cloud.wins),
     losses:       Math.max(local.losses, cloud.losses),
+    pvpWins:      Math.max(local.pvpWins ?? 0, cloud.pvpWins ?? 0),
     maxCombo:     Math.max(local.maxCombo, cloud.maxCombo),
     winStreak:    Math.max(local.winStreak, cloud.winStreak),
     maxWinStreak: Math.max(local.maxWinStreak, cloud.maxWinStreak),
@@ -291,13 +295,14 @@ export function recordMatch(
 
   if (won) {
     profile.wins++;
+    if (isPvP) profile.pvpWins = (profile.pvpWins ?? 0) + 1;
     profile.winStreak++;
     profile.lossStreak = 0;
     profile.maxWinStreak = Math.max(profile.maxWinStreak, profile.winStreak);
   } else {
     profile.losses++;
-    profile.lossStreak++;
     profile.winStreak = 0;
+    profile.lossStreak++;
   }
   profile.maxCombo = Math.max(profile.maxCombo, maxCombo);
 

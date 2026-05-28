@@ -23,6 +23,7 @@ interface EntryRow {
   avatarUrl: string;
   wins: number;
   losses: number;
+  pvpWins: number;
   maxCombo: number;
   power: number;
   color: string;
@@ -34,15 +35,21 @@ export function Leaderboard() {
   const { setScreen, player1 } = useGameStore();
   const [cloudResult, setCloudResult] = useState<LeaderboardResult | null>(null);
   const [loading, setLoading] = useState(true);
+  const [sortMode, setSortMode] = useState<'wins' | 'pvp'>('wins');
 
-  const loadData = useCallback(async () => {
+  const loadData = useCallback(async (sort: 'wins' | 'pvp' = sortMode) => {
     setLoading(true);
-    const result = await fetchLeaderboard();
+    const result = await fetchLeaderboard(sort);
     setCloudResult(result);
     setLoading(false);
-  }, []);
+  }, [sortMode]);
 
   useEffect(() => { loadData(); }, [loadData]);
+
+  const handleSortChange = (mode: 'wins' | 'pvp') => {
+    setSortMode(mode);
+    loadData(mode);
+  };
 
   const { entries, isLive } = useMemo<{ entries: EntryRow[]; isLive: boolean }>(() => {
     const localStats = getAllLocalStats();
@@ -54,6 +61,7 @@ export function Leaderboard() {
         avatarUrl: e.avatarUrl,
         wins: e.wins,
         losses: e.losses,
+        pvpWins: e.pvpWins,
         maxCombo: e.maxCombo,
         power: e.basePower,
         color: e.color,
@@ -69,6 +77,7 @@ export function Leaderboard() {
             avatarUrl: player1.profile.avatarUrl,
             wins: local.wins,
             losses: local.losses,
+            pvpWins: 0,
             maxCombo: local.maxCombo,
             power: player1.stats.basePower,
             color: player1.stats.color,
@@ -78,10 +87,10 @@ export function Leaderboard() {
         }
       }
 
-      return {
-        entries: rows.sort((a, b) => b.wins - a.wins || b.power - a.power).slice(0, 10),
-        isLive: true,
-      };
+      const sorted = sortMode === 'pvp'
+        ? rows.sort((a, b) => b.pvpWins - a.pvpWins || b.wins - a.wins)
+        : rows.sort((a, b) => b.wins - a.wins || b.power - a.power);
+      return { entries: sorted.slice(0, 10), isLive: true };
     }
 
     // Fallback: seeded demo + local stats
@@ -94,6 +103,7 @@ export function Leaderboard() {
         avatarUrl: p.avatarUrl,
         wins: (local?.wins ?? 0) + seeded.wins,
         losses: (local?.losses ?? 0) + seeded.losses,
+        pvpWins: 0,
         maxCombo: Math.max(local?.maxCombo ?? 0, seeded.maxCombo),
         power: stats.basePower,
         color: stats.color,
@@ -110,6 +120,7 @@ export function Leaderboard() {
           avatarUrl: player1.profile.avatarUrl,
           wins: local.wins,
           losses: local.losses,
+          pvpWins: 0,
           maxCombo: local.maxCombo,
           power: player1.stats.basePower,
           color: player1.stats.color,
@@ -123,7 +134,7 @@ export function Leaderboard() {
       entries: rows.sort((a, b) => b.wins - a.wins || b.power - a.power).slice(0, 10),
       isLive: false,
     };
-  }, [cloudResult, player1]);
+  }, [cloudResult, player1, sortMode]);
 
   const myUsername = player1?.profile.username;
   const myRank = entries.findIndex(e => e.username === myUsername) + 1;
@@ -162,7 +173,7 @@ export function Leaderboard() {
                 }}>
                   {isLive ? '● LIVE' : '○ DEMO'}
                 </div>
-                <button onClick={loadData} className="g-btn ghost sm" style={{ fontSize: '8px', padding: '3px 8px' }}>
+                <button onClick={() => loadData()} className="g-btn ghost sm" style={{ fontSize: '8px', padding: '3px 8px' }}>
                   ↻ REFRESH
                 </button>
               </div>
@@ -173,6 +184,19 @@ export function Leaderboard() {
               YOUR RANK: #{myRank}
             </div>
           )}
+          {/* Sort tabs */}
+          <div className="flex gap-2 justify-center mt-3">
+            {(['wins', 'pvp'] as const).map(mode => (
+              <button key={mode} onClick={() => handleSortChange(mode)} style={{
+                fontFamily: 'var(--pixel)', fontSize: '8px', padding: '4px 14px', cursor: 'pointer',
+                background: sortMode === mode ? (mode === 'pvp' ? 'rgba(0,204,255,.2)' : 'rgba(176,38,255,.2)') : 'transparent',
+                border: `2px solid ${sortMode === mode ? (mode === 'pvp' ? '#00ccff' : 'var(--neon-p)') : 'var(--panel-line)'}`,
+                color: sortMode === mode ? (mode === 'pvp' ? '#00ccff' : 'var(--neon-p)') : 'var(--txt-dim)',
+              }}>
+                {mode === 'pvp' ? '⚔ P2P WINS' : '★ ALL WINS'}
+              </button>
+            ))}
+          </div>
           <div className="mt-1" style={{ fontFamily: 'var(--body)', fontSize: '18px', color: 'var(--txt-dim)' }}>
             SEASON 1 · MAY 2026
           </div>
@@ -226,6 +250,9 @@ export function Leaderboard() {
                       </div>
                     )}
                     <div style={{ fontFamily: 'var(--pixel)', fontSize: '9px', color: 'var(--neon-grn)' }}>{e.wins}W</div>
+                    {sortMode === 'pvp' && (
+                      <div style={{ fontFamily: 'var(--pixel)', fontSize: '8px', color: '#00ccff' }}>⚔ {e.pvpWins} P2P</div>
+                    )}
                     <div style={{ fontFamily: 'var(--mono)', fontSize: '9px', color: winRate >= 60 ? 'var(--neon-grn)' : winRate >= 40 ? 'var(--neon-yel)' : 'var(--neon-pink)' }}>{winRate}%</div>
                     <div style={{ fontFamily: 'var(--mono)', fontSize: '10px', color: 'var(--txt-dim)' }}>{e.maxCombo}x COMBO</div>
                   </div>
@@ -262,7 +289,10 @@ export function Leaderboard() {
                         {e.archetype.toUpperCase().slice(0, 12)} · PWR {e.power}{isLive ? ` · LV${e.level}` : ''}
                       </div>
                     </div>
-                    <div className="text-right flex-shrink-0 flex gap-4">
+                    <div className="text-right flex-shrink-0 flex items-center gap-3">
+                      {sortMode === 'pvp' && e.pvpWins > 0 && (
+                        <div style={{ fontFamily: 'var(--pixel)', fontSize: '8px', color: '#00ccff' }}>⚔{e.pvpWins}</div>
+                      )}
                       <div style={{ fontFamily: 'var(--pixel)', fontSize: '9px', color: 'var(--neon-grn)' }}>{e.wins}W</div>
                       <div style={{ fontFamily: 'var(--pixel)', fontSize: '9px', color: 'var(--neon-pink)' }}>{e.losses}L</div>
                       <div style={{ fontFamily: 'var(--pixel)', fontSize: '9px', color: winRate >= 60 ? 'var(--neon-grn)' : winRate >= 40 ? 'var(--neon-yel)' : 'var(--neon-pink)' }}>

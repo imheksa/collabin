@@ -8,6 +8,7 @@ export interface CloudLeaderboardEntry {
   level: number;
   wins: number;
   losses: number;
+  pvpWins: number;
   maxCombo: number;
   winStreak: number;
   archetypeLabel: string;
@@ -33,6 +34,7 @@ export async function syncProfile(profile: PlayerProfile, fighter: Fighter): Pro
         xp: profile.xp,
         wins: profile.wins,
         losses: profile.losses,
+        pvpWins: profile.pvpWins ?? 0,
         maxCombo: profile.maxCombo,
         winStreak: profile.winStreak,
         maxWinStreak: profile.maxWinStreak,
@@ -64,15 +66,16 @@ export async function restoreProfileFromCloud(username: string): Promise<PlayerP
     xp: cloud.xp,
     wins: cloud.wins,
     losses: cloud.losses,
+    pvpWins: cloud.pvpWins ?? 0,
     maxCombo: cloud.maxCombo,
     winStreak: cloud.winStreak,
     maxWinStreak: cloud.maxWinStreak,
   });
 }
 
-export async function fetchLeaderboard(): Promise<LeaderboardResult> {
+export async function fetchLeaderboard(sort: 'wins' | 'pvp' = 'wins'): Promise<LeaderboardResult> {
   try {
-    const res = await fetch('/api/leaderboard');
+    const res = await fetch(`/api/leaderboard?sort=${sort}`);
     if (!res.ok) return { entries: [], configured: false };
     const data = await res.json();
     const entries: CloudLeaderboardEntry[] = (data.entries ?? []).map((row: Record<string, unknown>) => ({
@@ -82,6 +85,7 @@ export async function fetchLeaderboard(): Promise<LeaderboardResult> {
       level: Number(row.level ?? 1),
       wins: Number(row.wins ?? 0),
       losses: Number(row.losses ?? 0),
+      pvpWins: Number(row.pvp_wins ?? 0),
       maxCombo: Number(row.max_combo ?? 0),
       winStreak: Number(row.win_streak ?? 0),
       archetypeLabel: String(row.archetype_label ?? ''),

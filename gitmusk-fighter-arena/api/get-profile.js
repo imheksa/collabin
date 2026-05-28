@@ -49,6 +49,7 @@ export default async function handler(req, res) {
         level: row.level ?? 1,
         wins: row.wins ?? 0,
         losses: row.losses ?? 0,
+        pvpWins: row.pvp_wins ?? 0,
         maxCombo: row.max_combo ?? 0,
         winStreak: row.win_streak ?? 0,
         maxWinStreak: row.max_win_streak ?? 0,
