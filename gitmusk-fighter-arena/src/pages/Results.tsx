@@ -3,6 +3,7 @@ import { useGameStore } from '../stores/gameStore';
 import { Fighter } from '../types';
 import { recordMatch, getProfile, getLevelTier, ACHIEVEMENT_RARITY_COLORS } from '../utils/playerProfile';
 import { syncProfile, fetchSeasonInfo } from '../utils/cloudSync';
+import { supabase } from '../lib/supabase';
 
 const GAME_URL = 'https://gitmuskarena.vercel.app';
 const CARD_W = 600, CARD_H = 315;
@@ -112,11 +113,97 @@ function buildTweetText(me: Fighter, opponent: Fighter, isWin: boolean, maxCombo
 }
 
 export function Results() {
-  const { matchResult, resetMatch, setScreen, player1, player2, lastMatchReward, setLastMatchReward, setPlayerProfile, matchId } = useGameStore();
+  const { matchResult, resetMatch, rematch, setScreen, player1, player2, lastMatchReward, setLastMatchReward, setPlayerProfile, matchId, setPlayer2, setMatchId, setIsHost, setMatchMode, setMatchResult } = useGameStore();
   const [show, setShow] = useState(false);
   const [copied, setCopied] = useState(false);
   const [cardReady, setCardReady] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  // Rematch state
+  const [rematchOffer, setRematchOffer] = useState<string | null>(null);
+  const [waitingRematch, setWaitingRematch] = useState(false);
+  const [rematchLoading, setRematchLoading] = useState(false);
+  const rematchChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const rematchWatchRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+
+  // Subscribe to rematch broadcast when this was a P2P match
+  useEffect(() => {
+    if (!matchId || !player1) return;
+    const ch = supabase.channel(`rematch:${matchId}`)
+      .on('broadcast', { event: 'offer' }, ({ payload }) => {
+        if (payload?.newMatchId && !waitingRematch) setRematchOffer(payload.newMatchId);
+      })
+      .subscribe();
+    rematchChannelRef.current = ch;
+    return () => { supabase.removeChannel(ch); };
+  }, [matchId]);
+
+  const requestRematch = useCallback(async () => {
+    if (!player1 || !matchId) return;
+    setRematchLoading(true);
+    try {
+      const res = await fetch('/api/room-create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: player1.profile.username, fighterData: { profile: player1.profile, stats: player1.stats } }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+
+      // Notify opponent
+      await rematchChannelRef.current?.send({ type: 'broadcast', event: 'offer', payload: { newMatchId: data.matchId } });
+      setWaitingRematch(true);
+
+      // Watch for opponent joining the new room
+      const ch = supabase.channel(`room_watch:${data.matchId}`)
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'matches', filter: `id=eq.${data.matchId}` },
+          (payload) => {
+            if (payload.new.status === 'active' && payload.new.player2_data) {
+              setPlayer2(payload.new.player2_data as Fighter);
+              setMatchId(data.matchId);
+              setIsHost(true);
+              setMatchMode('friend');
+              rematch();
+              setScreen('vs_screen');
+              supabase.removeChannel(ch);
+            }
+          })
+        .subscribe();
+      rematchWatchRef.current = ch;
+
+      // Timeout after 60s
+      setTimeout(() => { setWaitingRematch(false); supabase.removeChannel(ch); }, 60000);
+    } catch (err) {
+      console.error('Rematch request error:', err);
+    } finally {
+      setRematchLoading(false);
+    }
+  }, [player1, matchId]);
+
+  const acceptRematch = useCallback(async () => {
+    if (!rematchOffer || !player1) return;
+    setRematchLoading(true);
+    try {
+      const res = await fetch('/api/room-join', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ matchId: rematchOffer, username: player1.profile.username, fighterData: { profile: player1.profile, stats: player1.stats } }),
+      });
+      if (!res.ok) throw new Error('Join failed');
+      const data = await res.json();
+      setPlayer2(data.player1Data as Fighter);
+      setMatchId(rematchOffer);
+      setIsHost(false);
+      setMatchMode('friend');
+      rematch();
+      setScreen('vs_screen');
+    } catch (err) {
+      console.error('Accept rematch error:', err);
+      setRematchOffer(null);
+    } finally {
+      setRematchLoading(false);
+    }
+  }, [rematchOffer, player1]);
 
   useEffect(() => { const t = setTimeout(() => setShow(true), 300); return () => clearTimeout(t); }, []);
 
@@ -324,10 +411,45 @@ export function Results() {
         </div>
 
         {/* Navigation */}
-        <div className="flex gap-3 flex-wrap justify-center" style={{ opacity: show ? 1 : 0, transition: 'opacity .6s .5s' }}>
-          <button onClick={() => { resetMatch(); setScreen('login'); }} className="g-btn ghost sm" style={{ color: 'var(--neon-b)' }}>▶ REMATCH</button>
-          <button onClick={() => setScreen('leaderboard')} className="g-btn sm">🏆 LEADERBOARD</button>
-          <button onClick={() => setScreen('profile')} className="g-btn ghost sm" style={{ color: 'var(--neon-p)' }}>👤 PROFILE</button>
+        <div className="flex flex-col gap-3" style={{ opacity: show ? 1 : 0, transition: 'opacity .6s .5s' }}>
+
+          {/* P2P rematch offer received */}
+          {rematchOffer && !waitingRematch && (
+            <div className="g-panel" style={{ padding: '14px 16px', borderColor: '#00ccff', boxShadow: '0 0 16px rgba(0,204,255,.3)', textAlign: 'center' }}>
+              <div className="corners"><i></i><i></i><i></i><i></i></div>
+              <div style={{ fontFamily: 'var(--pixel)', fontSize: '9px', color: '#00ccff', marginBottom: '10px' }}>⚔ REMATCH REQUESTED!</div>
+              <div className="flex gap-2 justify-center">
+                <button onClick={acceptRematch} disabled={rematchLoading} className="g-btn sm" style={{ background: '#00ccff', color: '#000', fontSize: '9px' }}>
+                  {rematchLoading ? '...' : 'ACCEPT'}
+                </button>
+                <button onClick={() => setRematchOffer(null)} className="g-btn ghost sm" style={{ fontSize: '9px' }}>DECLINE</button>
+              </div>
+            </div>
+          )}
+
+          {/* Waiting for opponent to accept */}
+          {waitingRematch && (
+            <div style={{ fontFamily: 'var(--pixel)', fontSize: '8px', color: 'var(--txt-dim)', textAlign: 'center', animation: 'g-pulse 1s steps(2) infinite' }}>
+              WAITING FOR OPPONENT...
+            </div>
+          )}
+
+          <div className="flex gap-3 flex-wrap justify-center">
+            {/* AI rematch */}
+            {!matchId && (
+              <button onClick={() => { rematch(); setScreen('vs_screen'); }} className="g-btn ghost sm" style={{ color: 'var(--neon-b)' }}>
+                ▶ REMATCH
+              </button>
+            )}
+            {/* P2P rematch request */}
+            {matchId && !rematchOffer && !waitingRematch && (
+              <button onClick={requestRematch} disabled={rematchLoading} className="g-btn ghost sm" style={{ color: '#00ccff', borderColor: '#00ccff' }}>
+                {rematchLoading ? '...' : '⚔ REMATCH'}
+              </button>
+            )}
+            <button onClick={() => setScreen('leaderboard')} className="g-btn sm">🏆 LEADERBOARD</button>
+            <button onClick={() => setScreen('profile')} className="g-btn ghost sm" style={{ color: 'var(--neon-p)' }}>👤 PROFILE</button>
+          </div>
         </div>
       </div>
     </div>

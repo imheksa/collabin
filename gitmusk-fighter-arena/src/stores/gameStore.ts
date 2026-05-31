@@ -36,6 +36,7 @@ interface GameStore {
   setLastMatchReward: (r: MatchReward | null) => void;
   setMatchId: (id: string | null) => void;
   setIsHost: (v: boolean) => void;
+  rematch: () => void;
   resetMatch: () => void;
 }
 
@@ -73,6 +74,7 @@ export const useGameStore = create<GameStore>((set) => ({
   setLastMatchReward: (lastMatchReward) => set({ lastMatchReward }),
   setMatchId: (matchId) => set({ matchId }),
   setIsHost: (isHost) => set({ isHost }),
+  rematch: () => set({ matchResult: null, matchId: null, isHost: false, lastMatchReward: null }),
   resetMatch: () => set({
     player1: null, player2: null, matchResult: null,
     matchId: null, isHost: false, screen: 'mode_select',
