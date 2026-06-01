@@ -3,155 +3,23 @@ import { useGameStore } from '../stores/gameStore';
 import { DEMO_PROFILES } from '../data/mockProfiles';
 import { calculateFighterStats } from '../utils/statsCalculator';
 import { Fighter } from '../types';
-import { connectBankrKey } from '../utils/bankrClient';
-import { getWalletBalance } from '../utils/baseRpc';
 import { getProfile, getLevelTier, xpProgressInLevel } from '../utils/playerProfile';
 import { useMatchmaking } from '../hooks/useMatchmaking';
 import { usePresence } from '../hooks/usePresence';
 import { supabase } from '../lib/supabase';
 
-const P2E_MIN_USD = 1;
-
-/* ─── P2E Modal ─────────────────────────────────────────────────── */
-type P2eStep = 'key_input' | 'loading' | 'eligible' | 'insufficient';
-interface BalanceSnapshot { address: string; usdc: number; eth: number; ethPriceUsd: number; totalUsd: number; }
-
-function P2eModal({ username, onClose, onReady }: { username: string; onClose: () => void; onReady: (bankrClub: boolean) => void }) {
-  const { setWalletAddress } = useGameStore();
-  const [step, setStep] = useState<P2eStep>('key_input');
-  const [balance, setBalance] = useState<BalanceSnapshot | null>(null);
-  const [bankrClub, setBankrClub] = useState(false);
-  const [bankrKey, setBankrKey] = useState('');
-  const [errMsg, setErrMsg] = useState('');
-
-  const connectWithKey = async () => {
-    const key = bankrKey.trim(); if (!key) return;
-    setStep('loading'); setErrMsg('');
-    try {
-      const data = await connectBankrKey(key, username);
-      const bal = await getWalletBalance(data.evmAddress);
-      setWalletAddress(data.evmAddress);
-      setBalance({ address: data.evmAddress, ...bal });
-      setBankrClub(data.bankrClub);
-      setStep(bal.totalUsd >= P2E_MIN_USD ? 'eligible' : 'insufficient');
-    } catch (err) {
-      setErrMsg(err instanceof Error ? err.message : 'Connection failed.');
-      setStep('key_input');
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: 'rgba(10,1,24,.88)' }}
-      onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="g-panel yel w-full max-w-md" style={{ padding: '28px' }}>
-        <div className="corners"><i></i><i></i><i></i><i></i></div>
-        <button onClick={onClose}
-          className="absolute top-4 right-4"
-          style={{ fontFamily: 'var(--pixel)', fontSize: '9px', color: 'var(--txt-dim)', background: 'none', border: 'none', cursor: 'pointer' }}>✕</button>
-
-        <div className="text-center mb-6">
-          <span className="g-eyebrow" style={{ color: 'var(--neon-yel)' }}>// PLAY-TO-EARN</span>
-          <div style={{ fontFamily: 'var(--pixel)', fontSize: '18px', color: 'var(--neon-yel)', textShadow: '3px 3px 0 var(--neon-pink)' }}>
-            PLAY. FIGHT. EARN.
-          </div>
-          <div style={{ fontFamily: 'var(--body)', fontSize: '18px', color: 'var(--txt-dim)', marginTop: '8px' }}>
-            Minimum ${P2E_MIN_USD} via Bankr · 99.75% to winner
-          </div>
-        </div>
-
-        {(step === 'key_input' || step === 'loading') && (
-          <div>
-            <div className="g-panel dark mb-4" style={{ padding: '16px' }}>
-              <div style={{ fontFamily: 'var(--pixel)', fontSize: '8px', color: 'var(--neon-yel)', marginBottom: '8px' }}>
-                CONNECT BANKR WALLET
-              </div>
-              <div style={{ fontFamily: 'var(--body)', fontSize: '16px', color: 'var(--txt-dim)', lineHeight: 1.5 }}>
-                Enter your Bankr API key to verify your wallet and enter P2E mode.
-              </div>
-              <div style={{ fontFamily: 'var(--mono)', fontSize: '12px', color: 'var(--txt-dim)', marginTop: '10px' }}>
-                Get key: DM <span style={{ color: 'var(--neon-b)' }}>@bankrbot</span> on X →{' '}
-                <span style={{ color: '#fff' }}>"my api key"</span>
-              </div>
-            </div>
-            <div className="flex gap-2 mb-2">
-              <input
-                style={{ flex: 1, background: 'var(--void)', border: '3px solid var(--panel-line)', fontFamily: 'var(--mono)', fontSize: '13px', color: '#fff', padding: '10px 14px', outline: 'none' }}
-                placeholder="bk_xxxxxxxxxxxxxxxx" type="password" value={bankrKey}
-                onChange={e => setBankrKey(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && connectWithKey()}
-                disabled={step === 'loading'}
-                autoFocus />
-              <button onClick={connectWithKey} disabled={step === 'loading'} className="g-btn sm">
-                {step === 'loading' ? '...' : 'GO'}
-              </button>
-            </div>
-            {errMsg && <div style={{ fontFamily: 'var(--mono)', fontSize: '12px', color: 'var(--neon-pink)', marginTop: '6px' }}>⚠ {errMsg}</div>}
-            <div className="mt-3">
-              <a href="https://bankr.bot/terminal" target="_blank" rel="noopener"
-                className="g-btn ghost sm full"
-                style={{ textDecoration: 'none', justifyContent: 'center', fontSize: '9px' }}>
-                🌐 DON'T HAVE BANKR? SIGN UP AT BANKR.BOT
-              </a>
-            </div>
-          </div>
-        )}
-
-        {(step === 'eligible' || step === 'insufficient') && balance && (
-          <div>
-            <div className="flex gap-2 mb-4">
-              {[
-                { label: 'USDC', val: `$${balance.usdc.toFixed(2)}`, color: 'var(--neon-grn)' },
-                { label: 'ETH',  val: balance.eth.toFixed(4),         color: 'var(--neon-b)' },
-                { label: 'TOTAL', val: `$${balance.totalUsd.toFixed(2)}`, color: step === 'eligible' ? 'var(--neon-grn)' : 'var(--neon-pink)' },
-              ].map(({ label, val, color }) => (
-                <div key={label} className="flex-1 text-center py-3" style={{ background: 'var(--void)', border: `3px solid ${color}40` }}>
-                  <div style={{ fontFamily: 'var(--pixel)', fontSize: '7px', color, marginBottom: '6px' }}>{label}</div>
-                  <div style={{ fontFamily: 'var(--pixel)', fontSize: '12px', color: '#fff' }}>{val}</div>
-                </div>
-              ))}
-            </div>
-            {step === 'eligible' ? (
-              <>
-                <div className="text-center py-3 mb-4" style={{ background: 'rgba(0,255,157,.08)', border: '3px solid var(--neon-grn)' }}>
-                  <div style={{ fontFamily: 'var(--pixel)', fontSize: '8px', color: 'var(--neon-grn)' }}>✓ READY — $1 STAKE</div>
-                  {bankrClub && (
-                    <div style={{ fontFamily: 'var(--pixel)', fontSize: '7px', color: '#ffd700', marginTop: '6px' }}>
-                      👑 BANKR CLUB — WHALE TIER UNLOCKED
-                    </div>
-                  )}
-                </div>
-                <button onClick={() => onReady(bankrClub)} className="g-btn full" style={{ fontSize: '11px' }}>⚔ ENTER P2E MATCH</button>
-              </>
-            ) : (
-              <>
-                <div className="text-center py-3 mb-4" style={{ background: 'rgba(255,45,117,.08)', border: '3px solid var(--neon-pink)' }}>
-                  <div style={{ fontFamily: 'var(--pixel)', fontSize: '8px', color: 'var(--neon-pink)' }}>
-                    NEED ${(P2E_MIN_USD - balance.totalUsd).toFixed(2)} MORE IN BANKR
-                  </div>
-                </div>
-                <button onClick={() => setStep('key_input')} className="g-btn ghost full sm">🔄 RE-ENTER KEY</button>
-              </>
-            )}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
 
 /* ─── ModeSelect ─────────────────────────────────────────────────── */
 
 export function ModeSelect() {
   const {
-    player1, setPlayer1, setPlayer2, setScreen, setMode, setMatchMode,
-    onlinePlayers, activeMatches, walletAddress,
+    player1, setPlayer2, setScreen, setMode, setMatchMode,
+    onlinePlayers, activeMatches,
     setMatchId, setIsHost, matchId,
   } = useGameStore();
 
   const [tab, setTab] = useState<'random' | 'friend'>('random');
   const [searchDots, setSearchDots] = useState('');
-  const [showP2eModal, setShowP2eModal] = useState(false);
 
   // Friend room states
   const [creatingRoom, setCreatingRoom] = useState(false);
@@ -323,7 +191,6 @@ export function ModeSelect() {
               <div className="flex items-center gap-2 mb-1">
                 <span style={{ fontFamily: 'var(--pixel)', fontSize: '9px', color: '#fff' }}>@{player1.profile.username}</span>
                 <span style={{ fontFamily: 'var(--pixel)', fontSize: '6px', color: p1Tier.color }}>{p1Tier.name}</span>
-                {walletAddress && <span style={{ fontFamily: 'var(--pixel)', fontSize: '6px', color: 'var(--neon-grn)' }}>✓ BANKR</span>}
               </div>
               <div className="flex items-center gap-2" style={{ marginBottom: '6px' }}>
                 <span style={{ fontFamily: 'var(--pixel)', fontSize: '7px', color: player1.stats.color }}>
@@ -390,8 +257,8 @@ export function ModeSelect() {
                   <button onClick={() => { setMode('free'); startRandomSearch(); }} className="g-btn ghost full" style={{ fontSize: '11px' }}>
                     ▶ FREE MATCH
                   </button>
-                  <button onClick={() => setShowP2eModal(true)} className="g-btn full" style={{ fontSize: '11px' }}>
-                    💰 P2E MATCH — $1 STAKE
+                  <button disabled className="g-btn full" style={{ fontSize: '11px', opacity: 0.45, cursor: 'not-allowed' }}>
+                    💰 P2E MATCH — COMING SOON
                   </button>
                 </div>
               </div>
@@ -480,20 +347,6 @@ export function ModeSelect() {
         </div>
       </div>
 
-      {showP2eModal && (
-        <P2eModal
-          username={player1.profile.username}
-          onClose={() => setShowP2eModal(false)}
-          onReady={(isClubMember) => {
-            if (isClubMember && player1) {
-              setPlayer1({ profile: player1.profile, stats: calculateFighterStats(player1.profile, { bankrClub: true }) });
-            }
-            setShowP2eModal(false);
-            setMode('p2e');
-            startRandomSearch();
-          }}
-        />
-      )}
     </div>
   );
 }
