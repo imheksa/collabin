@@ -4,7 +4,7 @@ export interface BankrWalletInfo {
   success: boolean;
   wallets: Array<{ chain: string; address: string }>;
   socialAccounts: Array<{ platform: string; username: string }>;
-  bankrClub?: { active: boolean };
+  bankrClub?: { active: boolean; subscriptionType?: string; renewOrCancelOn?: number };
   leaderboard?: { score: number; rank: number };
 }
 
@@ -42,89 +42,9 @@ export interface BankrWalletData {
   bankrClub: boolean;
 }
 
-// ─── Public user lookup (no API key required) ────────────────────────────────────
-
-export interface BankrUserData {
-  address: string | null;
-  bankrClub: boolean;
-  /** true if at least one endpoint responded (even without an address) */
-  reachable: boolean;
-}
-
-function extractAddress(data: unknown): string | null {
-  if (!data || typeof data !== 'object') return null;
-  const d = data as Record<string, unknown>;
-
-  for (const key of ['address', 'evm_address', 'evmAddress', 'wallet_address', 'walletAddress']) {
-    const v = d[key];
-    if (typeof v === 'string' && /^0x[0-9a-fA-F]{40}$/.test(v)) return v;
-  }
-  for (const key of ['user', 'data', 'result']) {
-    const n = d[key];
-    if (n && typeof n === 'object') { const r = extractAddress(n); if (r) return r; }
-  }
-  for (const key of ['users', 'results']) {
-    const arr = d[key];
-    if (Array.isArray(arr) && arr.length > 0) { const r = extractAddress(arr[0]); if (r) return r; }
-  }
-  return null;
-}
-
-function extractClubStatus(data: unknown): boolean {
-  if (!data || typeof data !== 'object') return false;
-  const d = data as Record<string, unknown>;
-  for (const key of ['bankrClub', 'bankr_club', 'club']) {
-    const club = d[key];
-    if (club && typeof club === 'object') {
-      return (club as Record<string, unknown>)['active'] === true;
-    }
-    if (typeof club === 'boolean') return club;
-  }
-  for (const key of ['user', 'data', 'result']) {
-    const n = d[key];
-    if (n && typeof n === 'object') { const r = extractClubStatus(n); if (r) return r; }
-  }
-  for (const key of ['users', 'results']) {
-    const arr = d[key];
-    if (Array.isArray(arr) && arr.length > 0) { const r = extractClubStatus(arr[0]); if (r) return r; }
-  }
-  return false;
-}
-
-const ENDPOINTS = (handle: string) => [
-  `/.netlify/functions/bankr-check?username=${encodeURIComponent(handle)}`,
-  `${BANKR}/users/search?twitter=${encodeURIComponent(handle)}`,
-  `${BANKR}/users/search?username=${encodeURIComponent('@' + handle)}`,
-  `${BANKR}/users/${encodeURIComponent(handle)}`,
-  `${BANKR}/users/twitter/${encodeURIComponent(handle)}`,
-  `${BANKR}/addresses/resolve?handle=${encodeURIComponent('@' + handle)}`,
-];
-
-export async function lookupBankrUserData(username: string): Promise<BankrUserData> {
-  const handle = username.replace(/^@/, '');
-  let reachable = false;
-  for (const url of ENDPOINTS(handle)) {
-    try {
-      const res = await fetch(url, { headers: { Accept: 'application/json' } });
-      if (!res.ok) continue;
-      reachable = true; // API responded — if no address found, user is truly not linked
-      const data = await res.json();
-      const address = extractAddress(data);
-      if (address) return { address, bankrClub: extractClubStatus(data), reachable: true };
-    } catch { /* CORS or network — try next */ }
-  }
-  return { address: null, bankrClub: false, reachable };
-}
-
-export async function lookupBankrUser(username: string): Promise<string | null> {
-  return lookupBankrUserData(username).then(d => d.address);
-}
-
-export async function checkBankrExists(username: string): Promise<boolean> {
-  return lookupBankrUserData(username).then(d => d.address !== null);
-}
-
 // ─── Authenticated key-based connection ──────────────────────────────────────
+// Bankr has no public endpoint for username lookup — verification requires the
+// user's own API key via GET /wallet/me (X-API-Key header).
 
 async function bankrGet<T>(path: string, apiKey: string): Promise<T> {
   const res = await fetch(`${BANKR}${path}`, {
@@ -179,4 +99,3 @@ export async function connectBankrKey(
     bankrClub: me.bankrClub?.active === true,
   };
 }
-
