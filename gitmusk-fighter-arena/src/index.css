@@ -29,3 +29,14 @@
     box-shadow: 0 0 10px #bf00ff, 0 0 20px #bf00ff40;
   }
 }
+
+/* Touch gamepad — hidden on desktop, shown on touch/mobile */
+.arena-touch-pad {
+  display: none;
+}
+
+@media (pointer: coarse), (max-width: 768px) {
+  .arena-touch-pad {
+    display: flex;
+  }
+}

@@ -5,7 +5,7 @@ import { calcDamage } from '../utils/statsCalculator';
 import { applyUltimate } from '../utils/ultimates';
 import { getProfile, getCombatModifiers } from '../utils/playerProfile';
 import { HPBar } from './HPBar';
-import { playPunch, playKick, playSpecial, playUltimate, playBlock, playCombo, playKO } from '../utils/sounds';
+import { playPunch, playKick, playSpecial, playUltimate, playBlock, playCombo, playKO, startBgMusic, stopBgMusic } from '../utils/sounds';
 import { drawArchetypeFighter } from '../utils/fighterSprites';
 
 const W = 800;
@@ -1309,10 +1309,12 @@ export function FightingArena({ player1, player2, onMatchEnd, p2AI = true, p2pMo
     };
 
     frameRef.current = requestAnimationFrame(loop);
+    startBgMusic();
     return () => {
       cancelAnimationFrame(frameRef.current);
       window.removeEventListener('keydown', onKey);
       window.removeEventListener('keyup', onKeyUp);
+      stopBgMusic();
     };
   }, [player1, player2, doAttack, onMatchEnd, p2AI]);
 
