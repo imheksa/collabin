@@ -10,7 +10,8 @@ export type Archetype =
   | 'developer'
   | 'influencer'
   | 'degen'
-  | 'og_holder';
+  | 'og_holder'
+  | 'bankr_club';
 
 export interface XProfile {
   username: string;
