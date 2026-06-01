@@ -827,21 +827,21 @@ export function Landing() {
           <div className="sec-head">
             <div>
               <span className="eyebrow">// PLAY-TO-EARN</span>
-              <h2>PLAY. FIGHT. EARN.</h2>
+              <h2>PLAY. FIGHT. EARN. <span style={{ fontSize:'0.45em', verticalAlign:'middle', background:'var(--neon-yel)', color:'#000', padding:'4px 10px', borderRadius:'4px', letterSpacing:'0.08em' }}>COMING SOON</span></h2>
             </div>
-            <p style={{ fontFamily:'var(--body)', fontSize:'20px', color:'var(--txt-dim)', maxWidth:'36ch' }}>Both fighters deposit to the Vault — it holds funds in escrow until the match resolves. Winner takes the pot, released instantly via Bankr.</p>
+            <p style={{ fontFamily:'var(--body)', fontSize:'20px', color:'var(--txt-dim)', maxWidth:'36ch' }}>Both fighters deposit to the Vault — it holds funds in escrow until the match resolves. Winner takes the pot, released instantly on-chain.</p>
           </div>
           <div className="p2e-grid">
             <div>
               <div className="flow">
-                <div className="flow-step"><div className="n">1</div><div className="l">LINK X + BANKR</div><div className="x">X · BANKR</div></div>
-                <div className="flow-step"><div className="n">2</div><div className="l">DEPOSIT TO VAULT</div><div className="x">BANKR → VAULT</div></div>
+                <div className="flow-step"><div className="n">1</div><div className="l">LINK YOUR WALLET</div><div className="x">X · WALLET</div></div>
+                <div className="flow-step"><div className="n">2</div><div className="l">DEPOSIT TO VAULT</div><div className="x">WALLET → VAULT</div></div>
                 <div className="flow-step"><div className="n">3</div><div className="l">WIN BATTLE</div><div className="x">VERIFIED · INSTANT</div></div>
                 <div className="flow-step"><div className="n">4</div><div className="l">VAULT RELEASES POT</div><div className="x">ESCROW → WINNER</div></div>
               </div>
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'14px', marginTop:'32px' }}>
-                <div style={{ padding:'18px', background:'var(--void-2)', borderLeft:'6px solid var(--neon-yel)' }}><div className="tag" style={{ color:'var(--neon-yel)', marginBottom:'8px' }}>VAULT ESCROW</div><div style={{ fontFamily:'var(--body)', fontSize:'18px', color:'var(--txt-dim)' }}>Both fighters send their wager from Bankr to the Vault. Funds are locked in escrow — released only when the match resolves.</div></div>
-                <div style={{ padding:'18px', background:'var(--void-2)', borderLeft:'6px solid var(--neon-b)' }}><div className="tag" style={{ marginBottom:'8px' }}>INSTANT PAYOUT</div><div style={{ fontFamily:'var(--body)', fontSize:'18px', color:'var(--txt-dim)' }}>Vault releases the full pot to the winner's Bankr account the moment the match ends. No wallet, no wait.</div></div>
+                <div style={{ padding:'18px', background:'var(--void-2)', borderLeft:'6px solid var(--neon-yel)' }}><div className="tag" style={{ color:'var(--neon-yel)', marginBottom:'8px' }}>VAULT ESCROW</div><div style={{ fontFamily:'var(--body)', fontSize:'18px', color:'var(--txt-dim)' }}>Both fighters send their wager from their wallet to the Vault. Funds are locked in escrow — released only when the match resolves.</div></div>
+                <div style={{ padding:'18px', background:'var(--void-2)', borderLeft:'6px solid var(--neon-b)' }}><div className="tag" style={{ marginBottom:'8px' }}>INSTANT PAYOUT</div><div style={{ fontFamily:'var(--body)', fontSize:'18px', color:'var(--txt-dim)' }}>Vault releases the full pot to the winner's wallet the moment the match ends. Verified on-chain, instant settlement.</div></div>
                 <div style={{ padding:'18px', background:'var(--void-2)', borderLeft:'6px solid var(--neon-pink)' }}><div className="tag" style={{ color:'var(--neon-pink)', marginBottom:'8px' }}>ANTI-SYBIL</div><div style={{ fontFamily:'var(--body)', fontSize:'18px', color:'var(--txt-dim)' }}>X verification + behavioral signals prevent multi-account abuse.</div></div>
                 <div style={{ padding:'18px', background:'var(--void-2)', borderLeft:'6px solid var(--neon-grn)' }}><div className="tag" style={{ color:'var(--neon-grn)', marginBottom:'8px' }}>TOURNAMENT REWARDS</div><div style={{ fontFamily:'var(--body)', fontSize:'18px', color:'var(--txt-dim)' }}>Weekly cash prizes, NFT trophies, leaderboard payouts.</div></div>
               </div>
