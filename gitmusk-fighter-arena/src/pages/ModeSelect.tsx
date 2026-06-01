@@ -28,8 +28,13 @@ function P2eModal({ username, onClose, onReady }: { username: string; onClose: (
   const runAutoCheck = useCallback(async () => {
     setStep('checking'); setBalance(null); setBankrClub(false);
     try {
-      const { address, bankrClub: isClub } = await lookupBankrUserData(username);
-      if (!address) { setStep('not_connected'); return; }
+      const { address, bankrClub: isClub, reachable } = await lookupBankrUserData(username);
+      if (!address) {
+        // reachable=true → API responded but no wallet found → user truly not linked
+        // reachable=false → all endpoints blocked (CORS/network) → let them use key fallback
+        setStep(reachable ? 'not_connected' : 'manual_fallback');
+        return;
+      }
       const bal = await getWalletBalance(address);
       setWalletAddress(address);
       setBalance({ address, ...bal });

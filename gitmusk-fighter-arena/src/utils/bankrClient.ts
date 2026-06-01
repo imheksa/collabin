@@ -47,6 +47,8 @@ export interface BankrWalletData {
 export interface BankrUserData {
   address: string | null;
   bankrClub: boolean;
+  /** true if at least one endpoint responded (even without an address) */
+  reachable: boolean;
 }
 
 function extractAddress(data: unknown): string | null {
@@ -100,16 +102,18 @@ const ENDPOINTS = (handle: string) => [
 
 export async function lookupBankrUserData(username: string): Promise<BankrUserData> {
   const handle = username.replace(/^@/, '');
+  let reachable = false;
   for (const url of ENDPOINTS(handle)) {
     try {
       const res = await fetch(url, { headers: { Accept: 'application/json' } });
       if (!res.ok) continue;
+      reachable = true; // API responded — if no address found, user is truly not linked
       const data = await res.json();
       const address = extractAddress(data);
-      if (address) return { address, bankrClub: extractClubStatus(data) };
+      if (address) return { address, bankrClub: extractClubStatus(data), reachable: true };
     } catch { /* CORS or network — try next */ }
   }
-  return { address: null, bankrClub: false };
+  return { address: null, bankrClub: false, reachable };
 }
 
 export async function lookupBankrUser(username: string): Promise<string | null> {
