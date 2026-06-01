@@ -16,10 +16,11 @@ const P2E_MIN_USD = 1;
 type P2eStep = 'checking' | 'eligible' | 'insufficient' | 'not_connected' | 'manual_fallback';
 interface BalanceSnapshot { address: string; usdc: number; eth: number; ethPriceUsd: number; totalUsd: number; }
 
-function P2eModal({ username, onClose, onReady }: { username: string; onClose: () => void; onReady: () => void }) {
+function P2eModal({ username, onClose, onReady }: { username: string; onClose: () => void; onReady: (bankrClub: boolean) => void }) {
   const { setWalletAddress } = useGameStore();
   const [step, setStep] = useState<P2eStep>('checking');
   const [balance, setBalance] = useState<BalanceSnapshot | null>(null);
+  const [bankrClub, setBankrClub] = useState(false);
   const [bankrKey, setBankrKey] = useState('');
   const [keyLoading, setKeyLoading] = useState(false);
   const [errMsg, setErrMsg] = useState('');
@@ -46,6 +47,7 @@ function P2eModal({ username, onClose, onReady }: { username: string; onClose: (
       const bal = await getWalletBalance(data.evmAddress);
       setWalletAddress(data.evmAddress);
       setBalance({ address: data.evmAddress, ...bal });
+      setBankrClub(data.bankrClub);
       setStep(bal.totalUsd >= P2E_MIN_USD ? 'eligible' : 'insufficient');
     } catch (err) { setErrMsg(err instanceof Error ? err.message : 'Connection failed.'); }
     finally { setKeyLoading(false); }
@@ -98,8 +100,13 @@ function P2eModal({ username, onClose, onReady }: { username: string; onClose: (
               <>
                 <div className="text-center py-3 mb-4" style={{ background: 'rgba(0,255,157,.08)', border: '3px solid var(--neon-grn)' }}>
                   <div style={{ fontFamily: 'var(--pixel)', fontSize: '8px', color: 'var(--neon-grn)' }}>✓ READY — $1 STAKE</div>
+                  {bankrClub && (
+                    <div style={{ fontFamily: 'var(--pixel)', fontSize: '7px', color: '#ffd700', marginTop: '6px' }}>
+                      👑 BANKR CLUB — WHALE TIER UNLOCKED
+                    </div>
+                  )}
                 </div>
-                <button onClick={onReady} className="g-btn full" style={{ fontSize: '11px' }}>⚔ ENTER P2E MATCH</button>
+                <button onClick={() => onReady(bankrClub)} className="g-btn full" style={{ fontSize: '11px' }}>⚔ ENTER P2E MATCH</button>
               </>
             ) : (
               <>
@@ -151,7 +158,7 @@ function P2eModal({ username, onClose, onReady }: { username: string; onClose: (
 
 export function ModeSelect() {
   const {
-    player1, setPlayer2, setScreen, setMode, setMatchMode,
+    player1, setPlayer1, setPlayer2, setScreen, setMode, setMatchMode,
     onlinePlayers, activeMatches, walletAddress,
     setMatchId, setIsHost, matchId,
   } = useGameStore();
@@ -339,8 +346,15 @@ export function ModeSelect() {
                 {bankrExists && <span style={{ fontFamily: 'var(--pixel)', fontSize: '6px', color: 'var(--neon-yel)' }}>● BANKR</span>}
                 {walletAddress && <span style={{ fontFamily: 'var(--pixel)', fontSize: '6px', color: 'var(--neon-grn)' }}>● BANKR</span>}
               </div>
-              <div style={{ fontFamily: 'var(--pixel)', fontSize: '7px', color: player1.stats.color, marginBottom: '6px' }}>
-                {player1.stats.archetypeLabel.toUpperCase()}
+              <div className="flex items-center gap-2" style={{ marginBottom: '6px' }}>
+                <span style={{ fontFamily: 'var(--pixel)', fontSize: '7px', color: player1.stats.color }}>
+                  {player1.stats.archetypeLabel.toUpperCase()}
+                </span>
+                {player1.stats.archetype === 'bankr_club' && (
+                  <span style={{ fontFamily: 'var(--pixel)', fontSize: '6px', color: '#ffd700', background: 'rgba(255,215,0,.15)', padding: '1px 4px', border: '1px solid #ffd70060' }}>
+                    👑 CLUB
+                  </span>
+                )}
               </div>
               <div style={{ height: '8px', background: 'var(--void)', border: '2px solid var(--panel-line)' }}>
                 <div style={{ height: '100%', width: `${p1XpPct * 100}%`, background: p1Tier.color, transition: 'width 1s' }} />
@@ -488,7 +502,18 @@ export function ModeSelect() {
       </div>
 
       {showP2eModal && (
-        <P2eModal username={player1.profile.username} onClose={() => setShowP2eModal(false)} onReady={() => { setShowP2eModal(false); setMode('p2e'); startRandomSearch(); }} />
+        <P2eModal
+          username={player1.profile.username}
+          onClose={() => setShowP2eModal(false)}
+          onReady={(isClubMember) => {
+            if (isClubMember && player1) {
+              setPlayer1({ profile: player1.profile, stats: calculateFighterStats(player1.profile, { bankrClub: true }) });
+            }
+            setShowP2eModal(false);
+            setMode('p2e');
+            startRandomSearch();
+          }}
+        />
       )}
     </div>
   );

@@ -128,6 +128,20 @@ export const ARCHETYPES: Record<Archetype, ArchetypeData> = {
     speedMod: 0.9,
     critMod: 0.9,
   },
+  bankr_club: {
+    label: 'Bankr Club',
+    description: 'Exclusive whale-tier club member. Superior across all stats.',
+    passiveAbility: 'Club Access: Regenerate 3% HP every 8 seconds',
+    ultimateName: 'Whale Protocol',
+    ultimateDescription: "Deal damage equal to 50% of the opponent's current HP",
+    color: '#ffd700',
+    glowColor: '#ffaa00',
+    keywords: [],
+    attackMod: 1.25,
+    defenseMod: 1.25,
+    speedMod: 1.2,
+    critMod: 1.2,
+  },
 };
 
 export function detectArchetype(profile: { bio: string; username: string; accountAgeDays: number }): Archetype {

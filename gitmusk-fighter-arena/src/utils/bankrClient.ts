@@ -39,6 +39,7 @@ export interface BankrWalletData {
   eth: number;
   ethUsd: number;
   leaderboardRank?: number;
+  bankrClub: boolean;
 }
 
 // ─── Public user lookup (no API key required) ────────────────────────────────
@@ -142,6 +143,7 @@ export async function connectBankrKey(
     eth,
     ethUsd,
     leaderboardRank: me.leaderboard?.rank,
+    bankrClub: me.bankrClub?.active === true,
   };
 }
 

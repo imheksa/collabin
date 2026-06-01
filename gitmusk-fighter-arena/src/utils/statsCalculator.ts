@@ -24,7 +24,7 @@ function getTierLabel(rarity: Rarity): string {
   return labels[rarity];
 }
 
-export function calculateFighterStats(profile: XProfile): FighterStats {
+export function calculateFighterStats(profile: XProfile, opts?: { bankrClub?: boolean }): FighterStats {
   const { twitterScore, followers, accountAgeDays, tweetCount, verified } = profile;
 
   // Base power from Twitter Score (main stat)
@@ -50,8 +50,10 @@ export function calculateFighterStats(profile: XProfile): FighterStats {
   // Rage speed from activity
   const rageSpeed = clamp(Math.floor(20 + Math.log10(tweetCount + 1) * 15), 15, 90);
 
-  // Archetype detection
-  const archetype = detectArchetype({ bio: profile.bio, username: profile.username, accountAgeDays });
+  // Archetype — bankr club members bypass keyword detection
+  const archetype = opts?.bankrClub
+    ? 'bankr_club'
+    : detectArchetype({ bio: profile.bio, username: profile.username, accountAgeDays });
   const archetypeData = ARCHETYPES[archetype];
 
   // Apply archetype modifiers
@@ -65,7 +67,8 @@ export function calculateFighterStats(profile: XProfile): FighterStats {
   if (verified === 'blue') verifiedBonus = 5;
   if (verified === 'gold') verifiedBonus = 12;
 
-  const rarity = getRarity(twitterScore + verifiedBonus);
+  // Bankr Club members are always legendary
+  const rarity = opts?.bankrClub ? 'legendary' : getRarity(twitterScore + verifiedBonus);
 
   return {
     basePower: finalBasePower,
