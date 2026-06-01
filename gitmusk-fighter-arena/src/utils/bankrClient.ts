@@ -42,7 +42,12 @@ export interface BankrWalletData {
   bankrClub: boolean;
 }
 
-// ─── Public user lookup (no API key required) ────────────────────────────────
+// ─── Public user lookup (no API key required) ────────────────────────────────────
+
+export interface BankrUserData {
+  address: string | null;
+  bankrClub: boolean;
+}
 
 function extractAddress(data: unknown): string | null {
   if (!data || typeof data !== 'object') return null;
@@ -63,32 +68,56 @@ function extractAddress(data: unknown): string | null {
   return null;
 }
 
-export async function lookupBankrUser(username: string): Promise<string | null> {
+function extractClubStatus(data: unknown): boolean {
+  if (!data || typeof data !== 'object') return false;
+  const d = data as Record<string, unknown>;
+  for (const key of ['bankrClub', 'bankr_club', 'club']) {
+    const club = d[key];
+    if (club && typeof club === 'object') {
+      return (club as Record<string, unknown>)['active'] === true;
+    }
+    if (typeof club === 'boolean') return club;
+  }
+  for (const key of ['user', 'data', 'result']) {
+    const n = d[key];
+    if (n && typeof n === 'object') { const r = extractClubStatus(n); if (r) return r; }
+  }
+  for (const key of ['users', 'results']) {
+    const arr = d[key];
+    if (Array.isArray(arr) && arr.length > 0) { const r = extractClubStatus(arr[0]); if (r) return r; }
+  }
+  return false;
+}
+
+const ENDPOINTS = (handle: string) => [
+  `/.netlify/functions/bankr-check?username=${encodeURIComponent(handle)}`,
+  `${BANKR}/users/search?twitter=${encodeURIComponent(handle)}`,
+  `${BANKR}/users/search?username=${encodeURIComponent('@' + handle)}`,
+  `${BANKR}/users/${encodeURIComponent(handle)}`,
+  `${BANKR}/users/twitter/${encodeURIComponent(handle)}`,
+  `${BANKR}/addresses/resolve?handle=${encodeURIComponent('@' + handle)}`,
+];
+
+export async function lookupBankrUserData(username: string): Promise<BankrUserData> {
   const handle = username.replace(/^@/, '');
-
-  const endpoints = [
-    // Via Netlify proxy (avoids CORS on GitHub Pages)
-    `/.netlify/functions/bankr-check?username=${encodeURIComponent(handle)}`,
-    // Direct public endpoints
-    `${BANKR}/users/search?twitter=${encodeURIComponent(handle)}`,
-    `${BANKR}/users/search?username=${encodeURIComponent('@' + handle)}`,
-    `${BANKR}/users/${encodeURIComponent(handle)}`,
-    `${BANKR}/users/twitter/${encodeURIComponent(handle)}`,
-    `${BANKR}/addresses/resolve?handle=${encodeURIComponent('@' + handle)}`,
-  ];
-
-  for (const url of endpoints) {
+  for (const url of ENDPOINTS(handle)) {
     try {
       const res = await fetch(url, { headers: { Accept: 'application/json' } });
       if (!res.ok) continue;
       const data = await res.json();
-      const addr = extractAddress(data);
-      if (addr) return addr;
-    } catch {
-      // CORS or network — try next
-    }
+      const address = extractAddress(data);
+      if (address) return { address, bankrClub: extractClubStatus(data) };
+    } catch { /* CORS or network — try next */ }
   }
-  return null;
+  return { address: null, bankrClub: false };
+}
+
+export async function lookupBankrUser(username: string): Promise<string | null> {
+  return lookupBankrUserData(username).then(d => d.address);
+}
+
+export async function checkBankrExists(username: string): Promise<boolean> {
+  return lookupBankrUserData(username).then(d => d.address !== null);
 }
 
 // ─── Authenticated key-based connection ──────────────────────────────────────
@@ -147,6 +176,3 @@ export async function connectBankrKey(
   };
 }
 
-export async function checkBankrExists(username: string): Promise<boolean> {
-  return lookupBankrUser(username).then(addr => addr !== null);
-}

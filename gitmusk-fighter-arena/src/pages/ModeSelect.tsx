@@ -3,7 +3,7 @@ import { useGameStore } from '../stores/gameStore';
 import { DEMO_PROFILES } from '../data/mockProfiles';
 import { calculateFighterStats } from '../utils/statsCalculator';
 import { Fighter } from '../types';
-import { connectBankrKey, checkBankrExists, lookupBankrUser } from '../utils/bankrClient';
+import { connectBankrKey, lookupBankrUserData } from '../utils/bankrClient';
 import { getWalletBalance } from '../utils/baseRpc';
 import { getProfile, getLevelTier, xpProgressInLevel } from '../utils/playerProfile';
 import { useMatchmaking } from '../hooks/useMatchmaking';
@@ -26,13 +26,14 @@ function P2eModal({ username, onClose, onReady }: { username: string; onClose: (
   const [errMsg, setErrMsg] = useState('');
 
   const runAutoCheck = useCallback(async () => {
-    setStep('checking'); setBalance(null);
+    setStep('checking'); setBalance(null); setBankrClub(false);
     try {
-      const addr = await lookupBankrUser(username);
-      if (!addr) { setStep('not_connected'); return; }
-      const bal = await getWalletBalance(addr);
-      setWalletAddress(addr);
-      setBalance({ address: addr, ...bal });
+      const { address, bankrClub: isClub } = await lookupBankrUserData(username);
+      if (!address) { setStep('not_connected'); return; }
+      const bal = await getWalletBalance(address);
+      setWalletAddress(address);
+      setBalance({ address, ...bal });
+      setBankrClub(isClub);
       setStep(bal.totalUsd >= P2E_MIN_USD ? 'eligible' : 'insufficient');
     } catch { setStep('manual_fallback'); }
   }, [username, setWalletAddress]);
@@ -189,8 +190,13 @@ export function ModeSelect() {
 
   useEffect(() => {
     if (!player1) return;
-    checkBankrExists(player1.profile.username).then(setBankrExists);
-  }, [player1]);
+    lookupBankrUserData(player1.profile.username).then(({ address, bankrClub }) => {
+      setBankrExists(address !== null);
+      if (bankrClub) {
+        setPlayer1({ profile: player1.profile, stats: calculateFighterStats(player1.profile, { bankrClub: true }) });
+      }
+    });
+  }, [player1?.profile.username]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Cleanup room channel on unmount
   useEffect(() => {
