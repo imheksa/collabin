@@ -13,7 +13,7 @@ import { supabase } from '../lib/supabase';
 const P2E_MIN_USD = 1;
 
 /* ─── P2E Modal ─────────────────────────────────────────────────── */
-type P2eStep = 'checking' | 'eligible' | 'insufficient' | 'not_connected' | 'manual_fallback';
+type P2eStep = 'checking' | 'eligible' | 'insufficient' | 'verify';
 interface BalanceSnapshot { address: string; usdc: number; eth: number; ethPriceUsd: number; totalUsd: number; }
 
 function P2eModal({ username, onClose, onReady }: { username: string; onClose: () => void; onReady: (bankrClub: boolean) => void }) {
@@ -26,21 +26,16 @@ function P2eModal({ username, onClose, onReady }: { username: string; onClose: (
   const [errMsg, setErrMsg] = useState('');
 
   const runAutoCheck = useCallback(async () => {
-    setStep('checking'); setBalance(null); setBankrClub(false);
+    setStep('checking'); setBalance(null); setBankrClub(false); setErrMsg('');
     try {
-      const { address, bankrClub: isClub, reachable } = await lookupBankrUserData(username);
-      if (!address) {
-        // reachable=true → API responded but no wallet found → user truly not linked
-        // reachable=false → all endpoints blocked (CORS/network) → let them use key fallback
-        setStep(reachable ? 'not_connected' : 'manual_fallback');
-        return;
-      }
+      const { address, bankrClub: isClub } = await lookupBankrUserData(username);
+      if (!address) { setStep('verify'); return; }
       const bal = await getWalletBalance(address);
       setWalletAddress(address);
       setBalance({ address, ...bal });
       setBankrClub(isClub);
       setStep(bal.totalUsd >= P2E_MIN_USD ? 'eligible' : 'insufficient');
-    } catch { setStep('manual_fallback'); }
+    } catch { setStep('verify'); }
   }, [username, setWalletAddress]);
 
   useEffect(() => { runAutoCheck(); }, [runAutoCheck]);
@@ -84,7 +79,7 @@ function P2eModal({ username, onClose, onReady }: { username: string; onClose: (
             <div className="flex gap-2">
               {[0,1,2].map(i => <div key={i} className="w-3 h-3 animate-bounce" style={{ background: 'var(--neon-yel)', animationDelay: `${i*.15}s` }} />)}
             </div>
-            <div style={{ fontFamily: 'var(--body)', fontSize: '18px', color: 'var(--txt-dim)' }}>Linking @{username}'s X account with Bankr...</div>
+            <div style={{ fontFamily: 'var(--body)', fontSize: '18px', color: 'var(--txt-dim)' }}>Checking @{username}'s Bankr wallet...</div>
           </div>
         )}
 
@@ -127,32 +122,33 @@ function P2eModal({ username, onClose, onReady }: { username: string; onClose: (
           </div>
         )}
 
-        {step === 'not_connected' && (
+        {step === 'verify' && (
           <div>
-            <div className="g-panel dark text-center mb-4" style={{ padding: '20px' }}>
-              <div style={{ fontFamily: 'var(--pixel)', fontSize: '9px', color: 'var(--neon-yel)', marginBottom: '8px' }}>X NOT LINKED TO BANKR</div>
-              <div style={{ fontFamily: 'var(--body)', fontSize: '18px', color: 'var(--txt-dim)' }}>Sign in at bankr.bot with your X account, then add $5+ to play</div>
-            </div>
-            <div className="flex gap-2">
-              <a href="https://bankr.bot/terminal" target="_blank" rel="noopener" className="g-btn sm flex-1" style={{ textDecoration: 'none', justifyContent: 'center' }}>🌐 BANKR.BOT</a>
-              <button onClick={runAutoCheck} className="g-btn ghost sm flex-1">🔄 TRY AGAIN</button>
-            </div>
-          </div>
-        )}
-
-        {step === 'manual_fallback' && (
-          <div>
-            <div className="g-panel pink text-center mb-4" style={{ padding: '16px' }}>
-              <div style={{ fontFamily: 'var(--pixel)', fontSize: '8px', color: 'var(--neon-pink)' }}>AUTO-CHECK UNAVAILABLE</div>
-              <div style={{ fontFamily: 'var(--body)', fontSize: '16px', color: 'var(--txt-dim)', marginTop: '4px' }}>DM @bankrbot: "my api key"</div>
+            <div className="g-panel dark mb-4" style={{ padding: '16px' }}>
+              <div style={{ fontFamily: 'var(--pixel)', fontSize: '8px', color: 'var(--neon-yel)', marginBottom: '8px' }}>
+                VERIFY BANKR WALLET
+              </div>
+              <div style={{ fontFamily: 'var(--body)', fontSize: '16px', color: 'var(--txt-dim)', lineHeight: 1.5 }}>
+                Auto-detect couldn't find @{username}'s wallet. If you have a Bankr account, enter your API key to verify.
+              </div>
+              <div style={{ fontFamily: 'var(--mono)', fontSize: '12px', color: 'var(--txt-dim)', marginTop: '8px' }}>
+                DM <span style={{ color: 'var(--neon-b)' }}>@bankrbot</span> on X: <span style={{ color: '#fff' }}>"my api key"</span>
+              </div>
             </div>
             <div className="flex gap-2 mb-2">
-              <input style={{ flex: 1, background: 'var(--void)', border: '3px solid var(--panel-line)', fontFamily: 'var(--mono)', fontSize: '13px', color: '#fff', padding: '10px 14px', outline: 'none' }}
+              <input
+                style={{ flex: 1, background: 'var(--void)', border: '3px solid var(--panel-line)', fontFamily: 'var(--mono)', fontSize: '13px', color: '#fff', padding: '10px 14px', outline: 'none' }}
                 placeholder="bk_xxxxxxxxxxxxxxxx" type="password" value={bankrKey}
                 onChange={e => setBankrKey(e.target.value)} onKeyDown={e => e.key === 'Enter' && connectWithKey()} autoFocus />
               <button onClick={connectWithKey} disabled={keyLoading} className="g-btn sm">{keyLoading ? '...' : 'GO'}</button>
             </div>
-            {errMsg && <div style={{ fontFamily: 'var(--mono)', fontSize: '12px', color: 'var(--neon-pink)', marginTop: '8px' }}>⚠ {errMsg}</div>}
+            {errMsg && <div style={{ fontFamily: 'var(--mono)', fontSize: '12px', color: 'var(--neon-pink)', marginTop: '6px' }}>⚠ {errMsg}</div>}
+            <div className="flex gap-2 mt-3">
+              <a href="https://bankr.bot/terminal" target="_blank" rel="noopener" className="g-btn ghost sm flex-1" style={{ textDecoration: 'none', justifyContent: 'center', fontSize: '9px' }}>
+                🌐 NEW TO BANKR?
+              </a>
+              <button onClick={runAutoCheck} className="g-btn ghost sm flex-1" style={{ fontSize: '9px' }}>🔄 RETRY AUTO-DETECT</button>
+            </div>
           </div>
         )}
       </div>
