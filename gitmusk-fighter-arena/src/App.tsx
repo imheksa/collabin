@@ -78,8 +78,8 @@ export default function App() {
   }
 
   async function handleOAuthCallback(code: string, state: string) {
-    const storedState = sessionStorage.getItem('oauth_state');
-    const verifier = sessionStorage.getItem('oauth_code_verifier');
+    const storedState = localStorage.getItem('oauth_state');
+    const verifier = localStorage.getItem('oauth_code_verifier');
 
     window.history.replaceState({}, '', window.location.pathname);
 
@@ -97,8 +97,8 @@ export default function App() {
       const stats = calculateFighterStats(profile);
       const fighter: Fighter = { profile, stats };
 
-      sessionStorage.removeItem('oauth_state');
-      sessionStorage.removeItem('oauth_code_verifier');
+      localStorage.removeItem('oauth_state');
+      localStorage.removeItem('oauth_code_verifier');
 
       setXAccessToken(token);
       setPlayer1(fighter);

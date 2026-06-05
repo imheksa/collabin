@@ -22,8 +22,8 @@ export async function startXOAuth(clientId: string, redirectUri: string): Promis
   const challenge = await generateCodeChallenge(verifier);
   const state = generateCodeVerifier();
 
-  sessionStorage.setItem('oauth_code_verifier', verifier);
-  sessionStorage.setItem('oauth_state', state);
+  localStorage.setItem('oauth_code_verifier', verifier);
+  localStorage.setItem('oauth_state', state);
 
   const url = new URL('https://twitter.com/i/oauth2/authorize');
   url.searchParams.set('response_type', 'code');
