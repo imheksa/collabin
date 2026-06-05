@@ -11,9 +11,45 @@ export function useMatchmaking() {
   const [queueId, setQueueIdState] = useState<string | null>(null);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const queueIdRef = useRef<string | null>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const resolvedRef = useRef(false);
+
+  const stopAll = useCallback(() => {
+    if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
+    if (channelRef.current) { supabase.removeChannel(channelRef.current); channelRef.current = null; }
+  }, []);
+
+  const handleMatch = useCallback((opponent: Fighter, matchId: string, isHost: boolean) => {
+    if (resolvedRef.current) return;
+    resolvedRef.current = true;
+    stopAll();
+    setPlayer2(opponent);
+    setMatchId(matchId);
+    setIsHost(isHost);
+    setStatus('matched');
+    setScreen('vs_screen');
+  }, [stopAll, setPlayer2, setMatchId, setIsHost, setScreen]);
+
+  const startPolling = useCallback((qId: string) => {
+    pollRef.current = setInterval(async () => {
+      if (resolvedRef.current) return;
+      try {
+        const { data: row } = await supabase
+          .from('match_queue').select('status,match_id').eq('id', qId).single();
+        if (row?.status !== 'matched' || !row.match_id) return;
+
+        const { data: match } = await supabase
+          .from('matches').select('player2_data').eq('id', row.match_id).single();
+        if (match?.player2_data) {
+          handleMatch(match.player2_data as Fighter, row.match_id, true);
+        }
+      } catch { /* ignore */ }
+    }, 5000);
+  }, [handleMatch]);
 
   const joinQueue = useCallback(async () => {
     if (!player1) return;
+    resolvedRef.current = false;
     setStatus('waiting');
 
     try {
@@ -29,22 +65,18 @@ export function useMatchmaking() {
       if (!res.ok) throw new Error(data.error ?? 'Queue error');
 
       if (data.matched) {
-        const opponent = data.opponentData as Fighter;
-        setPlayer2(opponent);
-        setMatchId(data.matchId);
-        setIsHost(false);
-        setStatus('matched');
-        setScreen('vs_screen');
+        handleMatch(data.opponentData as Fighter, data.matchId, false);
       } else {
         queueIdRef.current = data.queueId;
         setQueueIdState(data.queueId);
         subscribeToQueue(data.queueId);
+        startPolling(data.queueId);
       }
     } catch (err) {
       console.error('Queue join error:', err);
       setStatus('error');
     }
-  }, [player1, setPlayer2, setMatchId, setIsHost, setScreen]);
+  }, [player1, handleMatch, startPolling]);
 
   const subscribeToQueue = useCallback((qId: string) => {
     const ch = supabase
@@ -58,17 +90,12 @@ export function useMatchmaking() {
 
           const { data: match } = await supabase
             .from('matches')
-            .select('player2_username, player2_data')
+            .select('player2_data')
             .eq('id', matchId)
             .single();
 
           if (match?.player2_data) {
-            const opponent = match.player2_data as Fighter;
-            setPlayer2(opponent);
-            setMatchId(matchId);
-            setIsHost(true);
-            setStatus('matched');
-            setScreen('vs_screen');
+            handleMatch(match.player2_data as Fighter, matchId, true);
           }
           supabase.removeChannel(ch);
           channelRef.current = null;
@@ -77,18 +104,15 @@ export function useMatchmaking() {
       .subscribe();
 
     channelRef.current = ch;
-  }, [setPlayer2, setMatchId, setIsHost, setScreen]);
+  }, [handleMatch]);
 
   const leaveQueue = useCallback(async () => {
     const qId = queueIdRef.current;
+    resolvedRef.current = true;
+    stopAll();
     setStatus('idle');
     setQueueIdState(null);
     queueIdRef.current = null;
-
-    if (channelRef.current) {
-      supabase.removeChannel(channelRef.current);
-      channelRef.current = null;
-    }
 
     if (!qId) return;
     try {
@@ -100,13 +124,11 @@ export function useMatchmaking() {
     } catch (err) {
       console.error('Queue leave error:', err);
     }
-  }, []);
+  }, [stopAll]);
 
   useEffect(() => {
-    return () => {
-      if (channelRef.current) supabase.removeChannel(channelRef.current);
-    };
-  }, []);
+    return () => stopAll();
+  }, [stopAll]);
 
   return { status, queueId, joinQueue, leaveQueue };
 }

@@ -21,6 +21,7 @@ export function ModeSelect() {
   const [tab, setTab] = useState<'random' | 'friend'>('random');
   const [searchDots, setSearchDots] = useState('');
   const [showP2eInfo, setShowP2eInfo] = useState(false);
+  const matchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Friend room states
   const [creatingRoom, setCreatingRoom] = useState(false);
@@ -32,6 +33,19 @@ export function ModeSelect() {
 
   const { status: mmStatus, joinQueue, leaveQueue } = useMatchmaking();
   const searching = mmStatus === 'waiting';
+
+  // 30s timeout — fall back to AI opponent if no real match found
+  useEffect(() => {
+    if (searching) {
+      matchTimeoutRef.current = setTimeout(async () => {
+        await leaveQueue();
+        pickDemoOpponent();
+      }, 30000);
+    } else {
+      if (matchTimeoutRef.current) { clearTimeout(matchTimeoutRef.current); matchTimeoutRef.current = null; }
+    }
+    return () => { if (matchTimeoutRef.current) { clearTimeout(matchTimeoutRef.current); matchTimeoutRef.current = null; } };
+  }, [searching]);
 
   usePresence(player1?.profile.username);
 

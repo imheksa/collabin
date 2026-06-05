@@ -34,6 +34,29 @@ export default async function handler(req, res) {
   if (Array.isArray(waiting) && waiting.length > 0) {
     const waiter = waiting[0];
 
+    // Atomically claim the waiter — only succeeds if still 'waiting'
+    // Prevents race condition where two players both try to match the same waiter
+    const claimRes = await fetch(
+      `${url}/rest/v1/match_queue?id=eq.${waiter.id}&status=eq.waiting`,
+      {
+        method: 'PATCH',
+        headers: { ...headers, Prefer: 'return=representation' },
+        body: JSON.stringify({ status: 'matched' }),
+      }
+    );
+    const claimed = await claimRes.json();
+
+    if (!Array.isArray(claimed) || claimed.length === 0) {
+      // Another player claimed this waiter first — insert self into queue
+      const insertRes = await fetch(`${url}/rest/v1/match_queue`, {
+        method: 'POST',
+        headers: { ...headers, Prefer: 'return=representation' },
+        body: JSON.stringify({ username, fighter_data: fighterData }),
+      });
+      const [row] = await insertRes.json();
+      return res.status(200).json({ matched: false, queueId: row.id });
+    }
+
     // Create match
     const matchRes = await fetch(`${url}/rest/v1/matches`, {
       method: 'POST',
@@ -49,11 +72,11 @@ export default async function handler(req, res) {
     });
     const [match] = await matchRes.json();
 
-    // Update waiter's queue row
+    // Update waiter's queue row with match_id
     await fetch(`${url}/rest/v1/match_queue?id=eq.${waiter.id}`, {
       method: 'PATCH',
       headers,
-      body: JSON.stringify({ status: 'matched', match_id: match.id }),
+      body: JSON.stringify({ match_id: match.id }),
     });
 
     return res.status(200).json({
