@@ -219,7 +219,7 @@ export function VSScreen() {
                   cursor: localReady ? 'default' : 'pointer',
                   background: localReady ? 'rgba(255,45,117,.2)' : undefined,
                 }}>
-                {localReady ? '✓ READY' : `${myRole} — SIAP!`}
+                {localReady ? '✓ READY' : `${myRole} — READY UP!`}
               </button>
             )}
 
@@ -262,10 +262,10 @@ export function VSScreen() {
         {isP2P && phase === 'ready_wait' && (
           <div className="text-center mt-4 flex justify-center gap-6">
             <div style={{ fontFamily: 'var(--pixel)', fontSize: '8px', color: p1Ready ? 'var(--neon-grn)' : 'var(--txt-dim)' }}>
-              P1 {p1Ready ? '✓ SIAP' : '... menunggu'}
+              P1 {p1Ready ? '✓ READY' : '... waiting'}
             </div>
             <div style={{ fontFamily: 'var(--pixel)', fontSize: '8px', color: p2Ready ? 'var(--neon-grn)' : 'var(--txt-dim)' }}>
-              P2 {p2Ready ? '✓ SIAP' : '... menunggu'}
+              P2 {p2Ready ? '✓ READY' : '... waiting'}
             </div>
           </div>
         )}
