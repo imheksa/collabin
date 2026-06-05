@@ -1,5 +1,6 @@
 // Called daily by Vercel cron. Resets the season when ends_at has passed.
 // Protected by CRON_SECRET env var (Vercel sends it as Authorization: Bearer <secret>).
+// Manual force-reset: POST /api/season-reset?force=true (still requires auth if CRON_SECRET is set).
 
 export default async function handler(req, res) {
   // Allow Vercel cron (GET) and manual trigger (POST)
@@ -22,6 +23,8 @@ export default async function handler(req, res) {
     return res.status(200).json({ ok: false, reason: 'not configured' });
   }
 
+  const forceReset = req.query?.force === 'true' || req.method === 'POST' && (req.body?.force === true || req.body?.force === 'true');
+
   const h = {
     apikey: supabaseKey,
     Authorization: `Bearer ${supabaseKey}`,
@@ -37,9 +40,9 @@ export default async function handler(req, res) {
     if (!cfg) return res.status(200).json({ ok: false, reason: 'no season_config row' });
 
     const endsAt = new Date(cfg.ends_at);
-    if (Date.now() < endsAt.getTime()) {
+    if (!forceReset && Date.now() < endsAt.getTime()) {
       const daysLeft = Math.ceil((endsAt.getTime() - Date.now()) / 86400000);
-      return res.status(200).json({ ok: false, reason: 'season not over', daysLeft });
+      return res.status(200).json({ ok: false, reason: 'season not over', daysLeft, hint: 'Add ?force=true to reset immediately' });
     }
 
     const seasonNumber = cfg.season_number;
