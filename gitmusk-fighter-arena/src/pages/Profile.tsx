@@ -303,7 +303,7 @@ export function Profile() {
   }, [username]);
 
   const tweetText = [
-    `🎮 My #GitMuskFighterArena fighter card!`,
+    `🎮 My #ExArena fighter card!`,
     ``,
     `@${username} · ${tier.name} · LV${profile.level}`,
     `⚔ ${profile.wins}W / ${profile.losses}L · ${winRate}% WR`,
@@ -320,7 +320,7 @@ export function Profile() {
     // Mobile: native share sheet with image (opens X/Twitter app with image pre-attached)
     if (navigator.canShare?.({ files: [file] })) {
       try {
-        await navigator.share({ title: '⚔ GitMusk Fighter Arena', text: tweetText, files: [file] });
+        await navigator.share({ title: '⚔ Ex Arena', text: tweetText, files: [file] });
         return;
       } catch { /* user dismissed */ }
     }

@@ -108,8 +108,8 @@ async function renderCard(canvas: HTMLCanvasElement, me: Fighter, opponent: Figh
 
 function buildTweetText(me: Fighter, opponent: Fighter, isWin: boolean, maxCombo: number, duration: number) {
   return isWin
-    ? `⚔️ Just defeated @${opponent.profile.username} in #XFighterArena!\n\n🏆 ${me.stats.archetypeLabel} | Power: ${me.stats.basePower}\n💥 Max combo: ${maxCombo}x | ⏱ ${duration}s\n\nThink you can beat me? 🎮\n${GAME_URL}`
-    : `💀 Just got rekt by @${opponent.profile.username} in #XFighterArena!\n\nMy fighter: ${me.stats.archetypeLabel} | Power: ${me.stats.basePower}\nRematch time! 🎮\n${GAME_URL}`;
+    ? `⚔️ Just defeated @${opponent.profile.username} in #ExArena!\n\n🏆 ${me.stats.archetypeLabel} | Power: ${me.stats.basePower}\n💥 Max combo: ${maxCombo}x | ⏱ ${duration}s\n\nThink you can beat me? 🎮\n${GAME_URL}`
+    : `💀 Just got rekt by @${opponent.profile.username} in #ExArena!\n\nMy fighter: ${me.stats.archetypeLabel} | Power: ${me.stats.basePower}\nRematch time! 🎮\n${GAME_URL}`;
 }
 
 export function Results() {
