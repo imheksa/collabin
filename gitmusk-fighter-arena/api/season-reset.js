@@ -11,7 +11,8 @@ export default async function handler(req, res) {
   const cronSecret = process.env.CRON_SECRET;
   if (cronSecret) {
     const auth = req.headers['authorization'];
-    if (auth !== `Bearer ${cronSecret}`) {
+    const querySecret = req.query?.secret;
+    if (auth !== `Bearer ${cronSecret}` && querySecret !== cronSecret) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
   }
