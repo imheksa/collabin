@@ -1301,7 +1301,7 @@ export function FightingArena({ player1, player2, onMatchEnd, p2AI = true, p2pMo
           ctx.fillStyle = '#ff8800';
           ctx.shadowColor = '#ff8800';
           ctx.shadowBlur = 10;
-          ctx.fillText('LAWAN TERPUTUS', W / 2, H / 2 + 60);
+          ctx.fillText('OPPONENT DISCONNECTED', W / 2, H / 2 + 60);
         }
       }
 

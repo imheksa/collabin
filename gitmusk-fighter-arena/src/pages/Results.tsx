@@ -300,7 +300,7 @@ export function Results() {
           </div>
           {matchResult.disconnected && (
             <div style={{ fontFamily: 'var(--pixel)', fontSize: '9px', color: '#ff8800', marginTop: '10px', letterSpacing: '.1em', textShadow: '0 0 10px #ff8800' }}>
-              ⚠ LAWAN TERPUTUS — KAMU MENANG!
+              ⚠ OPPONENT DISCONNECTED — YOU WIN!
             </div>
           )}
         </div>
