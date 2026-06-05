@@ -20,6 +20,7 @@ export function ModeSelect() {
 
   const [tab, setTab] = useState<'random' | 'friend'>('random');
   const [searchDots, setSearchDots] = useState('');
+  const [showP2eInfo, setShowP2eInfo] = useState(false);
 
   // Friend room states
   const [creatingRoom, setCreatingRoom] = useState(false);
@@ -257,7 +258,7 @@ export function ModeSelect() {
                   <button onClick={() => { setMode('free'); startRandomSearch(); }} className="g-btn ghost full" style={{ fontSize: '11px' }}>
                     ▶ FREE MATCH
                   </button>
-                  <button disabled className="g-btn full" style={{ fontSize: '11px', opacity: 0.45, cursor: 'not-allowed' }}>
+                  <button onClick={() => setShowP2eInfo(true)} className="g-btn full" style={{ fontSize: '11px', opacity: 0.65 }}>
                     💰 P2E MATCH — COMING SOON
                   </button>
                 </div>
@@ -346,6 +347,80 @@ export function ModeSelect() {
           <button onClick={() => setScreen('login')} className="g-btn ghost sm">← SWITCH</button>
         </div>
       </div>
+
+      {/* P2E Info Modal */}
+      {showP2eInfo && (
+        <div
+          onClick={() => setShowP2eInfo(false)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 999,
+            background: 'rgba(0,0,0,.85)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: '16px',
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            className="g-panel"
+            style={{ width: '100%', maxWidth: '480px', padding: '28px', position: 'relative' }}
+          >
+            <div className="corners"><i></i><i></i><i></i><i></i></div>
+
+            {/* Header */}
+            <div style={{ marginBottom: '20px' }}>
+              <span className="g-eyebrow">// PLAY-TO-EARN</span>
+              <h3 style={{ fontFamily: 'var(--pixel)', fontSize: '14px', color: '#fff', margin: '8px 0 4px', letterSpacing: '.1em' }}>
+                💰 FITUR SEDANG DIBANGUN
+              </h3>
+              <p style={{ fontFamily: 'var(--body)', fontSize: '17px', color: 'var(--txt-dim)', lineHeight: 1.5 }}>
+                Kami sedang mengembangkan infrastruktur P2E dan mengevaluasi dua opsi pembayaran terbaik untuk pemain.
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginBottom: '24px' }}>
+              {/* Option 1: Bankr */}
+              <div style={{
+                padding: '16px', background: 'var(--void-2)',
+                borderLeft: '4px solid #ffd700',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                  <span style={{ fontFamily: 'var(--pixel)', fontSize: '8px', color: '#ffd700', letterSpacing: '.15em' }}>OPSI 1 · BANKR</span>
+                  <span style={{ fontFamily: 'var(--pixel)', fontSize: '6px', color: '#ffd700', background: 'rgba(255,215,0,.15)', padding: '2px 6px', border: '1px solid #ffd70060' }}>
+                    SEDANG DINEGOSIASI
+                  </span>
+                </div>
+                <p style={{ fontFamily: 'var(--body)', fontSize: '16px', color: 'var(--txt-dim)', lineHeight: 1.55, margin: 0 }}>
+                  Bankr adalah platform sosial crypto berbasis X (Twitter). Setiap pengguna Bankr memiliki wallet terintegrasi yang terhubung ke akun X mereka — sehingga deposit dan payout P2E bisa berjalan langsung tanpa koneksi wallet manual. Kami sedang meminta OAuth dari tim Bankr agar integrasi ini bisa berjalan mulus.
+                </p>
+              </div>
+
+              {/* Option 2: Web3 Wallet */}
+              <div style={{
+                padding: '16px', background: 'var(--void-2)',
+                borderLeft: '4px solid var(--neon-b)',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                  <span style={{ fontFamily: 'var(--pixel)', fontSize: '8px', color: 'var(--neon-b)', letterSpacing: '.15em' }}>OPSI 2 · WEB3 WALLET</span>
+                  <span style={{ fontFamily: 'var(--pixel)', fontSize: '6px', color: 'var(--neon-b)', background: 'rgba(0,229,255,.1)', padding: '2px 6px', border: '1px solid rgba(0,229,255,.3)' }}>
+                    IN DEVELOPMENT
+                  </span>
+                </div>
+                <p style={{ fontFamily: 'var(--body)', fontSize: '16px', color: 'var(--txt-dim)', lineHeight: 1.55, margin: 0 }}>
+                  Koneksi wallet standar via MetaMask, WalletConnect, atau Coinbase Wallet. Pemain menghubungkan wallet sendiri — deposit masuk ke smart contract Vault, payout otomatis ke wallet pemenang saat match selesai. Pendekatan ini lebih desentralisasi namun memerlukan langkah manual dari pemain.
+                </p>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setShowP2eInfo(false)}
+              className="g-btn ghost full"
+              style={{ fontSize: '10px' }}
+            >
+              ✕ TUTUP
+            </button>
+          </div>
+        </div>
+      )}
 
     </div>
   );
