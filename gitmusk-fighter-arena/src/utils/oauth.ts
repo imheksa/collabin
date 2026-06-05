@@ -22,6 +22,10 @@ export async function startXOAuth(clientId: string, redirectUri: string): Promis
   const challenge = await generateCodeChallenge(verifier);
   const state = generateCodeVerifier();
 
+  // Write to both: sessionStorage is tab-specific (prevents multi-tab collisions on desktop),
+  // localStorage is the mobile fallback (sessionStorage is cleared during cross-origin redirects on iOS).
+  try { sessionStorage.setItem('oauth_code_verifier', verifier); } catch { /* ignore */ }
+  try { sessionStorage.setItem('oauth_state', state); } catch { /* ignore */ }
   localStorage.setItem('oauth_code_verifier', verifier);
   localStorage.setItem('oauth_state', state);
 

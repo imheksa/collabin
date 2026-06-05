@@ -122,13 +122,25 @@ export default function App() {
   }
 
   async function handleOAuthCallback(code: string, state: string) {
-    const storedState = localStorage.getItem('oauth_state');
-    const verifier = localStorage.getItem('oauth_code_verifier');
+    // Prefer sessionStorage (tab-specific — prevents multi-tab collisions on desktop).
+    // Fall back to localStorage (mobile fallback — sessionStorage cleared during iOS redirects).
+    const storedState =
+      (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('oauth_state')) ||
+      localStorage.getItem('oauth_state');
+    const verifier =
+      (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('oauth_code_verifier')) ||
+      localStorage.getItem('oauth_code_verifier');
 
     window.history.replaceState({}, '', window.location.pathname);
 
-    if (!storedState || state !== storedState || !verifier || !X_CLIENT_ID) {
-      setOauthError('OAuth verification failed. Please try again.');
+    if (!storedState || !verifier || !X_CLIENT_ID) {
+      setOauthError('OAuth verification failed: session data missing. Please try again.');
+      setScreen('login');
+      return;
+    }
+
+    if (state !== storedState) {
+      setOauthError('OAuth verification failed: state mismatch. If you have multiple tabs open, close extras and try again.');
       setScreen('login');
       return;
     }
@@ -141,6 +153,7 @@ export default function App() {
       const stats = calculateFighterStats(profile);
       const fighter: Fighter = { profile, stats };
 
+      try { sessionStorage.removeItem('oauth_state'); sessionStorage.removeItem('oauth_code_verifier'); } catch { /* ignore */ }
       localStorage.removeItem('oauth_state');
       localStorage.removeItem('oauth_code_verifier');
 
