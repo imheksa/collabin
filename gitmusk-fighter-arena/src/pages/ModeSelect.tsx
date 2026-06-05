@@ -383,12 +383,17 @@ export function ModeSelect() {
                 <div style={{ marginBottom: '8px' }}>
                   <span style={{ fontFamily: 'var(--pixel)', fontSize: '8px', color: '#ffd700', letterSpacing: '.15em' }}>OPTION 1 · BANKR</span>
                 </div>
-                <ul style={{ fontFamily: 'var(--body)', fontSize: '16px', color: 'var(--txt-dim)', lineHeight: 1.7, margin: 0, paddingLeft: '18px' }}>
-                  <li>System checks if your X account is linked to Bankr</li>
-                  <li>Verifies your Bankr wallet has sufficient balance</li>
-                  <li>Deposit sent directly from your Bankr wallet to the Vault</li>
-                  <li>Payout released to the winner's Bankr wallet instantly</li>
-                </ul>
+                {[
+                  ['🔍', 'System checks if your X account is linked to Bankr'],
+                  ['💰', 'Verifies your Bankr wallet has sufficient balance'],
+                  ['⚔️', 'Deposit sent directly from your Bankr wallet to the Vault'],
+                  ['🏆', "Payout released to the winner's Bankr wallet instantly"],
+                ].map(([icon, text]) => (
+                  <div key={text} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', marginBottom: '8px' }}>
+                    <span style={{ fontSize: '14px', lineHeight: 1, marginTop: '2px', flexShrink: 0 }}>{icon}</span>
+                    <span style={{ fontFamily: 'var(--body)', fontSize: '15px', color: 'var(--txt-dim)', lineHeight: 1.5 }}>{text}</span>
+                  </div>
+                ))}
               </div>
 
               {/* Option 2: Web3 Wallet */}
@@ -396,12 +401,17 @@ export function ModeSelect() {
                 <div style={{ marginBottom: '8px' }}>
                   <span style={{ fontFamily: 'var(--pixel)', fontSize: '8px', color: 'var(--neon-b)', letterSpacing: '.15em' }}>OPTION 2 · WEB3 WALLET</span>
                 </div>
-                <ul style={{ fontFamily: 'var(--body)', fontSize: '16px', color: 'var(--txt-dim)', lineHeight: 1.7, margin: 0, paddingLeft: '18px' }}>
-                  <li>Connect your wallet (MetaMask, WalletConnect, Coinbase)</li>
-                  <li>Both players sign a deposit transaction to the Vault contract</li>
-                  <li>Smart contract holds funds in escrow until match resolves</li>
-                  <li>Winner receives the full pot automatically on-chain</li>
-                </ul>
+                {[
+                  ['🔗', 'Connect your wallet (MetaMask, WalletConnect, Coinbase)'],
+                  ['✍️', 'Both players sign a deposit transaction to the Vault'],
+                  ['🔒', 'Smart contract holds funds in escrow until match resolves'],
+                  ['⚡', 'Winner receives the full pot automatically on-chain'],
+                ].map(([icon, text]) => (
+                  <div key={text} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', marginBottom: '8px' }}>
+                    <span style={{ fontSize: '14px', lineHeight: 1, marginTop: '2px', flexShrink: 0 }}>{icon}</span>
+                    <span style={{ fontFamily: 'var(--body)', fontSize: '15px', color: 'var(--txt-dim)', lineHeight: 1.5 }}>{text}</span>
+                  </div>
+                ))}
               </div>
             </div>
 
