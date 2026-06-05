@@ -369,11 +369,11 @@ export function ModeSelect() {
             {/* Header */}
             <div style={{ marginBottom: '20px' }}>
               <span className="g-eyebrow">// PLAY-TO-EARN</span>
-              <h3 style={{ fontFamily: 'var(--pixel)', fontSize: '14px', color: '#fff', margin: '8px 0 4px', letterSpacing: '.1em' }}>
+              <h3 style={{ fontFamily: 'var(--pixel)', fontSize: '11px', color: '#fff', margin: '8px 0 4px', letterSpacing: '.1em', whiteSpace: 'nowrap' }}>
                 💰 FEATURE UNDER CONSTRUCTION
               </h3>
               <p style={{ fontFamily: 'var(--body)', fontSize: '17px', color: 'var(--txt-dim)', lineHeight: 1.5 }}>
-                We're building the P2E infrastructure and evaluating the best payment option for players. Two paths are on the table:
+                We're building the P2E infrastructure. Two paths are on the table:
               </p>
             </div>
 
