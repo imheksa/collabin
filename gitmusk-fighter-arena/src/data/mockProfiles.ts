@@ -66,6 +66,19 @@ export const DEMO_PROFILES: XProfile[] = [
     verified: 'none',
     isDemo: true,
   },
+  {
+    username: 'nikitabier',
+    displayName: 'Nikita Bier',
+    bio: 'Built TBH (acq. Facebook), Gas (acq. Discord). Consumer product obsessive. Viral app guy.',
+    avatarUrl: 'https://unavatar.io/twitter/nikitabier',
+    followers: 480000,
+    following: 890,
+    tweetCount: 12000,
+    accountAgeDays: 3500,
+    twitterScore: 80,
+    verified: 'blue',
+    isDemo: true,
+  },
 ];
 
 export function generateCustomProfile(username: string): XProfile {
