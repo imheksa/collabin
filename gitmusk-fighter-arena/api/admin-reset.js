@@ -1,22 +1,29 @@
 // Admin endpoint: force-reset leaderboard season stats immediately.
-// Protected by ADMIN_SECRET env var. If not set, any POST is accepted.
-// POST /api/admin-reset  { secret: "your_secret" }
+// Protected by ADMIN_SECRET env var. If not set, any request is accepted.
+//
+// Usage (browser): https://exarena.vercel.app/api/admin-reset?secret=YOUR_SECRET
+// Usage (curl):    curl -X POST https://exarena.vercel.app/api/admin-reset -d '{"secret":"YOUR_SECRET"}'
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'Content-Type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
 };
 
 export default async function handler(req, res) {
   Object.entries(CORS).forEach(([k, v]) => res.setHeader(k, v));
   if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method Not Allowed' });
+  if (req.method !== 'GET' && req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method Not Allowed' });
+  }
 
   const adminSecret = process.env.ADMIN_SECRET;
   if (adminSecret) {
-    const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body ?? {});
-    if (body.secret !== adminSecret) {
+    const querySecret = req.query?.secret;
+    const bodySecret = typeof req.body === 'string'
+      ? JSON.parse(req.body || '{}').secret
+      : (req.body?.secret ?? null);
+    if (querySecret !== adminSecret && bodySecret !== adminSecret) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
   }
@@ -69,9 +76,10 @@ export default async function handler(req, res) {
       });
     }
 
+    res.setHeader('Content-Type', 'application/json');
     return res.status(200).json({
       ok: true,
-      message: `Season ${currentSeason} cleared. Season ${currentSeason + 1} started.`,
+      message: `✅ Season ${currentSeason} cleared. Season ${currentSeason + 1} started!`,
       newSeason: currentSeason + 1,
       endsAt: nextEnd,
     });
