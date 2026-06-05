@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState, useCallback, useEffect } from 'react';
 import { useGameStore } from '../stores/gameStore';
+import { clearSession } from '../App';
 import {
   getProfile, getCombatModifiers, getLevelTier,
   xpProgressInLevel, xpNeededForNextLevel, xpForLevel,
@@ -255,7 +256,7 @@ function MatchHistoryRow({ entry }: { entry: MatchHistoryEntry }) {
 }
 
 export function Profile() {
-  const { player1, setScreen, playerProfile: storeProfile, setPlayerProfile } = useGameStore();
+  const { player1, setScreen, playerProfile: storeProfile, setPlayerProfile, logout } = useGameStore();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [cardReady, setCardReady] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -598,6 +599,15 @@ export function Profile() {
         <div className="flex gap-3">
           <button onClick={() => setScreen('mode_select')} className="g-btn ghost" style={{ flex: 1, fontSize: '10px' }}>← LOBBY</button>
           <button onClick={() => setScreen('leaderboard')} className="g-btn" style={{ flex: 1, fontSize: '10px' }}>🏆 LEADERBOARD</button>
+        </div>
+        <div className="flex justify-center mt-2">
+          <button
+            onClick={() => { clearSession(); logout(); }}
+            className="g-btn ghost sm"
+            style={{ fontSize: '10px', color: '#ff4444', borderColor: '#ff444444' }}
+          >
+            SIGN OUT
+          </button>
         </div>
 
       </div>

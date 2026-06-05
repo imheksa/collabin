@@ -38,6 +38,7 @@ interface GameStore {
   setIsHost: (v: boolean) => void;
   rematch: () => void;
   resetMatch: () => void;
+  logout: () => void;
 }
 
 export const useGameStore = create<GameStore>((set) => ({
@@ -78,5 +79,9 @@ export const useGameStore = create<GameStore>((set) => ({
   resetMatch: () => set({
     player1: null, player2: null, matchResult: null,
     matchId: null, isHost: false, screen: 'mode_select',
+  }),
+  logout: () => set({
+    player1: null, player2: null, xAccessToken: null, playerProfile: null,
+    matchResult: null, matchId: null, isHost: false, screen: 'landing',
   }),
 }));

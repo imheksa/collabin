@@ -15,6 +15,39 @@ import { calculateFighterStats } from './utils/statsCalculator';
 import { restoreProfileFromCloud } from './utils/cloudSync';
 import { Fighter } from './types';
 
+const SESSION_KEY = 'ex_arena_session';
+const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
+interface SavedSession {
+  fighter: Fighter;
+  token: string;
+  savedAt: number;
+}
+
+export function saveSession(fighter: Fighter, token: string) {
+  try {
+    const session: SavedSession = { fighter, token, savedAt: Date.now() };
+    localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+  } catch { /* ignore — storage may be unavailable */ }
+}
+
+export function clearSession() {
+  try { localStorage.removeItem(SESSION_KEY); } catch { /* ignore */ }
+}
+
+function loadSession(): SavedSession | null {
+  try {
+    const raw = localStorage.getItem(SESSION_KEY);
+    if (!raw) return null;
+    const session: SavedSession = JSON.parse(raw);
+    if (!session?.savedAt || Date.now() - session.savedAt > SESSION_TTL_MS) {
+      localStorage.removeItem(SESSION_KEY);
+      return null;
+    }
+    return session;
+  } catch { return null; }
+}
+
 export default function App() {
   const { screen, setScreen, setPlayer1, setXAccessToken, setOauthError, setPlayerProfile, player1, setPlayer2, setMatchId, setIsHost } = useGameStore();
   const [oauthProcessing, setOauthProcessing] = useState(false);
@@ -41,6 +74,17 @@ export default function App() {
     if (joinId) {
       window.history.replaceState({}, '', window.location.pathname);
       localStorage.setItem('pending_join', joinId);
+    }
+
+    // Restore saved session (7-day persistence)
+    const session = loadSession();
+    if (session) {
+      setXAccessToken(session.token);
+      setPlayer1(session.fighter);
+      restoreProfileFromCloud(session.fighter.profile.username).then(merged => {
+        if (merged) setPlayerProfile(merged);
+      });
+      setScreen('mode_select');
     }
   }, []);
 
@@ -100,6 +144,7 @@ export default function App() {
       localStorage.removeItem('oauth_state');
       localStorage.removeItem('oauth_code_verifier');
 
+      saveSession(fighter, token);
       setXAccessToken(token);
       setPlayer1(fighter);
       restoreProfileFromCloud(profile.username).then(merged => { if (merged) setPlayerProfile(merged); });
