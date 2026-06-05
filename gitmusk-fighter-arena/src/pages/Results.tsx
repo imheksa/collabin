@@ -45,7 +45,7 @@ async function renderCard(canvas: HTMLCanvasElement, me: Fighter, opponent: Figh
   ctx.fillStyle = `rgba(${r},${g},${b},0.12)`; ctx.fillRect(0, 0, CARD_W, 38);
   ctx.fillStyle = '#ff2d75'; ctx.shadowColor = '#ff2d75'; ctx.shadowBlur = 8;
   ctx.font = mono(10); ctx.textAlign = 'center';
-  ctx.fillText('⚔  X FIGHTER ARENA  ⚔', CARD_W / 2, 24); ctx.shadowBlur = 0;
+  ctx.fillText('⚔  EX ARENA  ⚔', CARD_W / 2, 24); ctx.shadowBlur = 0;
   const resultColor = isWin ? '#00ff9d' : '#ff2d75';
   ctx.fillStyle = resultColor; ctx.shadowColor = resultColor; ctx.shadowBlur = 18;
   ctx.font = mono(22); ctx.textAlign = 'center';
@@ -259,7 +259,7 @@ export function Results() {
     // Mobile: native share sheet — opens X/Twitter app with card image pre-attached
     if (navigator.canShare?.({ files: [file] })) {
       try {
-        await navigator.share({ title: '⚔ X Fighter Arena', text: tweetText, files: [file] });
+        await navigator.share({ title: '⚔ Ex Arena', text: tweetText, files: [file] });
         return;
       } catch { /* user dismissed */ }
     }

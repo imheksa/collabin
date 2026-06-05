@@ -139,7 +139,7 @@ export function ModeSelect() {
 
   const shareLink = () => {
     if (navigator.share) {
-      navigator.share({ title: 'X Fighter Arena — Tantangan!', text: 'Lawan aku di X Fighter Arena!', url: inviteLink });
+      navigator.share({ title: 'Ex Arena — Challenge!', text: 'Fight me on Ex Arena!', url: inviteLink });
     } else {
       copyLink();
     }

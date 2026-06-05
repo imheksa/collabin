@@ -934,10 +934,7 @@ export function Landing() {
         <div className="row">
           <div className="logo" style={{ fontSize:'11px' }}>
             <div className="badge" style={{ width:'24px', height:'24px', fontSize:'10px', boxShadow:'3px 3px 0 var(--void),3px 3px 0 3px var(--neon-b)' }}>X</div>
-            X FIGHTER ARENA
-          </div>
-          <div>
-            <a href="https://x.com/GitMusk_Arena" target="_blank" rel="noopener noreferrer">X / TWITTER</a>
+            EX ARENA
           </div>
           <div style={{ color:'var(--txt-dim)', fontSize:'9px' }}>© 2026 · ALL RIGHTS RESERVED</div>
         </div>

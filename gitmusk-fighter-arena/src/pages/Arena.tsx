@@ -19,7 +19,7 @@ export function Arena() {
       style={{ touchAction: 'none', userSelect: 'none' }}>
       <div className="font-pixel text-center mb-1 md:mb-3 text-xs pt-2"
         style={{ color: '#bf00ff', textShadow: '0 0 8px #bf00ff' }}>
-        X FIGHTER ARENA · {p2pMode ? 'P2P' : 'FREE'}
+        EX ARENA · {p2pMode ? 'P2P' : 'FREE'}
       </div>
       <FightingArena
         player1={player1}
