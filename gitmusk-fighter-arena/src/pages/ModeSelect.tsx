@@ -383,9 +383,12 @@ export function ModeSelect() {
                 <div style={{ marginBottom: '8px' }}>
                   <span style={{ fontFamily: 'var(--pixel)', fontSize: '8px', color: '#ffd700', letterSpacing: '.15em' }}>OPTION 1 · BANKR</span>
                 </div>
-                <p style={{ fontFamily: 'var(--body)', fontSize: '16px', color: 'var(--txt-dim)', lineHeight: 1.55, margin: 0 }}>
-                  Bankr is a crypto-social platform built on top of X. Every Bankr user has an integrated wallet tied to their X account — meaning P2E deposits and payouts could flow seamlessly without any manual wallet setup on the player's end.
-                </p>
+                <ul style={{ fontFamily: 'var(--body)', fontSize: '16px', color: 'var(--txt-dim)', lineHeight: 1.7, margin: 0, paddingLeft: '18px' }}>
+                  <li>System checks if your X account is linked to Bankr</li>
+                  <li>Verifies your Bankr wallet has sufficient balance</li>
+                  <li>Deposit sent directly from your Bankr wallet to the Vault</li>
+                  <li>Payout released to the winner's Bankr wallet instantly</li>
+                </ul>
               </div>
 
               {/* Option 2: Web3 Wallet */}
@@ -393,9 +396,12 @@ export function ModeSelect() {
                 <div style={{ marginBottom: '8px' }}>
                   <span style={{ fontFamily: 'var(--pixel)', fontSize: '8px', color: 'var(--neon-b)', letterSpacing: '.15em' }}>OPTION 2 · WEB3 WALLET</span>
                 </div>
-                <p style={{ fontFamily: 'var(--body)', fontSize: '16px', color: 'var(--txt-dim)', lineHeight: 1.55, margin: 0 }}>
-                  Standard wallet connection via MetaMask, WalletConnect, or Coinbase Wallet. Players connect their own wallet — deposits are locked in a Vault smart contract and automatically released to the winner when the match ends. More decentralized, but requires a manual step from each player.
-                </p>
+                <ul style={{ fontFamily: 'var(--body)', fontSize: '16px', color: 'var(--txt-dim)', lineHeight: 1.7, margin: 0, paddingLeft: '18px' }}>
+                  <li>Connect your wallet (MetaMask, WalletConnect, Coinbase)</li>
+                  <li>Both players sign a deposit transaction to the Vault contract</li>
+                  <li>Smart contract holds funds in escrow until match resolves</li>
+                  <li>Winner receives the full pot automatically on-chain</li>
+                </ul>
               </div>
             </div>
 
