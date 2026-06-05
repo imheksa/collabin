@@ -9,12 +9,14 @@ export default async function handler(req, res) {
   }
 
   const cronSecret = process.env.CRON_SECRET;
-  if (cronSecret) {
-    const auth = req.headers['authorization'];
-    const querySecret = req.query?.secret;
-    if (auth !== `Bearer ${cronSecret}` && querySecret !== cronSecret) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
+  if (!cronSecret) {
+    // Prevent accidental exposure if env var is missing
+    return res.status(503).json({ error: 'CRON_SECRET not configured' });
+  }
+  const auth = req.headers['authorization'];
+  const querySecret = req.query?.secret;
+  if (auth !== `Bearer ${cronSecret}` && querySecret !== cronSecret) {
+    return res.status(401).json({ error: 'Unauthorized' });
   }
 
   const supabaseUrl = process.env.SUPABASE_URL;
@@ -123,6 +125,6 @@ export default async function handler(req, res) {
     });
   } catch (err) {
     console.error('season-reset error:', err);
-    return res.status(500).json({ error: 'Internal error', detail: String(err) });
+    return res.status(500).json({ error: 'Internal error' });
   }
 }

@@ -1,8 +1,25 @@
+const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || 'https://exarena.vercel.app';
 const CORS = {
-  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
   'Access-Control-Allow-Headers': 'Content-Type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
+
+// Clamp integer to [0, max] — prevents fraudulent large values
+const safeInt = (v, max) => Math.min(Math.max(parseInt(v) || 0, 0), max);
+
+// Only allow https avatar URLs to prevent SSRF / canvas taint
+function sanitizeUrl(url) {
+  if (!url || typeof url !== 'string') return '';
+  try {
+    const u = new URL(url);
+    return u.protocol === 'https:' ? url.slice(0, 512) : '';
+  } catch { return ''; }
+}
+
+// Sanitize plain string fields
+const safeStr = (v, max = 100) =>
+  typeof v === 'string' ? v.replace(/[<>"']/g, '').slice(0, max) : '';
 
 export default async function handler(req, res) {
   Object.entries(CORS).forEach(([k, v]) => res.setHeader(k, v));
@@ -18,9 +35,34 @@ export default async function handler(req, res) {
   }
 
   const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-  const { username, displayName, avatarUrl, level, xp, wins, losses, pvpWins, maxCombo, winStreak, maxWinStreak, archetype, archetypeLabel, color, basePower, seasonWins, seasonLosses, seasonPvpWins, currentSeason } = body ?? {};
+  const { username, displayName, avatarUrl, level, xp, wins, losses, pvpWins,
+    maxCombo, winStreak, maxWinStreak, archetype, archetypeLabel, color,
+    basePower, seasonWins, seasonLosses, seasonPvpWins, currentSeason } = body ?? {};
 
-  if (!username) return res.status(400).json({ error: 'username required' });
+  if (!username || typeof username !== 'string' || !/^[a-zA-Z0-9_]{1,50}$/.test(username)) {
+    return res.status(400).json({ error: 'Invalid username' });
+  }
+
+  // Fetch current stats to enforce incremental constraints
+  // (new wins can't jump by more than 1 compared to server record)
+  let prevWins = 0, prevSeasonWins = 0, prevPvpWins = 0;
+  try {
+    const prevRes = await fetch(
+      `${supabaseUrl}/rest/v1/player_stats?username=eq.${encodeURIComponent(username)}&select=wins,season_wins,pvp_wins&limit=1`,
+      { headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` } }
+    );
+    const prev = await prevRes.json();
+    if (Array.isArray(prev) && prev[0]) {
+      prevWins = prev[0].wins ?? 0;
+      prevSeasonWins = prev[0].season_wins ?? 0;
+      prevPvpWins = prev[0].pvp_wins ?? 0;
+    }
+  } catch { /* use defaults */ }
+
+  // Wins can only go up by 1 per request (not jump by hundreds)
+  const clampedWins = Math.min(safeInt(wins, 99999), prevWins + 1);
+  const clampedSeasonWins = Math.min(safeInt(seasonWins, 99999), prevSeasonWins + 1);
+  const clampedPvpWins = Math.min(safeInt(pvpWins, 99999), prevPvpWins + 1);
 
   try {
     const upstream = await fetch(`${supabaseUrl}/rest/v1/player_stats`, {
@@ -33,31 +75,30 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify({
         username,
-        display_name: displayName ?? username,
-        avatar_url: avatarUrl ?? '',
-        level: level ?? 1,
-        xp: xp ?? 0,
-        wins: wins ?? 0,
-        losses: losses ?? 0,
-        pvp_wins: pvpWins ?? 0,
-        max_combo: maxCombo ?? 0,
-        win_streak: winStreak ?? 0,
-        max_win_streak: maxWinStreak ?? 0,
-        archetype: archetype ?? '',
-        archetype_label: archetypeLabel ?? '',
-        fighter_color: color ?? '#b026ff',
-        base_power: basePower ?? 0,
-        season_number: currentSeason ?? 1,
-        season_wins: seasonWins ?? 0,
-        season_losses: seasonLosses ?? 0,
-        season_pvp_wins: seasonPvpWins ?? 0,
+        display_name: safeStr(displayName || username, 50),
+        avatar_url: sanitizeUrl(avatarUrl),
+        level: safeInt(level, 100),
+        xp: safeInt(xp, 9999999),
+        wins: clampedWins,
+        losses: safeInt(losses, 99999),
+        pvp_wins: clampedPvpWins,
+        max_combo: safeInt(maxCombo, 999),
+        win_streak: safeInt(winStreak, 9999),
+        max_win_streak: safeInt(maxWinStreak, 9999),
+        archetype: safeStr(archetype, 50),
+        archetype_label: safeStr(archetypeLabel, 50),
+        fighter_color: /^#[0-9a-fA-F]{6}$/.test(color) ? color : '#b026ff',
+        base_power: safeInt(basePower, 999),
+        season_number: safeInt(currentSeason, 999),
+        season_wins: clampedSeasonWins,
+        season_losses: safeInt(seasonLosses, 99999),
+        season_pvp_wins: clampedPvpWins,
         updated_at: new Date().toISOString(),
       }),
     });
 
     if (!upstream.ok) {
-      const err = await upstream.text();
-      console.error('Supabase upsert error:', err);
+      console.error('Supabase upsert error:', await upstream.text());
       return res.status(500).json({ error: 'Failed to save stats' });
     }
 

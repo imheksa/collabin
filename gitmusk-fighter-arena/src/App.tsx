@@ -73,7 +73,8 @@ export default function App() {
 
     if (joinId) {
       window.history.replaceState({}, '', window.location.pathname);
-      localStorage.setItem('pending_join', joinId);
+      // Store with 10-minute TTL so stale invites don't persist indefinitely
+      localStorage.setItem('pending_join', JSON.stringify({ id: joinId, exp: Date.now() + 10 * 60 * 1000 }));
     }
 
     // Restore saved session (7-day persistence)
@@ -90,10 +91,13 @@ export default function App() {
 
   // Handle pending room join after login
   useEffect(() => {
-    const pendingJoin = localStorage.getItem('pending_join');
-    if (!pendingJoin || !player1) return;
+    const raw = localStorage.getItem('pending_join');
+    if (!raw || !player1) return;
     localStorage.removeItem('pending_join');
-    handleRoomJoin(pendingJoin);
+    try {
+      const { id, exp } = JSON.parse(raw);
+      if (id && exp && Date.now() < exp) handleRoomJoin(id);
+    } catch { /* malformed or old format — discard */ }
   }, [player1]);
 
   async function handleRoomJoin(matchId: string) {

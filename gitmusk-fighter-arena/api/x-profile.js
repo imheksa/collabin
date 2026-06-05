@@ -40,6 +40,6 @@ export default async function handler(req, res) {
     return res.status(upstream.status).end(JSON.stringify(data));
   } catch (err) {
     res.setHeader('Content-Type', 'application/json');
-    return res.status(500).end(JSON.stringify({ error: 'Profile fetch failed', detail: String(err) }));
+    return res.status(500).end(JSON.stringify({ error: 'Profile fetch failed' }));
   }
 }
