@@ -40,15 +40,15 @@ export default function App() {
 
     if (joinId) {
       window.history.replaceState({}, '', window.location.pathname);
-      sessionStorage.setItem('pending_join', joinId);
+      localStorage.setItem('pending_join', joinId);
     }
   }, []);
 
   // Handle pending room join after login
   useEffect(() => {
-    const pendingJoin = sessionStorage.getItem('pending_join');
+    const pendingJoin = localStorage.getItem('pending_join');
     if (!pendingJoin || !player1) return;
-    sessionStorage.removeItem('pending_join');
+    localStorage.removeItem('pending_join');
     handleRoomJoin(pendingJoin);
   }, [player1]);
 
