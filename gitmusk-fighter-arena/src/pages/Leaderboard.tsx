@@ -57,22 +57,32 @@ interface EntryRow {
   badges: string[];
 }
 
+const AUTO_REFRESH_MS = 60 * 60 * 1000; // 1 hour
+
 export function Leaderboard() {
   const { setScreen, player1 } = useGameStore();
   const [cloudResult, setCloudResult] = useState<LeaderboardResult | null>(null);
   const [seasonInfo, setSeasonInfo] = useState<SeasonInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [sortMode, setSortMode] = useState<'wins' | 'pvp'>('wins');
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
   const loadData = useCallback(async (sort: 'wins' | 'pvp' = sortMode, refresh = false) => {
     setLoading(true);
     const [result, season] = await Promise.all([fetchLeaderboard(sort), fetchSeasonInfo(refresh)]);
     setCloudResult(result);
     setSeasonInfo(season);
+    setLastUpdated(new Date());
     setLoading(false);
   }, [sortMode]);
 
   useEffect(() => { loadData(); }, [loadData]);
+
+  // Auto-refresh every hour
+  useEffect(() => {
+    const id = setInterval(() => loadData(sortMode, true), AUTO_REFRESH_MS);
+    return () => clearInterval(id);
+  }, [loadData, sortMode]);
 
   const handleSortChange = (mode: 'wins' | 'pvp') => {
     setSortMode(mode);
@@ -223,6 +233,24 @@ export function Leaderboard() {
                   ↻ REFRESH
                 </button>
               </div>
+            )}
+          </div>
+          {/* Info: refresh cadence + season duration */}
+          <div className="flex items-center justify-center gap-3 mt-2 flex-wrap">
+            <div style={{ fontFamily: 'var(--mono)', fontSize: '10px', color: 'var(--txt-dim)' }}>
+              ↻ auto-refresh every 1h
+            </div>
+            <div style={{ width: '1px', height: '10px', background: 'var(--panel-line)' }} />
+            <div style={{ fontFamily: 'var(--mono)', fontSize: '10px', color: 'var(--txt-dim)' }}>
+              📅 1 season = 30 days
+            </div>
+            {lastUpdated && (
+              <>
+                <div style={{ width: '1px', height: '10px', background: 'var(--panel-line)' }} />
+                <div style={{ fontFamily: 'var(--mono)', fontSize: '10px', color: 'var(--txt-dim)' }}>
+                  updated {lastUpdated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </div>
+              </>
             )}
           </div>
           {myRank > 0 && (
