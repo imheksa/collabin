@@ -317,10 +317,14 @@ export function Leaderboard() {
           </div>
         ) : (
           <>
-            {/* Top 3 podium */}
+            {/* Top 3 podium — silver(left) · gold(center) · bronze(right) */}
             <div className="grid grid-cols-3 gap-3 mb-4">
-              {[top3[1], top3[0], top3[2]].filter(Boolean).map((e, podiumIdx) => {
-                const realIdx = podiumIdx === 0 ? 1 : podiumIdx === 1 ? 0 : 2;
+              {[
+                { entry: top3[1], realIdx: 1 },
+                { entry: top3[0], realIdx: 0 },
+                { entry: top3[2], realIdx: 2 },
+              ].map(({ entry: e, realIdx }) => {
+                if (!e) return <div key={realIdx} />;
                 const isMe = e.username === myUsername;
                 const winRate = e.wins + e.losses > 0 ? Math.round((e.wins / (e.wins + e.losses)) * 100) : 0;
                 return (
@@ -353,8 +357,8 @@ export function Leaderboard() {
                     )}
                     {isLive ? (
                       <div style={{ fontFamily: 'var(--pixel)', fontSize: '10px', color: 'var(--neon-grn)' }}>
-                        {sortMode === 'pvp' ? e.seasonPvpWins : e.seasonWins}W
-                        <span style={{ fontSize: '6px', color: 'var(--txt-dim)', marginLeft: '3px' }}>S{seasonInfo?.season ?? 1}</span>
+                        {sortMode === 'pvp' ? e.seasonPvpWins : e.wins}W
+                        <span style={{ fontSize: '6px', color: 'var(--txt-dim)', marginLeft: '3px' }}>TOTAL</span>
                       </div>
                     ) : (
                       <div style={{ fontFamily: 'var(--pixel)', fontSize: '9px', color: 'var(--neon-grn)' }}>{e.wins}W</div>
@@ -406,7 +410,7 @@ export function Leaderboard() {
                     <div className="text-right flex-shrink-0 flex items-center gap-3">
                       {isLive ? (
                         <div style={{ fontFamily: 'var(--pixel)', fontSize: '9px', color: 'var(--neon-grn)' }}>
-                          {sortMode === 'pvp' ? e.seasonPvpWins : e.seasonWins}W
+                          {sortMode === 'pvp' ? e.seasonPvpWins : e.wins}W
                         </div>
                       ) : (
                         <div style={{ fontFamily: 'var(--pixel)', fontSize: '9px', color: 'var(--neon-grn)' }}>{e.wins}W</div>
