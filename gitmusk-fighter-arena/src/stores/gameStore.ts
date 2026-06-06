@@ -19,6 +19,7 @@ interface GameStore {
   lastMatchReward: MatchReward | null;
   matchId: string | null;
   isHost: boolean;
+  autoMatchmake: boolean;
 
   setScreen: (screen: GameScreen) => void;
   setMode: (mode: GameMode) => void;
@@ -36,6 +37,7 @@ interface GameStore {
   setLastMatchReward: (r: MatchReward | null) => void;
   setMatchId: (id: string | null) => void;
   setIsHost: (v: boolean) => void;
+  setAutoMatchmake: (v: boolean) => void;
   rematch: () => void;
   resetMatch: () => void;
   logout: () => void;
@@ -58,6 +60,7 @@ export const useGameStore = create<GameStore>((set) => ({
   lastMatchReward: null,
   matchId: null,
   isHost: false,
+  autoMatchmake: false,
 
   setScreen: (screen) => set({ screen }),
   setMode: (mode) => set({ mode }),
@@ -75,6 +78,7 @@ export const useGameStore = create<GameStore>((set) => ({
   setLastMatchReward: (lastMatchReward) => set({ lastMatchReward }),
   setMatchId: (matchId) => set({ matchId }),
   setIsHost: (isHost) => set({ isHost }),
+  setAutoMatchmake: (autoMatchmake) => set({ autoMatchmake }),
   rematch: () => set({ matchResult: null, matchId: null, isHost: false, lastMatchReward: null }),
   resetMatch: () => set({
     player1: null, player2: null, matchResult: null,

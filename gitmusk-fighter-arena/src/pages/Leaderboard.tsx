@@ -60,7 +60,7 @@ interface EntryRow {
 const AUTO_REFRESH_MS = 60 * 60 * 1000; // 1 hour
 
 export function Leaderboard() {
-  const { setScreen, player1 } = useGameStore();
+  const { setScreen, player1, setAutoMatchmake } = useGameStore();
   const [cloudResult, setCloudResult] = useState<LeaderboardResult | null>(null);
   const [seasonInfo, setSeasonInfo] = useState<SeasonInfo | null>(null);
   const [loading, setLoading] = useState(true);
@@ -307,7 +307,13 @@ export function Leaderboard() {
             <div style={{ fontFamily: 'var(--body)', fontSize: '14px', color: 'var(--txt-dim)', textAlign: 'center' }}>
               No fighters on the board yet.<br />Login with X and be the first to compete!
             </div>
-            <button onClick={() => setScreen('login')} className="g-btn mt-2" style={{ fontSize: '10px' }}>⚡ FIGHT NOW</button>
+            <button
+              onClick={() => {
+                if (player1) { setAutoMatchmake(true); setScreen('mode_select'); }
+                else setScreen('login');
+              }}
+              className="g-btn mt-2" style={{ fontSize: '10px' }}
+            >⚡ FIGHT NOW</button>
           </div>
         ) : (
           <>

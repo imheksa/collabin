@@ -16,6 +16,7 @@ export function ModeSelect() {
     player1, setPlayer2, setScreen, setMode, setMatchMode,
     onlinePlayers, activeMatches,
     setMatchId, setIsHost, matchId,
+    autoMatchmake, setAutoMatchmake,
   } = useGameStore();
 
   const [tab, setTab] = useState<'random' | 'friend'>('random');
@@ -82,6 +83,14 @@ export function ModeSelect() {
     }
     await joinQueue();
   };
+
+  // Auto-start matchmaking when navigated from FIGHT NOW on leaderboard
+  useEffect(() => {
+    if (!autoMatchmake) return;
+    setAutoMatchmake(false);
+    startRandomSearch();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const createRoom = async () => {
     if (!player1) return;
