@@ -5,6 +5,8 @@ const CORS = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
+const DEMO_USERNAMES = new Set(['elonmusk', 'VitalikButerin', 'cz_binance', 'cobie', 'KarpathyAI', 'nikitabier']);
+
 // Clamp integer to [0, max] — prevents fraudulent large values
 const safeInt = (v, max) => Math.min(Math.max(parseInt(v) || 0, 0), max);
 
@@ -41,6 +43,9 @@ export default async function handler(req, res) {
 
   if (!username || typeof username !== 'string' || !/^[a-zA-Z0-9_]{1,50}$/.test(username)) {
     return res.status(400).json({ error: 'Invalid username' });
+  }
+  if (DEMO_USERNAMES.has(username)) {
+    return res.status(200).json({ ok: true, synced: false });
   }
 
   // Fetch current stats to enforce incremental constraints

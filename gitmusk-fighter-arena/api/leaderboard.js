@@ -17,6 +17,8 @@ export default async function handler(req, res) {
     return res.status(200).json({ entries: [], configured: false });
   }
 
+  const DEMO_USERNAMES = ['elonmusk', 'VitalikButerin', 'cz_binance', 'cobie', 'KarpathyAI', 'nikitabier'];
+
   try {
     const sortBy = req.query?.sort === 'pvp' ? 'season_pvp_wins.desc,pvp_wins.desc' : 'season_wins.desc,wins.desc';
     const params = new URLSearchParams({
@@ -24,6 +26,8 @@ export default async function handler(req, res) {
       order: sortBy,
       limit: '25',
     });
+    // Exclude demo/AI profiles — only real X-authenticated players on the leaderboard
+    params.append('username', `not.in.(${DEMO_USERNAMES.join(',')})`);
 
     const upstream = await fetch(`${supabaseUrl}/rest/v1/player_stats?${params}`, {
       headers: {

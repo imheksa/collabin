@@ -222,7 +222,7 @@ export function Results() {
       setLastMatchReward(reward);
       const updated = getProfile(player1.profile.username);
       setPlayerProfile(updated);
-      syncProfile(updated, player1).catch(() => {});
+      if (!player1.profile.isDemo) syncProfile(updated, player1).catch(() => {});
       if (isPvP) {
         fetch('/api/match-finish', {
           method: 'POST',
