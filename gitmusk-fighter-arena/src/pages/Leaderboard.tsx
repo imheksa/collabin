@@ -64,9 +64,9 @@ export function Leaderboard() {
   const [loading, setLoading] = useState(true);
   const [sortMode, setSortMode] = useState<'wins' | 'pvp'>('wins');
 
-  const loadData = useCallback(async (sort: 'wins' | 'pvp' = sortMode) => {
+  const loadData = useCallback(async (sort: 'wins' | 'pvp' = sortMode, refresh = false) => {
     setLoading(true);
-    const [result, season] = await Promise.all([fetchLeaderboard(sort), fetchSeasonInfo()]);
+    const [result, season] = await Promise.all([fetchLeaderboard(sort), fetchSeasonInfo(refresh)]);
     setCloudResult(result);
     setSeasonInfo(season);
     setLoading(false);
@@ -81,6 +81,12 @@ export function Leaderboard() {
 
   const { entries, isLive } = useMemo<{ entries: EntryRow[]; isLive: boolean }>(() => {
     const localStats = getAllLocalStats();
+
+    // If Supabase is configured but leaderboard is empty (e.g. new season just started),
+    // show live empty state instead of misleading demo data.
+    if (cloudResult?.configured && cloudResult.entries.length === 0) {
+      return { entries: [], isLive: true };
+    }
 
     if (cloudResult?.configured && cloudResult.entries.length > 0) {
       const cloudUsernames = new Set(cloudResult.entries.map(e => e.username));
@@ -213,7 +219,7 @@ export function Leaderboard() {
                 }}>
                   {isLive ? '● LIVE' : '○ DEMO'}
                 </div>
-                <button onClick={() => loadData()} className="g-btn ghost sm" style={{ fontSize: '8px', padding: '3px 8px' }}>
+                <button onClick={() => loadData(sortMode, true)} className="g-btn ghost sm" style={{ fontSize: '8px', padding: '3px 8px' }}>
                   ↻ REFRESH
                 </button>
               </div>
@@ -265,6 +271,15 @@ export function Leaderboard() {
                 <div key={i} className="w-3 h-3 animate-bounce" style={{ background: 'var(--neon-p)', animationDelay: `${i * 0.15}s` }} />
               ))}
             </div>
+          </div>
+        ) : isLive && entries.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16 gap-4">
+            <div style={{ fontFamily: 'var(--pixel)', fontSize: '28px', color: 'var(--neon-p)', textShadow: '0 0 20px var(--neon-p)' }}>⚔</div>
+            <div style={{ fontFamily: 'var(--pixel)', fontSize: '10px', color: '#fff', letterSpacing: '.15em' }}>SEASON {seasonInfo?.season ?? 2} HAS BEGUN</div>
+            <div style={{ fontFamily: 'var(--body)', fontSize: '14px', color: 'var(--txt-dim)', textAlign: 'center' }}>
+              No fighters on the board yet.<br />Login with X and be the first to compete!
+            </div>
+            <button onClick={() => setScreen('login')} className="g-btn mt-2" style={{ fontSize: '10px' }}>⚡ FIGHT NOW</button>
           </div>
         ) : (
           <>

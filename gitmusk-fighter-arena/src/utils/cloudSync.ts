@@ -35,8 +35,8 @@ export interface SeasonInfo {
 let _seasonCache: SeasonInfo = { configured: false, season: 1, startedAt: null, endsAt: null, daysLeft: 30 };
 let _seasonFetched = false;
 
-export async function fetchSeasonInfo(): Promise<SeasonInfo> {
-  if (_seasonFetched) return _seasonCache;
+export async function fetchSeasonInfo(forceRefresh = false): Promise<SeasonInfo> {
+  if (_seasonFetched && !forceRefresh) return _seasonCache;
   try {
     const res = await fetch('/api/season-info');
     if (res.ok) {
