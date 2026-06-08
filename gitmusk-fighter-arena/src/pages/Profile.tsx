@@ -8,7 +8,7 @@ import {
   MatchHistoryEntry,
 } from '../utils/playerProfile';
 
-const GAME_URL = typeof window !== 'undefined' ? window.location.origin : 'https://exarena.vercel.app';
+const GAME_URL = typeof window !== 'undefined' ? window.location.origin : 'https://exarena.xyz';
 const CARD_W = 600;
 const CARD_H = 400;
 

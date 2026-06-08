@@ -5,7 +5,7 @@ import { recordMatch, getProfile, getLevelTier, ACHIEVEMENT_RARITY_COLORS } from
 import { syncProfile, fetchSeasonInfo } from '../utils/cloudSync';
 import { supabase } from '../lib/supabase';
 
-const GAME_URL = typeof window !== 'undefined' ? window.location.origin : 'https://exarena.vercel.app';
+const GAME_URL = typeof window !== 'undefined' ? window.location.origin : 'https://exarena.xyz';
 const CARD_W = 600, CARD_H = 315;
 
 async function loadImg(username: string, avatarUrl: string): Promise<HTMLImageElement | null> {
