@@ -63,10 +63,10 @@ const LAST_SEASON_COLORS = ['#ffd60a', '#c0c0c0', '#cd7f32'];
 const LAST_SEASON_LABELS = ['👑', '🥈', '🥉'];
 const LAST_SEASON_SIZES = ['22px', '16px', '16px'];
 
-function LastSeasonView({ top3, season, onFight }: { top3: SeasonHistoryEntry[]; season: number; onFight: () => void }) {
+function LastSeasonView({ top3, season }: { top3: SeasonHistoryEntry[]; season: number }) {
   if (top3.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 gap-4">
+      <div className="flex flex-col items-center justify-center py-16 gap-3">
         <div style={{ fontFamily: 'var(--pixel)', fontSize: '28px', color: 'var(--txt-dim)' }}>🏆</div>
         <div style={{ fontFamily: 'var(--pixel)', fontSize: '9px', color: 'var(--txt-dim)', letterSpacing: '.12em' }}>
           NO RECORDS FOR SEASON {season}
@@ -74,7 +74,6 @@ function LastSeasonView({ top3, season, onFight }: { top3: SeasonHistoryEntry[];
         <div style={{ fontFamily: 'var(--body)', fontSize: '13px', color: 'var(--txt-dim)', textAlign: 'center' }}>
           Season {season} ended with no ranked fighters.
         </div>
-        <button onClick={onFight} className="g-btn mt-2" style={{ fontSize: '10px' }}>⚡ FIGHT NOW</button>
       </div>
     );
   }
@@ -356,30 +355,21 @@ export function Leaderboard() {
           {seasonInfo?.configured && (
             <div className="mt-2 flex items-center justify-center gap-2 flex-wrap">
               <button onClick={() => setViewMode('current')} style={{
-                fontFamily: 'var(--pixel)', fontSize: '8px', padding: '3px 10px', cursor: 'pointer',
+                fontFamily: 'var(--pixel)', fontSize: '8px', padding: '4px 14px', cursor: 'pointer',
+                background: viewMode === 'current' ? 'rgba(255,214,10,.15)' : 'transparent',
+                border: `2px solid ${viewMode === 'current' ? 'var(--neon-yel)' : 'var(--panel-line)'}`,
                 color: viewMode === 'current' ? 'var(--neon-yel)' : 'var(--txt-dim)',
-                background: viewMode === 'current' ? 'rgba(255,214,10,.1)' : 'transparent',
-                border: `2px solid ${viewMode === 'current' ? 'rgba(255,214,10,.4)' : 'var(--panel-line)'}`,
               }}>
-                SEASON {seasonInfo.season}
+                ◆ S{seasonInfo.season} {viewMode === 'current' && seasonInfo.daysLeft > 0 ? `· ${seasonInfo.daysLeft}d` : ''}
               </button>
               <button onClick={() => setViewMode('last')} style={{
-                fontFamily: 'var(--pixel)', fontSize: '8px', padding: '3px 10px', cursor: 'pointer',
+                fontFamily: 'var(--pixel)', fontSize: '8px', padding: '4px 14px', cursor: 'pointer',
+                background: viewMode === 'last' ? 'rgba(192,192,192,.12)' : 'transparent',
+                border: `2px solid ${viewMode === 'last' ? '#c0c0c0' : 'var(--panel-line)'}`,
                 color: viewMode === 'last' ? '#c0c0c0' : 'var(--txt-dim)',
-                background: viewMode === 'last' ? 'rgba(192,192,192,.1)' : 'transparent',
-                border: `2px solid ${viewMode === 'last' ? 'rgba(192,192,192,.4)' : 'var(--panel-line)'}`,
               }}>
-                LAST SEASON
+                🏆 S{seasonInfo.season - 1}
               </button>
-              {viewMode === 'current' && (seasonInfo.daysLeft > 0 ? (
-                <div style={{ fontFamily: 'var(--pixel)', fontSize: '7px', color: 'var(--txt-dim)' }}>
-                  {seasonInfo.daysLeft}d LEFT
-                </div>
-              ) : (
-                <div style={{ fontFamily: 'var(--pixel)', fontSize: '7px', color: 'var(--neon-pink)' }}>
-                  RESETTING...
-                </div>
-              ))}
             </div>
           )}
         </div>
@@ -399,22 +389,16 @@ export function Leaderboard() {
           <LastSeasonView
             top3={seasonInfo?.lastSeasonTop3 ?? []}
             season={seasonInfo?.season ? seasonInfo.season - 1 : 0}
-            onFight={() => { if (player1) { setAutoMatchmake(true); setScreen('mode_select'); } else setScreen('login'); }}
           />
         ) : isLive && entries.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 gap-4">
-            <div style={{ fontFamily: 'var(--pixel)', fontSize: '28px', color: 'var(--neon-p)', textShadow: '0 0 20px var(--neon-p)' }}>⚔</div>
-            <div style={{ fontFamily: 'var(--pixel)', fontSize: '10px', color: '#fff', letterSpacing: '.15em' }}>SEASON {seasonInfo?.season ?? 2} HAS BEGUN</div>
-            <div style={{ fontFamily: 'var(--body)', fontSize: '14px', color: 'var(--txt-dim)', textAlign: 'center' }}>
-              No fighters on the board yet.<br />Login with X and be the first to compete!
+          <div className="flex flex-col items-center justify-center py-16 gap-3">
+            <div style={{ fontFamily: 'var(--pixel)', fontSize: '32px', color: 'var(--neon-p)', textShadow: '0 0 20px var(--neon-p)' }}>⚔</div>
+            <div style={{ fontFamily: 'var(--pixel)', fontSize: '10px', color: '#fff', letterSpacing: '.15em' }}>
+              SEASON {seasonInfo?.season} HAS BEGUN
             </div>
-            <button
-              onClick={() => {
-                if (player1) { setAutoMatchmake(true); setScreen('mode_select'); }
-                else setScreen('login');
-              }}
-              className="g-btn mt-2" style={{ fontSize: '10px' }}
-            >⚡ FIGHT NOW</button>
+            <div style={{ fontFamily: 'var(--body)', fontSize: '13px', color: 'var(--txt-dim)', textAlign: 'center' }}>
+              No fighters on the board yet.<br />Be the first to claim the throne!
+            </div>
           </div>
         ) : (
           <>
