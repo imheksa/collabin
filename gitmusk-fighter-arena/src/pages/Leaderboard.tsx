@@ -290,19 +290,20 @@ export function Leaderboard() {
             {!loading && (
               <>
                 <div style={{
-                  fontFamily: 'var(--pixel)', fontSize: '7px', padding: '3px 8px',
+                  fontFamily: 'var(--pixel)', fontSize: '8px', padding: '5px 10px',
                   background: isLive ? 'rgba(0,255,65,.12)' : 'rgba(128,128,128,.12)',
                   border: `2px solid ${isLive ? 'var(--neon-grn)' : 'var(--panel-line)'}`,
                   color: isLive ? 'var(--neon-grn)' : 'var(--txt-dim)',
+                  lineHeight: 1,
                 }}>
                   {isLive ? '● LIVE' : '○ DEMO'}
                 </div>
-                <button onClick={() => loadData(sortMode, true)} className="g-btn ghost sm" style={{ fontSize: '8px', padding: '3px 8px' }}>
+                <button onClick={() => loadData(sortMode, true)} className="g-btn ghost sm" style={{ fontSize: '8px', padding: '5px 10px' }}>
                   ↻ REFRESH
                 </button>
               </>
             )}
-            <button onClick={() => setScreen(player1 ? 'mode_select' : 'landing')} className="g-btn ghost sm">← BACK</button>
+            <button onClick={() => setScreen(player1 ? 'mode_select' : 'landing')} className="g-btn ghost sm" style={{ fontSize: '8px', padding: '5px 10px' }}>← BACK</button>
           </div>
         </nav>
 
