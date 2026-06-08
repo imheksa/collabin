@@ -340,38 +340,35 @@ export function Leaderboard() {
             </div>
           )}
           {/* Sort tabs */}
-          <div className="flex gap-2 justify-center mt-3">
-            {(['wins', 'pvp'] as const).map(mode => (
-              <button key={mode} onClick={() => handleSortChange(mode)} style={{
-                fontFamily: 'var(--pixel)', fontSize: '8px', padding: '4px 14px', cursor: 'pointer',
-                background: sortMode === mode ? (mode === 'pvp' ? 'rgba(0,204,255,.2)' : 'rgba(176,38,255,.2)') : 'transparent',
-                border: `2px solid ${sortMode === mode ? (mode === 'pvp' ? '#00ccff' : 'var(--neon-p)') : 'var(--panel-line)'}`,
-                color: sortMode === mode ? (mode === 'pvp' ? '#00ccff' : 'var(--neon-p)') : 'var(--txt-dim)',
-              }}>
-                {mode === 'pvp' ? '⚔ P2P WINS' : '★ ALL WINS'}
-              </button>
-            ))}
-          </div>
-          {seasonInfo?.configured && (
-            <div className="mt-2 flex items-center justify-center gap-2 flex-wrap">
+          <div className="flex gap-2 justify-center mt-3 flex-wrap">
+            <button onClick={() => handleSortChange('wins')} style={{
+              fontFamily: 'var(--pixel)', fontSize: '8px', padding: '4px 14px', cursor: 'pointer',
+              background: sortMode === 'wins' ? 'rgba(176,38,255,.2)' : 'transparent',
+              border: `2px solid ${sortMode === 'wins' ? 'var(--neon-p)' : 'var(--panel-line)'}`,
+              color: sortMode === 'wins' ? 'var(--neon-p)' : 'var(--txt-dim)',
+            }}>★ ALL WINS</button>
+            <button onClick={() => handleSortChange('pvp')} style={{
+              fontFamily: 'var(--pixel)', fontSize: '8px', padding: '4px 14px', cursor: 'pointer',
+              background: sortMode === 'pvp' ? 'rgba(0,204,255,.2)' : 'transparent',
+              border: `2px solid ${sortMode === 'pvp' ? '#00ccff' : 'var(--panel-line)'}`,
+              color: sortMode === 'pvp' ? '#00ccff' : 'var(--txt-dim)',
+            }}>⚔ P2P WINS</button>
+            {seasonInfo?.configured && <>
+              <div style={{ width: '1px', background: 'var(--panel-line)', margin: '0 2px' }} />
               <button onClick={() => setViewMode('current')} style={{
                 fontFamily: 'var(--pixel)', fontSize: '8px', padding: '4px 14px', cursor: 'pointer',
                 background: viewMode === 'current' ? 'rgba(255,214,10,.15)' : 'transparent',
                 border: `2px solid ${viewMode === 'current' ? 'var(--neon-yel)' : 'var(--panel-line)'}`,
                 color: viewMode === 'current' ? 'var(--neon-yel)' : 'var(--txt-dim)',
-              }}>
-                ◆ S{seasonInfo.season} {viewMode === 'current' && seasonInfo.daysLeft > 0 ? `· ${seasonInfo.daysLeft}d` : ''}
-              </button>
+              }}>◆ S{seasonInfo.season}{seasonInfo.daysLeft > 0 ? ` · ${seasonInfo.daysLeft}d` : ''}</button>
               <button onClick={() => setViewMode('last')} style={{
                 fontFamily: 'var(--pixel)', fontSize: '8px', padding: '4px 14px', cursor: 'pointer',
                 background: viewMode === 'last' ? 'rgba(192,192,192,.12)' : 'transparent',
                 border: `2px solid ${viewMode === 'last' ? '#c0c0c0' : 'var(--panel-line)'}`,
                 color: viewMode === 'last' ? '#c0c0c0' : 'var(--txt-dim)',
-              }}>
-                🏆 S{seasonInfo.season - 1}
-              </button>
-            </div>
-          )}
+              }}>🏆 S{seasonInfo.season - 1}</button>
+            </>}
+          </div>
         </div>
 
         {/* Crowd bar */}
