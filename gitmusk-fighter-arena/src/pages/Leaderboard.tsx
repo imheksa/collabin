@@ -286,22 +286,9 @@ export function Leaderboard() {
         {/* Nav */}
         <nav className="g-nav" style={{ position: 'relative', marginBottom: '28px' }}>
           <div className="logo"><div className="badge">X</div>FIGHTER ARENA</div>
-          <button onClick={() => setScreen(player1 ? 'mode_select' : 'landing')} className="g-btn ghost sm">← BACK</button>
-        </nav>
-
-        {/* Header */}
-        <div className="text-center mb-8">
-          <span className="g-eyebrow" style={{ color: 'var(--neon-yel)' }}>// LIVE TOURNAMENTS</span>
-          <div style={{ fontFamily: 'var(--pixel)', fontSize: '24px', color: 'var(--neon-yel)', textShadow: '3px 3px 0 var(--neon-pink), 6px 6px 0 var(--void)' }}>
-            GLOBAL RANKINGS
-          </div>
-          <div className="flex items-center justify-center gap-3 mt-2">
-            {loading ? (
-              <div style={{ fontFamily: 'var(--pixel)', fontSize: '7px', color: 'var(--txt-dim)' }}>
-                LOADING...
-              </div>
-            ) : (
-              <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2">
+            {!loading && (
+              <>
                 <div style={{
                   fontFamily: 'var(--pixel)', fontSize: '7px', padding: '3px 8px',
                   background: isLive ? 'rgba(0,255,65,.12)' : 'rgba(128,128,128,.12)',
@@ -313,8 +300,17 @@ export function Leaderboard() {
                 <button onClick={() => loadData(sortMode, true)} className="g-btn ghost sm" style={{ fontSize: '8px', padding: '3px 8px' }}>
                   ↻ REFRESH
                 </button>
-              </div>
+              </>
             )}
+            <button onClick={() => setScreen(player1 ? 'mode_select' : 'landing')} className="g-btn ghost sm">← BACK</button>
+          </div>
+        </nav>
+
+        {/* Header */}
+        <div className="text-center mb-8">
+          <span className="g-eyebrow" style={{ color: 'var(--neon-yel)' }}>// LIVE TOURNAMENTS</span>
+          <div style={{ fontFamily: 'var(--pixel)', fontSize: '24px', color: 'var(--neon-yel)', textShadow: '3px 3px 0 var(--neon-pink), 6px 6px 0 var(--void)' }}>
+            GLOBAL RANKINGS
           </div>
           {/* Info: refresh cadence + season duration */}
           <div className="flex items-center justify-center gap-3 mt-2 flex-wrap">
