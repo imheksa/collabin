@@ -3,7 +3,7 @@ import { useGameStore } from '../stores/gameStore';
 import { DEMO_PROFILES } from '../data/mockProfiles';
 import { calculateFighterStats } from '../utils/statsCalculator';
 import { getAllLocalStats } from '../utils/leaderboard';
-import { fetchLeaderboard, fetchSeasonInfo, LeaderboardResult, SeasonInfo } from '../utils/cloudSync';
+import { fetchLeaderboard, fetchSeasonInfo, LeaderboardResult, SeasonInfo, SeasonHistoryEntry } from '../utils/cloudSync';
 
 const BADGE_META: Record<string, { color: string; emoji: string }> = {
   champ:  { color: '#ffd60a', emoji: '👑' },
@@ -59,12 +59,84 @@ interface EntryRow {
 
 const AUTO_REFRESH_MS = 60 * 60 * 1000; // 1 hour
 
+const LAST_SEASON_COLORS = ['#ffd60a', '#c0c0c0', '#cd7f32'];
+const LAST_SEASON_LABELS = ['👑', '🥈', '🥉'];
+const LAST_SEASON_SIZES = ['22px', '16px', '16px'];
+
+function LastSeasonView({ top3, season, onFight }: { top3: SeasonHistoryEntry[]; season: number; onFight: () => void }) {
+  if (top3.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 gap-4">
+        <div style={{ fontFamily: 'var(--pixel)', fontSize: '28px', color: 'var(--txt-dim)' }}>🏆</div>
+        <div style={{ fontFamily: 'var(--pixel)', fontSize: '9px', color: 'var(--txt-dim)', letterSpacing: '.12em' }}>
+          NO RECORDS FOR SEASON {season}
+        </div>
+        <div style={{ fontFamily: 'var(--body)', fontSize: '13px', color: 'var(--txt-dim)', textAlign: 'center' }}>
+          Season {season} ended with no ranked fighters.
+        </div>
+        <button onClick={onFight} className="g-btn mt-2" style={{ fontSize: '10px' }}>⚡ FIGHT NOW</button>
+      </div>
+    );
+  }
+
+  const order = [
+    { e: top3[1], realIdx: 1 },
+    { e: top3[0], realIdx: 0 },
+    { e: top3[2], realIdx: 2 },
+  ];
+
+  return (
+    <div>
+      <div style={{ fontFamily: 'var(--pixel)', fontSize: '8px', color: 'var(--txt-dim)', textAlign: 'center', marginBottom: '16px', letterSpacing: '.1em' }}>
+        ◆ SEASON {season} CHAMPIONS ◆
+      </div>
+      <div className="grid grid-cols-3 gap-3 mb-4">
+        {order.map(({ e, realIdx }) => {
+          if (!e) return <div key={realIdx} />;
+          return (
+            <div key={e.username} className="g-panel text-center" style={{
+              borderColor: LAST_SEASON_COLORS[realIdx],
+              boxShadow: `inset 0 0 0 4px var(--void), 0 0 0 4px var(--void), 0 0 24px ${LAST_SEASON_COLORS[realIdx]}60`,
+              padding: '16px 12px',
+              transform: realIdx === 0 ? 'translateY(-8px)' : 'none',
+              opacity: 0.9,
+            }}>
+              <div className="corners">
+                <i style={{ background: LAST_SEASON_COLORS[realIdx] }}></i>
+                <i style={{ background: LAST_SEASON_COLORS[realIdx] }}></i>
+                <i style={{ background: LAST_SEASON_COLORS[realIdx] }}></i>
+                <i style={{ background: LAST_SEASON_COLORS[realIdx] }}></i>
+              </div>
+              <div style={{ fontFamily: 'var(--pixel)', fontSize: LAST_SEASON_SIZES[realIdx], color: LAST_SEASON_COLORS[realIdx], marginBottom: '8px' }}>
+                {LAST_SEASON_LABELS[realIdx]}
+              </div>
+              <div className="w-10 h-10 mx-auto overflow-hidden mb-2" style={{ border: `3px solid ${LAST_SEASON_COLORS[realIdx]}` }}>
+                <img src={e.avatarUrl} className="w-full h-full object-cover"
+                  onError={ev => { (ev.target as HTMLImageElement).src = `https://api.dicebear.com/7.x/pixel-art/svg?seed=${e.username}`; }} />
+              </div>
+              <div style={{ fontFamily: 'var(--pixel)', fontSize: '8px', color: '#fff', marginBottom: '4px' }}>
+                @{e.username.slice(0, 8)}
+              </div>
+              <div style={{ fontFamily: 'var(--pixel)', fontSize: '10px', color: 'var(--neon-grn)', marginTop: '4px' }}>
+                {e.wins}W
+                <span style={{ fontSize: '6px', color: 'var(--txt-dim)', marginLeft: '3px' }}>S{season}</span>
+              </div>
+              {e.badge && <div className="mt-1"><BadgeChip badge={e.badge} /></div>}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export function Leaderboard() {
   const { setScreen, player1, setAutoMatchmake } = useGameStore();
   const [cloudResult, setCloudResult] = useState<LeaderboardResult | null>(null);
   const [seasonInfo, setSeasonInfo] = useState<SeasonInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [sortMode, setSortMode] = useState<'wins' | 'pvp'>('wins');
+  const [viewMode, setViewMode] = useState<'current' | 'last'>('current');
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
   const loadData = useCallback(async (sort: 'wins' | 'pvp' = sortMode, refresh = false) => {
@@ -137,9 +209,19 @@ export function Leaderboard() {
         }
       }
 
+      // Only include players with season activity; show empty state if nobody has played yet
+      const hasActivity = sortMode === 'pvp'
+        ? rows.some(r => r.seasonPvpWins > 0)
+        : rows.some(r => r.seasonWins > 0);
+      if (!hasActivity) return { entries: [], isLive: true };
+
+      const active = sortMode === 'pvp'
+        ? rows.filter(r => r.seasonPvpWins > 0)
+        : rows.filter(r => r.seasonWins > 0);
+
       const sorted = sortMode === 'pvp'
-        ? rows.sort((a, b) => b.seasonPvpWins - a.seasonPvpWins || b.seasonWins - a.seasonWins)
-        : rows.sort((a, b) => b.seasonWins - a.seasonWins || b.wins - a.wins);
+        ? active.sort((a, b) => b.seasonPvpWins - a.seasonPvpWins || b.seasonWins - a.seasonWins)
+        : active.sort((a, b) => b.seasonWins - a.seasonWins || b.wins - a.wins);
       return { entries: sorted.slice(0, 10), isLive: true };
     }
 
@@ -272,11 +354,24 @@ export function Leaderboard() {
             ))}
           </div>
           {seasonInfo?.configured && (
-            <div className="mt-2 flex items-center justify-center gap-3">
-              <div style={{ fontFamily: 'var(--pixel)', fontSize: '8px', color: 'var(--neon-yel)', background: 'rgba(255,214,10,.1)', border: '2px solid rgba(255,214,10,.4)', padding: '3px 10px' }}>
+            <div className="mt-2 flex items-center justify-center gap-2 flex-wrap">
+              <button onClick={() => setViewMode('current')} style={{
+                fontFamily: 'var(--pixel)', fontSize: '8px', padding: '3px 10px', cursor: 'pointer',
+                color: viewMode === 'current' ? 'var(--neon-yel)' : 'var(--txt-dim)',
+                background: viewMode === 'current' ? 'rgba(255,214,10,.1)' : 'transparent',
+                border: `2px solid ${viewMode === 'current' ? 'rgba(255,214,10,.4)' : 'var(--panel-line)'}`,
+              }}>
                 SEASON {seasonInfo.season}
-              </div>
-              {seasonInfo.daysLeft > 0 ? (
+              </button>
+              <button onClick={() => setViewMode('last')} style={{
+                fontFamily: 'var(--pixel)', fontSize: '8px', padding: '3px 10px', cursor: 'pointer',
+                color: viewMode === 'last' ? '#c0c0c0' : 'var(--txt-dim)',
+                background: viewMode === 'last' ? 'rgba(192,192,192,.1)' : 'transparent',
+                border: `2px solid ${viewMode === 'last' ? 'rgba(192,192,192,.4)' : 'var(--panel-line)'}`,
+              }}>
+                LAST SEASON
+              </button>
+              {viewMode === 'current' && (seasonInfo.daysLeft > 0 ? (
                 <div style={{ fontFamily: 'var(--pixel)', fontSize: '7px', color: 'var(--txt-dim)' }}>
                   {seasonInfo.daysLeft}d LEFT
                 </div>
@@ -284,7 +379,7 @@ export function Leaderboard() {
                 <div style={{ fontFamily: 'var(--pixel)', fontSize: '7px', color: 'var(--neon-pink)' }}>
                   RESETTING...
                 </div>
-              )}
+              ))}
             </div>
           )}
         </div>
@@ -300,6 +395,12 @@ export function Leaderboard() {
               ))}
             </div>
           </div>
+        ) : viewMode === 'last' ? (
+          <LastSeasonView
+            top3={seasonInfo?.lastSeasonTop3 ?? []}
+            season={seasonInfo?.season ? seasonInfo.season - 1 : 0}
+            onFight={() => { if (player1) { setAutoMatchmake(true); setScreen('mode_select'); } else setScreen('login'); }}
+          />
         ) : isLive && entries.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 gap-4">
             <div style={{ fontFamily: 'var(--pixel)', fontSize: '28px', color: 'var(--neon-p)', textShadow: '0 0 20px var(--neon-p)' }}>⚔</div>

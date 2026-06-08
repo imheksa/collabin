@@ -35,12 +35,28 @@ export default async function handler(req, res) {
     const endsAt = new Date(row.ends_at);
     const daysLeft = Math.max(0, Math.ceil((endsAt.getTime() - Date.now()) / 86400000));
 
+    // Fetch last season's top 3 from season_history
+    let lastSeasonTop3 = [];
+    if (row.season_number > 1) {
+      try {
+        const histRes = await fetch(
+          `${supabaseUrl}/rest/v1/season_history?season_number=eq.${row.season_number - 1}&order=rank.asc&limit=3&select=username,display_name,avatar_url,rank,wins,pvp_wins,badge`,
+          { headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` } },
+        );
+        if (histRes.ok) {
+          const histData = await histRes.json();
+          lastSeasonTop3 = Array.isArray(histData) ? histData : [];
+        }
+      } catch { /* ignore */ }
+    }
+
     return res.status(200).json({
       configured: true,
       season: row.season_number,
       startedAt: row.started_at,
       endsAt: row.ends_at,
       daysLeft,
+      lastSeasonTop3,
     });
   } catch (err) {
     console.error('season-info error:', err);

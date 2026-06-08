@@ -24,15 +24,26 @@ export interface LeaderboardResult {
   configured: boolean;
 }
 
+export interface SeasonHistoryEntry {
+  username: string;
+  displayName: string;
+  avatarUrl: string;
+  rank: number;
+  wins: number;
+  pvpWins: number;
+  badge: string;
+}
+
 export interface SeasonInfo {
   configured: boolean;
   season: number;
   startedAt: string | null;
   endsAt: string | null;
   daysLeft: number;
+  lastSeasonTop3: SeasonHistoryEntry[];
 }
 
-let _seasonCache: SeasonInfo = { configured: false, season: 1, startedAt: null, endsAt: null, daysLeft: 30 };
+let _seasonCache: SeasonInfo = { configured: false, season: 1, startedAt: null, endsAt: null, daysLeft: 30, lastSeasonTop3: [] };
 let _seasonFetched = false;
 
 export async function fetchSeasonInfo(forceRefresh = false): Promise<SeasonInfo> {
@@ -47,6 +58,15 @@ export async function fetchSeasonInfo(forceRefresh = false): Promise<SeasonInfo>
         startedAt: data.startedAt ?? null,
         endsAt: data.endsAt ?? null,
         daysLeft: data.daysLeft ?? 30,
+        lastSeasonTop3: Array.isArray(data.lastSeasonTop3) ? data.lastSeasonTop3.map((r: Record<string, unknown>) => ({
+          username: String(r.username ?? ''),
+          displayName: String(r.display_name ?? r.username ?? ''),
+          avatarUrl: String(r.avatar_url ?? ''),
+          rank: Number(r.rank ?? 0),
+          wins: Number(r.wins ?? 0),
+          pvpWins: Number(r.pvp_wins ?? 0),
+          badge: String(r.badge ?? ''),
+        })) : [],
       };
       _seasonFetched = true;
     }
