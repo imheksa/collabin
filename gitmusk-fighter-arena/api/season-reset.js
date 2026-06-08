@@ -111,16 +111,28 @@ export default async function handler(req, res) {
     // Advance season config
     const now = new Date().toISOString();
     const nextEnd = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
-    await fetch(`${supabaseUrl}/rest/v1/season_config?id=eq.1`, {
+    const newSeasonNumber = seasonNumber + 1;
+    const patchRes = await fetch(`${supabaseUrl}/rest/v1/season_config?id=eq.1`, {
       method: 'PATCH',
       headers: { ...h, Prefer: 'return=minimal' },
-      body: JSON.stringify({ season_number: seasonNumber + 1, started_at: now, ends_at: nextEnd }),
+      body: JSON.stringify({ season_number: newSeasonNumber, started_at: now, ends_at: nextEnd }),
     });
+
+    if (!patchRes.ok) {
+      const errText = await patchRes.text();
+      console.error('season_config PATCH failed:', patchRes.status, errText);
+      return res.status(500).json({
+        error: 'Failed to advance season_config',
+        status: patchRes.status,
+        detail: errText,
+        hint: `Run SQL: UPDATE season_config SET season_number=${newSeasonNumber}, started_at=NOW(), ends_at=NOW()+INTERVAL '30 days' WHERE id=1;`,
+      });
+    }
 
     return res.status(200).json({
       ok: true,
       seasonReset: seasonNumber,
-      newSeason: seasonNumber + 1,
+      newSeason: newSeasonNumber,
       winnersRecorded: qualifiers.length,
     });
   } catch (err) {
