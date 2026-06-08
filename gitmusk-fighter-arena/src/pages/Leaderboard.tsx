@@ -138,8 +138,8 @@ export function Leaderboard() {
       }
 
       const sorted = sortMode === 'pvp'
-        ? rows.sort((a, b) => b.pvpWins - a.pvpWins || b.wins - a.wins)
-        : rows.sort((a, b) => b.wins - a.wins || b.power - a.power);
+        ? rows.sort((a, b) => b.seasonPvpWins - a.seasonPvpWins || b.seasonWins - a.seasonWins)
+        : rows.sort((a, b) => b.seasonWins - a.seasonWins || b.wins - a.wins);
       return { entries: sorted.slice(0, 10), isLive: true };
     }
 
@@ -357,8 +357,8 @@ export function Leaderboard() {
                     )}
                     {isLive ? (
                       <div style={{ fontFamily: 'var(--pixel)', fontSize: '10px', color: 'var(--neon-grn)' }}>
-                        {sortMode === 'pvp' ? e.seasonPvpWins : e.wins}W
-                        <span style={{ fontSize: '6px', color: 'var(--txt-dim)', marginLeft: '3px' }}>TOTAL</span>
+                        {sortMode === 'pvp' ? e.seasonPvpWins : e.seasonWins}W
+                        <span style={{ fontSize: '6px', color: 'var(--txt-dim)', marginLeft: '3px' }}>S{seasonInfo?.season ?? ''}</span>
                       </div>
                     ) : (
                       <div style={{ fontFamily: 'var(--pixel)', fontSize: '9px', color: 'var(--neon-grn)' }}>{e.wins}W</div>
@@ -410,7 +410,7 @@ export function Leaderboard() {
                     <div className="text-right flex-shrink-0 flex items-center gap-3">
                       {isLive ? (
                         <div style={{ fontFamily: 'var(--pixel)', fontSize: '9px', color: 'var(--neon-grn)' }}>
-                          {sortMode === 'pvp' ? e.seasonPvpWins : e.wins}W
+                          {sortMode === 'pvp' ? e.seasonPvpWins : e.seasonWins}W
                         </div>
                       ) : (
                         <div style={{ fontFamily: 'var(--pixel)', fontSize: '9px', color: 'var(--neon-grn)' }}>{e.wins}W</div>
