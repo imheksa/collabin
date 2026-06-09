@@ -1203,179 +1203,305 @@ export function FightingArena({ player1, player2, onMatchEnd, p2AI = true, p2pMo
       drawFighter(ctx, p1, p1Color, 'left',  player1.profile.username, player1.stats.archetype);
       drawFighter(ctx, p2, p2Color, 'right', player2.profile.username, player2.stats.archetype);
 
-      // Particles (front)
-      drawParticles(ctx, particlesRef.current);
-      particlesRef.current = updateParticles(particlesRef.current);
+      // Status indicators: invincibility aura + stun stars
+      for (const f of [p1, p2]) {
+        const cx = f.x + FW / 2;
+        if (f.invincibleTimer > 0) {
+          const pulse = 0.5 + 0.5 * Math.sin(Date.now() / 90);
+          ctx.save();
+          ctx.globalAlpha = 0.4 + pulse * 0.4;
+          ctx.strokeStyle = '#ffd700';
+          ctx.shadowColor = '#ffd700';
+          ctx.shadowBlur = 16;
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.ellipse(cx, f.y + FH / 2, FW * 0.75, FH * 0.6, 0, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.restore();
+        }
+        if (f.stunTimer > 0 && f.state !== 'dead') {
+          ctx.save();
+          ctx.font = '10px "Press Start 2P", monospace';
+          ctx.textAlign = 'center';
+          for (let s = 0; s < 3; s++) {
+            const a = Date.now() / 200 + (s * Math.PI * 2) / 3;
+            ctx.fillStyle = '#ffe666';
+            ctx.fillText('✦', cx + Math.cos(a) * 16, f.y - 6 + Math.sin(a) * 4);
+          }
+          ctx.restore();
+        }
+      }
 
       // Hit rings
       for (const ring of hitRingsRef.current) {
         drawHitRing(ctx, ring);
-        ring.radius += (ring.maxRadius - ring.radius) * 0.22;
-        ring.alpha -= 0.06;
+        ring.radius += (ring.maxRadius - ring.radius) * 0.2;
+        ring.alpha -= 0.04;
+        ring.width *= 0.93;
       }
       hitRingsRef.current = hitRingsRef.current.filter(r => r.alpha > 0);
 
-      // Hit text / combo floaters
-      for (const ht of hitTextRef.current) {
+      // Hit particles
+      particlesRef.current = updateParticles(particlesRef.current);
+      drawParticles(ctx, particlesRef.current);
+
+      // Damage text
+      for (const t of hitTextRef.current) {
         ctx.save();
-        ctx.globalAlpha = Math.min(1, ht.timer / 15);
-        ctx.fillStyle = ht.color;
-        ctx.shadowColor = ht.color;
+        ctx.globalAlpha = Math.min(1, t.timer / 20);
+        ctx.fillStyle = t.color;
+        ctx.shadowColor = t.color;
         ctx.shadowBlur = 10;
-        ctx.font = `900 ${ht.size}px "Press Start 2P", monospace`;
+        ctx.font = `bold ${t.size}px "Press Start 2P", monospace`;
         ctx.textAlign = 'center';
-        ctx.fillText(ht.text, ht.x, ht.y);
+        ctx.fillText(t.text, t.x, t.y - (45 - t.timer) * 0.6);
+        t.timer--;
         ctx.restore();
-        ht.y -= 0.8;
-        ht.timer--;
       }
-      hitTextRef.current = hitTextRef.current.filter(h => h.timer > 0);
+      hitTextRef.current = hitTextRef.current.filter(t => t.timer > 0);
 
       // Screen flash
       if (screenFlashRef.current) {
-        const sf = screenFlashRef.current;
+        const f = screenFlashRef.current;
         ctx.save();
-        ctx.globalAlpha = sf.alpha;
-        ctx.fillStyle = sf.color;
+        ctx.globalAlpha = f.alpha;
+        ctx.fillStyle = f.color;
         ctx.fillRect(0, 0, W, H);
         ctx.restore();
-        sf.alpha -= 0.04;
-        if (sf.alpha <= 0) screenFlashRef.current = null;
+        f.alpha -= 0.05;
+        if (f.alpha <= 0) screenFlashRef.current = null;
+      }
+
+      // Game over overlay
+      if (gameOverRef.current) {
+        ctx.fillStyle = 'rgba(0,0,0,0.7)';
+        ctx.fillRect(0, 0, W, H);
+        const winnerName = p1.hp > p2.hp ? player1.profile.username : player2.profile.username;
+        const winnerColor = p1.hp > p2.hp
+          ? (ARCHETYPE_COLORS[player1.stats.archetype] || '#00ffff')
+          : (ARCHETYPE_COLORS[player2.stats.archetype] || '#ff00ff');
+
+        // K.O.!
+        ctx.textAlign = 'center';
+        ctx.font = 'bold 52px "Press Start 2P", monospace';
+        ctx.fillStyle = '#ff0040';
+        ctx.shadowColor = '#ff0040';
+        ctx.shadowBlur = 40;
+        ctx.fillText('K.O.!', W / 2, H / 2 - 20);
+
+        // Winner name
+        ctx.font = 'bold 20px "Press Start 2P", monospace';
+        ctx.fillStyle = winnerColor;
+        ctx.shadowColor = winnerColor;
+        ctx.shadowBlur = 20;
+        ctx.fillText(`${winnerName.toUpperCase()} WINS!`, W / 2, H / 2 + 28);
+
+        if (disconnectedRef.current) {
+          ctx.font = 'bold 11px "Press Start 2P", monospace';
+          ctx.fillStyle = '#ff8800';
+          ctx.shadowColor = '#ff8800';
+          ctx.shadowBlur = 10;
+          ctx.fillText('OPPONENT DISCONNECTED', W / 2, H / 2 + 60);
+        }
       }
 
       frameRef.current = requestAnimationFrame(loop);
     };
 
+    // Watchdog: fires every 3s even when tab is in background (rAF pauses on hidden tabs)
+    const watchdog = p2pMode ? setInterval(() => {
+      if (gameOverRef.current || koFiredRef.current) return;
+      const elapsed = (Date.now() - startTimeRef.current) / 1000;
+      if (elapsed < 5) return;
+      const silenceMs = Date.now() - lastRemoteSignalRef.current;
+      if (silenceMs > 15000) {
+        if (p2pMode === 'host') {
+          gameOverRef.current = true;
+          fightChannelRef.current?.send({
+            type: 'broadcast',
+            event: 'game_over',
+            payload: { winnerSide: 'left', maxCombo: maxComboRef.current, duration: Math.floor(elapsed), disconnected: true },
+          });
+          firKO(player1, player2, elapsed, true);
+        } else if (p2pMode === 'client') {
+          gameOverRef.current = true;
+          firKO(player2, player1, elapsed, true);
+        }
+      }
+    }, 3000) : null;
+
     frameRef.current = requestAnimationFrame(loop);
     startBgMusic();
-
     return () => {
+      if (watchdog) clearInterval(watchdog);
       cancelAnimationFrame(frameRef.current);
       window.removeEventListener('keydown', onKey);
       window.removeEventListener('keyup', onKeyUp);
       stopBgMusic();
     };
-  }, [player1, player2, p2AI, p2pMode, doAttack]);
+  }, [player1, player2, doAttack, onMatchEnd, p2AI]);
 
-  const touchRef = useRef<Record<string, boolean>>({});
+  const p1Color = ARCHETYPE_COLORS[player1.stats.archetype] || '#00ffff';
+  const p2Color = ARCHETYPE_COLORS[player2.stats.archetype] || '#ff00ff';
 
-  const handleTouch = useCallback((action: string, pressed: boolean) => {
-    const keyMap: Record<string, string> = {
-      left: 'a', right: 'd', up: 'w', down: 's',
-      punch: 'f', kick: 'g', special: 'h', ultimate: 'v',
-    };
-    const key = keyMap[action];
-    if (!key) return;
-    if (pressed) keysRef.current.add(key);
-    else keysRef.current.delete(key);
-    if (p2pMode === 'client') sendInputRef.current();
-  }, [p2pMode]);
+  const touchPress = useCallback((key: string) => {
+    keysRef.current.add(key);
+    sendInputRef.current();
+  }, []);
+
+  const touchRelease = useCallback((key: string) => {
+    keysRef.current.delete(key);
+    sendInputRef.current();
+  }, []);
+
+  const dpadBtnStyle = (color: string): React.CSSProperties => ({
+    position: 'absolute',
+    width: '46px', height: '46px',
+    background: `${color}18`,
+    border: `2px solid ${color}60`,
+    color,
+    fontFamily: 'var(--pixel)',
+    fontSize: '14px',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    cursor: 'pointer',
+    WebkitTapHighlightColor: 'transparent',
+    userSelect: 'none',
+    touchAction: 'none',
+    outline: 'none',
+  });
 
   return (
-    <div ref={wrapperRef} className="relative select-none" style={{ touchAction: 'none' }}>
+    <div className="flex flex-col items-center w-full select-none" style={{ touchAction: 'none' }}>
       {/* HUD */}
-      <div className="flex justify-between items-start mb-2 px-1">
+      <div className="w-full flex items-center gap-1 sm:gap-3 mb-1 sm:mb-2 px-1 sm:px-2" style={{ maxWidth: '800px' }}>
         <HPBar
-          hp={p1Hp} maxHp={100}
-          name={player1.profile.username}
-          side="left"
-          color={ARCHETYPE_COLORS[player1.stats.archetype] || '#00ffff'}
-          rage={p1Rage}
-          hitCount={p1Hits}
-          specialReady={p1SpecialReady}
-          combo={combo1}
+          hp={p1Hp} maxHp={100} name={player1.profile.username}
+          side="left" color={p1Color} rage={p1Rage}
+          specialHits={p1Hits} specialReady={p1SpecialReady}
         />
-        <div className="text-center px-2">
-          <div style={{ fontFamily: 'var(--pixel)', fontSize: '10px', color: timeLeft <= 10 ? '#ff4444' : '#ffffff', textShadow: '0 0 8px currentColor' }}>
+
+        <div className="flex flex-col items-center flex-shrink-0" style={{ width: 'clamp(52px,10vw,96px)' }}>
+          <div className="font-pixel text-white" style={{ fontSize: 'clamp(7px,1.5vw,11px)', marginBottom: '1px' }}>R{round}</div>
+          <div className="font-pixel"
+            style={{ fontSize: 'clamp(18px,5vw,28px)', color: timeLeft <= 10 ? '#ff0040' : '#ffff00', textShadow: `0 0 12px ${timeLeft <= 10 ? '#ff0040' : '#ffff00'}` }}>
             {timeLeft}
           </div>
-          <div style={{ fontFamily: 'var(--pixel)', fontSize: '6px', color: 'var(--txt-dim)' }}>RND {round}</div>
+          <div className="font-pixel" style={{ color: '#bf00ff', fontSize: 'clamp(5px,1.2vw,7px)', marginTop: '1px', textAlign: 'center' }}>
+            {combo1 > 2 ? `P1 ${combo1}x` : combo2 > 2 ? `P2 ${combo2}x` : 'FIGHT!'}
+          </div>
         </div>
+
         <HPBar
-          hp={p2Hp} maxHp={100}
-          name={player2.profile.username}
-          side="right"
-          color={ARCHETYPE_COLORS[player2.stats.archetype] || '#ff00ff'}
-          rage={p2Rage}
-          hitCount={p2Hits}
-          specialReady={p2SpecialReady}
-          combo={combo2}
+          hp={p2Hp} maxHp={100} name={player2.profile.username}
+          side="right" color={p2Color} rage={p2Rage}
+          specialHits={p2Hits} specialReady={p2SpecialReady}
         />
       </div>
 
       {/* Canvas */}
-      <canvas
-        ref={canvasRef}
-        width={W} height={H}
-        className="w-full block"
-        style={{ imageRendering: 'pixelated', maxHeight: '55vw' }}
-      />
-
-      {/* Fight announcement */}
-      {showAnnounce && (
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <div style={{ fontFamily: 'var(--pixel)', fontSize: 'clamp(18px, 5vw, 32px)', color: '#ffff00', textShadow: '0 0 20px #ffff00, 0 0 40px #ff8800', animation: 'g-pulse 0.4s steps(2) infinite', letterSpacing: '.15em' }}>
-            FIGHT!
+      <div className="relative w-full" ref={wrapperRef} style={{ maxWidth: '800px' }}>
+        <canvas ref={canvasRef} width={W} height={H} className="block w-full"
+          style={{ border: '2px solid #bf00ff', boxShadow: '0 0 30px #bf00ff50', height: 'auto' }}
+        />
+        {showAnnounce && (
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div className="font-pixel animate-pulse"
+              style={{ fontSize: 'clamp(20px,6vw,36px)', color: '#ffff00', textShadow: '0 0 30px #ffff00, 0 0 60px #ffaa00' }}>
+              ROUND 1
+            </div>
           </div>
+        )}
+      </div>
+
+      {/* Keyboard controls hint — hidden on mobile */}
+      <div className="hidden sm:flex gap-6 mt-2 text-xs font-mono text-gray-600 flex-wrap justify-center">
+        <div>
+          <span style={{ color: p1Color }}>P1:</span>{' '}
+          WASD=move · F=punch · G=kick · <span style={{ color: '#ffff00' }}>H=special(5hits)</span> · V=ult · S=block
         </div>
-      )}
+        <div>
+          <span style={{ color: p2Color }}>P2:</span>{' '}
+          ←→↑=move · 1=punch · 2=kick · <span style={{ color: '#ffff00' }}>3=special(5hits)</span> · 4=ult · ↓=block
+        </div>
+      </div>
 
-      {/* Touch controls */}
-      <div className="mt-3 select-none" style={{ touchAction: 'none' }}>
-        <div className="flex justify-between items-end px-2">
-          {/* D-pad */}
-          <div className="grid gap-1" style={{ gridTemplateColumns: 'repeat(3, 44px)', gridTemplateRows: 'repeat(2, 44px)' }}>
-            {[
-              { action: 'left',  label: '◀', col: 1, row: 1 },
-              { action: 'up',    label: '▲', col: 2, row: 1 },
-              { action: 'right', label: '▶', col: 3, row: 1 },
-              { action: 'down',  label: '▼', col: 2, row: 2 },
-            ].map(({ action, label, col, row }) => (
-              <button
-                key={action}
-                onPointerDown={() => handleTouch(action, true)}
-                onPointerUp={() => handleTouch(action, false)}
-                onPointerLeave={() => handleTouch(action, false)}
-                style={{
-                  gridColumn: col, gridRow: row,
-                  width: '44px', height: '44px',
-                  background: 'rgba(255,255,255,0.08)',
-                  border: '2px solid rgba(255,255,255,0.2)',
-                  color: '#fff', fontFamily: 'var(--pixel)', fontSize: '14px',
-                  cursor: 'pointer', userSelect: 'none',
-                }}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
+      {/* Virtual Touch Gamepad — mobile only */}
+      <div className="arena-touch-pad w-full justify-between items-center px-3 mt-2"
+        style={{ maxWidth: '800px', touchAction: 'none', userSelect: 'none' }}>
 
-          {/* Action buttons */}
-          <div className="grid gap-1" style={{ gridTemplateColumns: 'repeat(2, 50px)', gridTemplateRows: 'repeat(2, 50px)' }}>
-            {[
-              { action: 'punch',   label: 'P', color: '#ffcc00' },
-              { action: 'kick',    label: 'K', color: '#00ffff' },
-              { action: 'special', label: 'S', color: '#ff00ff' },
-              { action: 'ultimate',label: 'U', color: '#ff8800' },
-            ].map(({ action, label, color }) => (
-              <button
-                key={action}
-                onPointerDown={() => handleTouch(action, true)}
-                onPointerUp={() => handleTouch(action, false)}
-                onPointerLeave={() => handleTouch(action, false)}
-                style={{
-                  width: '50px', height: '50px',
-                  background: `rgba(${color === '#ffcc00' ? '255,204,0' : color === '#00ffff' ? '0,255,255' : color === '#ff00ff' ? '255,0,255' : '255,136,0'},0.15)`,
-                  border: `2px solid ${color}`,
-                  color, fontFamily: 'var(--pixel)', fontSize: '10px',
-                  cursor: 'pointer', userSelect: 'none',
-                  boxShadow: `0 0 8px ${color}40`,
-                }}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
+        {/* D-pad */}
+        <div style={{ position: 'relative', width: '138px', height: '138px', flexShrink: 0 }}>
+          <div style={{
+            position: 'absolute', top: '50%', left: '50%',
+            transform: 'translate(-50%,-50%)',
+            width: '46px', height: '46px',
+            background: 'rgba(255,255,255,.04)',
+            border: '2px solid rgba(255,255,255,.06)',
+          }} />
+          {/* UP — jump */}
+          <button
+            onTouchStart={(e) => { e.preventDefault(); touchPress('w'); }}
+            onTouchEnd={(e) => { e.preventDefault(); touchRelease('w'); }}
+            onTouchCancel={(e) => { e.preventDefault(); touchRelease('w'); }}
+            style={{ ...dpadBtnStyle('var(--neon-b)'), top: 0, left: '50%', transform: 'translateX(-50%)' }}>
+            ▲
+          </button>
+          {/* LEFT */}
+          <button
+            onTouchStart={(e) => { e.preventDefault(); touchPress('a'); }}
+            onTouchEnd={(e) => { e.preventDefault(); touchRelease('a'); }}
+            onTouchCancel={(e) => { e.preventDefault(); touchRelease('a'); }}
+            style={{ ...dpadBtnStyle('var(--neon-b)'), top: '50%', left: 0, transform: 'translateY(-50%)' }}>
+            ◀
+          </button>
+          {/* RIGHT */}
+          <button
+            onTouchStart={(e) => { e.preventDefault(); touchPress('d'); }}
+            onTouchEnd={(e) => { e.preventDefault(); touchRelease('d'); }}
+            onTouchCancel={(e) => { e.preventDefault(); touchRelease('d'); }}
+            style={{ ...dpadBtnStyle('var(--neon-b)'), top: '50%', right: 0, transform: 'translateY(-50%)' }}>
+            ▶
+          </button>
+          {/* DOWN — block */}
+          <button
+            onTouchStart={(e) => { e.preventDefault(); touchPress('s'); }}
+            onTouchEnd={(e) => { e.preventDefault(); touchRelease('s'); }}
+            onTouchCancel={(e) => { e.preventDefault(); touchRelease('s'); }}
+            style={{ ...dpadBtnStyle('var(--neon-pink)'), bottom: 0, left: '50%', transform: 'translateX(-50%)' }}>
+            <span style={{ fontSize: '8px' }}>BLK</span>
+          </button>
+        </div>
+
+        {/* Action buttons */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', flexShrink: 0 }}>
+          {([
+            { label: 'P', key: 'f', color: '#ff2d75' },
+            { label: 'K', key: 'g', color: '#00e5ff' },
+            { label: 'SP', key: 'h', color: '#ffd60a' },
+            { label: 'ULT', key: 'v', color: '#b026ff' },
+          ] as const).map(({ label, key, color }) => (
+            <button
+              key={label}
+              onTouchStart={(e) => { e.preventDefault(); touchPress(key); }}
+              onTouchEnd={(e) => { e.preventDefault(); touchRelease(key); }}
+              onTouchCancel={(e) => { e.preventDefault(); touchRelease(key); }}
+              style={{
+                width: '62px', height: '62px',
+                background: `${color}1a`,
+                border: `3px solid ${color}70`,
+                color,
+                fontFamily: 'var(--pixel)',
+                fontSize: '9px',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                cursor: 'pointer',
+                WebkitTapHighlightColor: 'transparent',
+                userSelect: 'none',
+                touchAction: 'none',
+                outline: 'none',
+              }}>
+              {label}
+            </button>
+          ))}
         </div>
       </div>
     </div>

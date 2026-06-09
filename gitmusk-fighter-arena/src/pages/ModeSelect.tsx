@@ -9,7 +9,7 @@ import { usePresence } from '../hooks/usePresence';
 import { supabase } from '../lib/supabase';
 
 
-/* ─── ModeSelect ──────────────────────────────────────────── */
+/* ─── ModeSelect ─────────────────────────────────────────────────── */
 
 export function ModeSelect() {
   const {
