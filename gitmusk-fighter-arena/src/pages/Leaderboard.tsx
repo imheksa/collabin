@@ -278,6 +278,7 @@ export function Leaderboard() {
       displayName: e.displayName,
       avatarUrl: e.avatarUrl,
       seasonWins: e.seasonWins,
+      seasonPvpWins: e.seasonPvpWins,
       wins: e.wins,
       losses: e.losses,
       archetype: e.archetypeLabel,
@@ -588,7 +589,7 @@ export function Leaderboard() {
                           </div>
                           <div className="text-right flex-shrink-0 flex items-center gap-3">
                             <div style={{ fontFamily: 'var(--pixel)', fontSize: '9px', color: 'var(--neon-grn)' }}>
-                              {sortMode === 'pvp' ? r.losses : r.seasonWins}W
+                              {sortMode === 'pvp' ? r.seasonPvpWins : r.seasonWins}W
                             </div>
                             <div style={{ fontFamily: 'var(--pixel)', fontSize: '9px', color: 'var(--neon-pink)' }}>{r.losses}L</div>
                             <div style={{ fontFamily: 'var(--pixel)', fontSize: '9px', color: winRate >= 60 ? 'var(--neon-grn)' : winRate >= 40 ? 'var(--neon-yel)' : 'var(--neon-pink)' }}>
