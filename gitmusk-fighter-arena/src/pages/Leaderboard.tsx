@@ -137,6 +137,7 @@ export function Leaderboard() {
   const [sortMode, setSortMode] = useState<'wins' | 'pvp'>('wins');
   const [viewMode, setViewMode] = useState<'current' | 'last'>('current');
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const loadData = useCallback(async (sort: 'wins' | 'pvp' = sortMode, refresh = false) => {
     setLoading(true);
@@ -163,8 +164,6 @@ export function Leaderboard() {
   const { entries, isLive } = useMemo<{ entries: EntryRow[]; isLive: boolean }>(() => {
     const localStats = getAllLocalStats();
 
-    // If Supabase is configured but leaderboard is empty (e.g. new season just started),
-    // show live empty state instead of misleading demo data.
     if (cloudResult?.configured && cloudResult.entries.length === 0) {
       return { entries: [], isLive: true };
     }
@@ -208,19 +207,16 @@ export function Leaderboard() {
         }
       }
 
-      // Only include players with season activity; show empty state if nobody has played yet
+      // Show empty state only if nobody has any season activity at all
       const hasActivity = sortMode === 'pvp'
         ? rows.some(r => r.seasonPvpWins > 0)
         : rows.some(r => r.seasonWins > 0);
       if (!hasActivity) return { entries: [], isLive: true };
 
-      const active = sortMode === 'pvp'
-        ? rows.filter(r => r.seasonPvpWins > 0)
-        : rows.filter(r => r.seasonWins > 0);
-
+      // Show ALL players sorted by season wins (including those with 0)
       const sorted = sortMode === 'pvp'
-        ? active.sort((a, b) => b.seasonPvpWins - a.seasonPvpWins || b.seasonWins - a.seasonWins)
-        : active.sort((a, b) => b.seasonWins - a.seasonWins || b.wins - a.wins);
+        ? [...rows].sort((a, b) => b.seasonPvpWins - a.seasonPvpWins || b.seasonWins - a.seasonWins)
+        : [...rows].sort((a, b) => b.seasonWins - a.seasonWins || b.wins - a.wins);
       return { entries: sorted.slice(0, 10), isLive: true };
     }
 
@@ -273,6 +269,29 @@ export function Leaderboard() {
     };
   }, [cloudResult, player1, sortMode]);
 
+  // All ranked players for search (from API, sorted by season wins)
+  const allRanked = useMemo(() => {
+    if (!cloudResult?.configured || cloudResult.entries.length === 0) return [];
+    return cloudResult.entries.map((e, idx) => ({
+      rank: idx + 1,
+      username: e.username,
+      displayName: e.displayName,
+      avatarUrl: e.avatarUrl,
+      seasonWins: e.seasonWins,
+      wins: e.wins,
+      losses: e.losses,
+      archetype: e.archetypeLabel,
+      color: e.color,
+      power: e.basePower,
+      level: e.level,
+      badges: e.badges,
+    }));
+  }, [cloudResult]);
+
+  const searchResults = searchQuery.trim().length >= 2
+    ? allRanked.filter(r => r.username.toLowerCase().includes(searchQuery.toLowerCase()))
+    : [];
+
   const myUsername = player1?.profile.username;
   const myRank = entries.findIndex(e => e.username === myUsername) + 1;
 
@@ -319,7 +338,6 @@ export function Leaderboard() {
           <div style={{ fontFamily: 'var(--pixel)', fontSize: '24px', color: 'var(--neon-yel)', textShadow: '3px 3px 0 var(--neon-pink), 6px 6px 0 var(--void)' }}>
             GLOBAL RANKINGS
           </div>
-          {/* Info: refresh cadence + season duration */}
           <div className="flex items-center justify-center gap-3 mt-2 flex-wrap">
             <div style={{ fontFamily: 'var(--mono)', fontSize: '10px', color: 'var(--txt-dim)' }}>
               ↻ auto-refresh every 1h
@@ -342,7 +360,7 @@ export function Leaderboard() {
               YOUR RANK: #{myRank}
             </div>
           )}
-          {/* Sort tabs */}
+          {/* Filter tabs: sort + season */}
           <div className="flex gap-2 justify-center mt-3 flex-wrap">
             <button onClick={() => handleSortChange('wins')} style={{
               fontFamily: 'var(--pixel)', fontSize: '8px', padding: '4px 14px', cursor: 'pointer',
@@ -461,61 +479,136 @@ export function Leaderboard() {
             </div>
 
             {/* Ranks 4-10 */}
-            <div className="g-panel dark mb-4" style={{ padding: '0' }}>
-              {rest.map((e, i) => {
-                const rank = i + 3;
-                const isMe = e.username === myUsername;
-                const winRate = e.wins + e.losses > 0 ? Math.round((e.wins / (e.wins + e.losses)) * 100) : 0;
-                return (
-                  <div key={e.username}
-                    className="flex items-center gap-3 px-4 py-3"
-                    style={{
-                      background: isMe ? 'rgba(255,214,10,.06)' : 'transparent',
-                      borderLeft: isMe ? '4px solid var(--neon-yel)' : '4px solid transparent',
-                      borderBottom: '2px solid var(--panel-line)',
-                    }}>
-                    <div style={{ fontFamily: 'var(--pixel)', fontSize: '8px', color: RANK_COLORS[rank], width: '36px', textAlign: 'center', flexShrink: 0 }}>
-                      {RANK_LABELS[rank]}
-                    </div>
-                    <div className="w-8 h-8 overflow-hidden flex-shrink-0" style={{ border: `2px solid ${e.color}`, boxShadow: `0 0 6px ${e.color}60` }}>
-                      <img src={e.avatarUrl} className="w-full h-full object-cover"
-                        onError={ev => { (ev.target as HTMLImageElement).src = `https://api.dicebear.com/7.x/pixel-art/svg?seed=${e.username}`; }} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <span style={{ fontFamily: 'var(--pixel)', fontSize: '8px', color: isMe ? 'var(--neon-yel)' : '#fff' }}>
-                          @{e.username.slice(0, 10)}{isMe ? ' ★' : ''}
-                        </span>
-                        {e.badges.slice(0, 2).map(b => <BadgeChip key={b} badge={b} />)}
+            {rest.length > 0 && (
+              <div className="g-panel dark mb-4" style={{ padding: '0' }}>
+                {rest.map((e, i) => {
+                  const rank = i + 3;
+                  const isMe = e.username === myUsername;
+                  const winRate = e.wins + e.losses > 0 ? Math.round((e.wins / (e.wins + e.losses)) * 100) : 0;
+                  return (
+                    <div key={e.username}
+                      className="flex items-center gap-3 px-4 py-3"
+                      style={{
+                        background: isMe ? 'rgba(255,214,10,.06)' : 'transparent',
+                        borderLeft: isMe ? '4px solid var(--neon-yel)' : '4px solid transparent',
+                        borderBottom: '2px solid var(--panel-line)',
+                      }}>
+                      <div style={{ fontFamily: 'var(--pixel)', fontSize: '8px', color: RANK_COLORS[rank], width: '36px', textAlign: 'center', flexShrink: 0 }}>
+                        {RANK_LABELS[rank]}
                       </div>
-                      <div style={{ fontFamily: 'var(--pixel)', fontSize: '6px', color: e.color }}>
-                        {e.archetype.toUpperCase().slice(0, 12)} · PWR {e.power}{isLive ? ` · LV${e.level}` : ''}
+                      <div className="w-8 h-8 overflow-hidden flex-shrink-0" style={{ border: `2px solid ${e.color}`, boxShadow: `0 0 6px ${e.color}60` }}>
+                        <img src={e.avatarUrl} className="w-full h-full object-cover"
+                          onError={ev => { (ev.target as HTMLImageElement).src = `https://api.dicebear.com/7.x/pixel-art/svg?seed=${e.username}`; }} />
                       </div>
-                    </div>
-                    <div className="text-right flex-shrink-0 flex items-center gap-3">
-                      {isLive ? (
-                        <div style={{ fontFamily: 'var(--pixel)', fontSize: '9px', color: 'var(--neon-grn)' }}>
-                          {sortMode === 'pvp' ? e.seasonPvpWins : e.seasonWins}W
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span style={{ fontFamily: 'var(--pixel)', fontSize: '8px', color: isMe ? 'var(--neon-yel)' : '#fff' }}>
+                            @{e.username.slice(0, 10)}{isMe ? ' ★' : ''}
+                          </span>
+                          {e.badges.slice(0, 2).map(b => <BadgeChip key={b} badge={b} />)}
                         </div>
-                      ) : (
-                        <div style={{ fontFamily: 'var(--pixel)', fontSize: '9px', color: 'var(--neon-grn)' }}>{e.wins}W</div>
-                      )}
-                      <div style={{ fontFamily: 'var(--pixel)', fontSize: '9px', color: 'var(--neon-pink)' }}>{e.losses}L</div>
-                      <div style={{ fontFamily: 'var(--pixel)', fontSize: '9px', color: winRate >= 60 ? 'var(--neon-grn)' : winRate >= 40 ? 'var(--neon-yel)' : 'var(--neon-pink)' }}>
-                        {winRate}%
+                        <div style={{ fontFamily: 'var(--pixel)', fontSize: '6px', color: e.color }}>
+                          {e.archetype.toUpperCase().slice(0, 12)} · PWR {e.power}{isLive ? ` · LV${e.level}` : ''}
+                        </div>
+                      </div>
+                      <div className="text-right flex-shrink-0 flex items-center gap-3">
+                        {isLive ? (
+                          <div style={{ fontFamily: 'var(--pixel)', fontSize: '9px', color: 'var(--neon-grn)' }}>
+                            {sortMode === 'pvp' ? e.seasonPvpWins : e.seasonWins}W
+                          </div>
+                        ) : (
+                          <div style={{ fontFamily: 'var(--pixel)', fontSize: '9px', color: 'var(--neon-grn)' }}>{e.wins}W</div>
+                        )}
+                        <div style={{ fontFamily: 'var(--pixel)', fontSize: '9px', color: 'var(--neon-pink)' }}>{e.losses}L</div>
+                        <div style={{ fontFamily: 'var(--pixel)', fontSize: '9px', color: winRate >= 60 ? 'var(--neon-grn)' : winRate >= 40 ? 'var(--neon-yel)' : 'var(--neon-pink)' }}>
+                          {winRate}%
+                        </div>
                       </div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            )}
           </>
+        )}
+
+        {/* Player search */}
+        {isLive && viewMode === 'current' && (
+          <div className="mb-4">
+            <div style={{ fontFamily: 'var(--pixel)', fontSize: '7px', color: 'var(--txt-dim)', marginBottom: '8px', letterSpacing: '.1em' }}>
+              🔍 FIND PLAYER
+            </div>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              placeholder="Search by username..."
+              style={{
+                width: '100%', fontFamily: 'var(--mono)', fontSize: '12px',
+                padding: '8px 12px', background: 'rgba(255,255,255,.04)',
+                border: '2px solid var(--panel-line)', color: '#fff',
+                outline: 'none', boxSizing: 'border-box',
+              }}
+            />
+            {searchQuery.trim().length >= 2 && (
+              <div className="mt-2">
+                {searchResults.length === 0 ? (
+                  <div style={{ fontFamily: 'var(--pixel)', fontSize: '7px', color: 'var(--txt-dim)', padding: '12px', textAlign: 'center' }}>
+                    NO PLAYER FOUND
+                  </div>
+                ) : (
+                  <div className="g-panel dark" style={{ padding: '0' }}>
+                    {searchResults.map(r => {
+                      const isMe = r.username === myUsername;
+                      const winRate = r.wins + r.losses > 0 ? Math.round((r.wins / (r.wins + r.losses)) * 100) : 0;
+                      return (
+                        <div key={r.username} className="flex items-center gap-3 px-4 py-3"
+                          style={{
+                            background: isMe ? 'rgba(255,214,10,.06)' : 'transparent',
+                            borderLeft: isMe ? '4px solid var(--neon-yel)' : '4px solid transparent',
+                            borderBottom: '2px solid var(--panel-line)',
+                          }}>
+                          <div style={{ fontFamily: 'var(--pixel)', fontSize: '8px', color: r.rank <= 10 ? RANK_COLORS[r.rank - 1] : 'var(--txt-dim)', width: '40px', textAlign: 'center', flexShrink: 0 }}>
+                            #{r.rank}
+                          </div>
+                          <div className="w-8 h-8 overflow-hidden flex-shrink-0" style={{ border: `2px solid ${r.color}` }}>
+                            <img src={r.avatarUrl} className="w-full h-full object-cover"
+                              onError={ev => { (ev.target as HTMLImageElement).src = `https://api.dicebear.com/7.x/pixel-art/svg?seed=${r.username}`; }} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span style={{ fontFamily: 'var(--pixel)', fontSize: '8px', color: isMe ? 'var(--neon-yel)' : '#fff' }}>
+                                @{r.username}{isMe ? ' ★' : ''}
+                              </span>
+                              {r.badges.slice(0, 2).map(b => <BadgeChip key={b} badge={b} />)}
+                            </div>
+                            <div style={{ fontFamily: 'var(--pixel)', fontSize: '6px', color: r.color }}>
+                              {r.archetype.toUpperCase().slice(0, 12)} · PWR {r.power} · LV{r.level}
+                            </div>
+                          </div>
+                          <div className="text-right flex-shrink-0 flex items-center gap-3">
+                            <div style={{ fontFamily: 'var(--pixel)', fontSize: '9px', color: 'var(--neon-grn)' }}>
+                              {sortMode === 'pvp' ? r.losses : r.seasonWins}W
+                            </div>
+                            <div style={{ fontFamily: 'var(--pixel)', fontSize: '9px', color: 'var(--neon-pink)' }}>{r.losses}L</div>
+                            <div style={{ fontFamily: 'var(--pixel)', fontSize: '9px', color: winRate >= 60 ? 'var(--neon-grn)' : winRate >= 40 ? 'var(--neon-yel)' : 'var(--neon-pink)' }}>
+                              {winRate}%
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         )}
 
         {/* Bottom nav */}
         <div className="flex gap-3">
           {player1 && (
-            <button onClick={() => setScreen('mode_select')} className="g-btn full" style={{ fontSize: '11px' }}>▶ PLAY NOW</button>
+            <button onClick={() => { setAutoMatchmake(true); setScreen('mode_select'); }} className="g-btn full" style={{ fontSize: '11px' }}>▶ PLAY NOW</button>
           )}
           <button onClick={() => setScreen(player1 ? 'mode_select' : 'landing')} className="g-btn ghost sm">← BACK</button>
         </div>
