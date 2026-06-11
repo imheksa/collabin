@@ -30,6 +30,9 @@ export interface PlayerProfile {
   seasonLosses: number;
   seasonPvpWins: number;
   badges: string[];
+  // Daily XP cap tracking
+  dailyXpGained: number;
+  dailyXpDate: string;
 }
 
 export interface CombatModifiers {
@@ -79,11 +82,11 @@ export function getLevelTier(level: number): LevelTier {
 }
 
 // ─── XP / Level formulas ─────────────────────────────────────────────────────
-// XP to go from level N → N+1 = 150 * N
-// Total cumulative XP to reach level N = 75 * N * (N - 1)
+// XP to go from level N → N+1 = 240 * N
+// Total cumulative XP to reach level N = 120 * N * (N - 1)
 
 export function xpForLevel(level: number): number {
-  return 75 * level * (level - 1);
+  return 120 * level * (level - 1);
 }
 
 export function levelFromXp(xp: number): number {
@@ -102,11 +105,32 @@ export function xpNeededForNextLevel(level: number): number {
   return xpForLevel(level + 1) - xpForLevel(level);
 }
 
-// ─── XP reward per match ─────────────────────────────────────────────────────
+// ─── Daily XP cap ────────────────────────────────────────────────────────────
+export const DAILY_XP_CAP = 500;
 
-export function calcMatchXp(won: boolean, maxCombo: number, durationSec: number): number {
-  let xp = 15;                               // base: just for playing
-  xp += won ? 100 : 25;                      // win / loss bonus
+// ─── Level-based XP tiers ────────────────────────────────────────────────────
+// Win XP and loss XP increase every 5 levels to reward higher-level play.
+function getLevelXpTier(level: number): { winXp: number; lossXp: number } {
+  if (level <= 5)  return { winXp: 25, lossXp: -10 };
+  if (level <= 10) return { winXp: 30, lossXp: -12 };
+  if (level <= 15) return { winXp: 35, lossXp: -14 };
+  if (level <= 20) return { winXp: 40, lossXp: -16 };
+  if (level <= 25) return { winXp: 45, lossXp: -18 };
+  if (level <= 30) return { winXp: 50, lossXp: -20 };
+  if (level <= 35) return { winXp: 55, lossXp: -22 };
+  if (level <= 40) return { winXp: 60, lossXp: -24 };
+  if (level <= 45) return { winXp: 65, lossXp: -26 };
+  return { winXp: 70, lossXp: -28 };
+}
+
+// ─── XP reward per match ─────────────────────────────────────────────────────
+// Win: level-based base + combo bonus + duration bonus (multiplied by xpMult)
+// Loss: level-based penalty (flat, bypasses daily cap and xpMult)
+
+export function calcMatchXp(won: boolean, maxCombo: number, durationSec: number, level = 1): number {
+  const tier = getLevelXpTier(level);
+  if (!won) return tier.lossXp;
+  let xp = tier.winXp;
   xp += maxCombo * 5;                        // combo mastery
   xp += Math.floor(durationSec / 10) * 2;   // longer fights → more XP
   return xp;
@@ -228,10 +252,12 @@ export function getProfile(username: string): PlayerProfile {
       if (p.seasonLosses === undefined) p.seasonLosses = 0;
       if (p.seasonPvpWins === undefined) p.seasonPvpWins = 0;
       if (!p.badges) p.badges = [];
+      if (p.dailyXpGained === undefined) p.dailyXpGained = 0;
+      if (!p.dailyXpDate) p.dailyXpDate = '';
       return p;
     }
   } catch { /* blocked */ }
-  return { username, xp: 0, level: 1, wins: 0, losses: 0, pvpWins: 0, maxCombo: 0, winStreak: 0, lossStreak: 0, maxWinStreak: 0, achievements: [], matchHistory: [], currentSeason: 1, seasonWins: 0, seasonLosses: 0, seasonPvpWins: 0, badges: [] };
+  return { username, xp: 0, level: 1, wins: 0, losses: 0, pvpWins: 0, maxCombo: 0, winStreak: 0, lossStreak: 0, maxWinStreak: 0, achievements: [], matchHistory: [], currentSeason: 1, seasonWins: 0, seasonLosses: 0, seasonPvpWins: 0, badges: [], dailyXpGained: 0, dailyXpDate: '' };
 }
 
 export function saveProfile(p: PlayerProfile): void {
@@ -318,12 +344,29 @@ export function recordMatch(
     profile.currentSeason = currentSeason ?? 1;
   }
 
-  const mods = getCombatModifiers(profile);
-  const baseXp = calcMatchXp(won, maxCombo, durationSec);
-  const xpGained = Math.round(baseXp * mods.xpMult);
-  const oldLevel = profile.level;
+  // Reset daily XP counter if it's a new day
+  const today = new Date().toISOString().slice(0, 10);
+  if (profile.dailyXpDate !== today) {
+    profile.dailyXpDate = today;
+    profile.dailyXpGained = 0;
+  }
 
-  profile.xp += xpGained;
+  const mods = getCombatModifiers(profile);
+  const baseXp = calcMatchXp(won, maxCombo, durationSec, profile.level);
+  let xpGained: number;
+  if (!won) {
+    // Loss: flat penalty, always applies (bypasses daily cap)
+    xpGained = baseXp;
+  } else {
+    // Win: apply xpMult, then cap to remaining daily allowance
+    const raw = Math.round(baseXp * mods.xpMult);
+    const remaining = Math.max(0, DAILY_XP_CAP - (profile.dailyXpGained ?? 0));
+    xpGained = Math.min(raw, remaining);
+    profile.dailyXpGained = (profile.dailyXpGained ?? 0) + xpGained;
+  }
+
+  const oldLevel = profile.level;
+  profile.xp = Math.max(0, profile.xp + xpGained);
   profile.level = levelFromXp(profile.xp);
 
   if (won) {
