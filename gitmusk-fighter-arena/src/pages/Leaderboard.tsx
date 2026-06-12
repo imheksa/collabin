@@ -58,6 +58,8 @@ interface EntryRow {
   mmr: number;
 }
 
+type ViewMode = 'wins' | 'pvp' | 'mmr' | 'last';
+
 const AUTO_REFRESH_MS = 60 * 60 * 1000; // 1 hour
 
 const LAST_SEASON_COLORS = ['#ffd60a', '#c0c0c0', '#cd7f32'];
@@ -135,34 +137,39 @@ export function Leaderboard() {
   const [cloudResult, setCloudResult] = useState<LeaderboardResult | null>(null);
   const [seasonInfo, setSeasonInfo] = useState<SeasonInfo | null>(null);
   const [loading, setLoading] = useState(true);
-  const [sortMode, setSortMode] = useState<'wins' | 'pvp' | 'mmr'>('wins');
-  const [viewMode, setViewMode] = useState<'current' | 'last'>('current');
+  const [mode, setMode] = useState<ViewMode>('wins');
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
-  const loadData = useCallback(async (sort: 'wins' | 'pvp' | 'mmr' = sortMode, refresh = false) => {
+  // 'last' archive view doesn't change API sort — use 'wins' as default fetch
+  const apiSort = (m: ViewMode): 'wins' | 'pvp' | 'mmr' =>
+    m === 'last' ? 'wins' : m;
+
+  const loadData = useCallback(async (m: ViewMode = mode, refresh = false) => {
     setLoading(true);
-    const [result, season] = await Promise.all([fetchLeaderboard(sort), fetchSeasonInfo(refresh)]);
+    const [result, season] = await Promise.all([fetchLeaderboard(apiSort(m)), fetchSeasonInfo(refresh)]);
     setCloudResult(result);
     setSeasonInfo(season);
     setLastUpdated(new Date());
     setLoading(false);
-  }, [sortMode]);
+  }, [mode]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
   // Auto-refresh every hour
   useEffect(() => {
-    const id = setInterval(() => loadData(sortMode, true), AUTO_REFRESH_MS);
+    const id = setInterval(() => loadData(mode, true), AUTO_REFRESH_MS);
     return () => clearInterval(id);
-  }, [loadData, sortMode]);
+  }, [loadData, mode]);
 
-  const handleSortChange = (mode: 'wins' | 'pvp' | 'mmr') => {
-    setSortMode(mode);
-    loadData(mode);
+  const handleModeChange = (m: ViewMode) => {
+    setMode(m);
+    loadData(m);
   };
 
   const { entries, isLive } = useMemo<{ entries: EntryRow[]; isLive: boolean }>(() => {
+    if (mode === 'last') return { entries: [], isLive: true };
+
     const localStats = getAllLocalStats();
 
     if (cloudResult?.configured && cloudResult.entries.length === 0) {
@@ -210,17 +217,16 @@ export function Leaderboard() {
         }
       }
 
-      // Show empty state only if nobody has any season activity at all
-      const hasActivity = sortMode === 'pvp'
+      const hasActivity = mode === 'pvp'
         ? rows.some(r => r.seasonPvpWins > 0)
-        : sortMode === 'mmr'
+        : mode === 'mmr'
         ? rows.some(r => r.mmr !== 500)
         : rows.some(r => r.seasonWins > 0);
       if (!hasActivity) return { entries: [], isLive: true };
 
-      const sorted = sortMode === 'pvp'
+      const sorted = mode === 'pvp'
         ? [...rows].sort((a, b) => b.seasonPvpWins - a.seasonPvpWins || b.seasonWins - a.seasonWins)
-        : sortMode === 'mmr'
+        : mode === 'mmr'
         ? [...rows].sort((a, b) => b.mmr - a.mmr || b.wins - a.wins)
         : [...rows].sort((a, b) => b.seasonWins - a.seasonWins || b.wins - a.wins);
       return { entries: sorted.slice(0, 10), isLive: true };
@@ -275,9 +281,9 @@ export function Leaderboard() {
       entries: rows.sort((a, b) => b.wins - a.wins || b.power - a.power).slice(0, 10),
       isLive: false,
     };
-  }, [cloudResult, player1, sortMode]);
+  }, [cloudResult, player1, mode]);
 
-  // All ranked players for search (from API, sorted by season wins)
+  // All ranked players for search
   const allRanked = useMemo(() => {
     if (!cloudResult?.configured || cloudResult.entries.length === 0) return [];
     return cloudResult.entries.map((e, idx) => ({
@@ -307,6 +313,14 @@ export function Leaderboard() {
   const top3 = entries.slice(0, 3);
   const rest = entries.slice(3);
 
+  // Tab config: each tab is one exclusive mode
+  const tabs: { key: ViewMode; label: string; color: string; bg: string; onlyWhenConfigured?: boolean }[] = [
+    { key: 'wins', label: '★ SEASON WINS', color: 'var(--neon-p)',   bg: 'rgba(176,38,255,.2)' },
+    { key: 'pvp',  label: '⚔ P2P WINS',    color: '#00ccff',         bg: 'rgba(0,204,255,.2)'  },
+    { key: 'mmr',  label: '◈ MMR',          color: 'var(--neon-yel)', bg: 'rgba(255,214,10,.2)' },
+    { key: 'last', label: `🏆 S${(seasonInfo?.season ?? 2) - 1} ARCHIVE`, color: '#c0c0c0', bg: 'rgba(192,192,192,.12)', onlyWhenConfigured: true },
+  ];
+
   return (
     <div className="gscreen flex flex-col items-center p-4 py-8">
       <div className="w-full max-w-2xl">
@@ -326,7 +340,7 @@ export function Leaderboard() {
                 }}>
                   {isLive ? '● LIVE' : '○ DEMO'}
                 </div>
-                <button onClick={() => loadData(sortMode, true)} style={{
+                <button onClick={() => loadData(mode, true)} style={{
                   fontFamily: 'var(--pixel)', fontSize: '8px', padding: '6px 10px',
                   background: 'var(--void)', border: '2px solid var(--neon-b)',
                   color: 'var(--neon-b)', cursor: 'pointer', lineHeight: 1,
@@ -347,78 +361,61 @@ export function Leaderboard() {
           <div style={{ fontFamily: 'var(--pixel)', fontSize: '24px', color: 'var(--neon-yel)', textShadow: '3px 3px 0 var(--neon-pink), 6px 6px 0 var(--void)' }}>
             GLOBAL RANKINGS
           </div>
+
+          {/* Meta info */}
           <div className="flex items-center justify-center gap-3 mt-2 flex-wrap">
             <div style={{ fontFamily: 'var(--mono)', fontSize: '10px', color: 'var(--txt-dim)' }}>
               ↻ auto-refresh every 1h
             </div>
             <div style={{ width: '1px', height: '10px', background: 'var(--panel-line)' }} />
-            <div style={{ fontFamily: 'var(--mono)', fontSize: '10px', color: 'var(--txt-dim)' }}>
-              📅 1 season = 30 days
-            </div>
-            {lastUpdated && (
+            {seasonInfo?.configured && (
               <>
-                <div style={{ width: '1px', height: '10px', background: 'var(--panel-line)' }} />
                 <div style={{ fontFamily: 'var(--mono)', fontSize: '10px', color: 'var(--txt-dim)' }}>
-                  updated {lastUpdated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  ◆ Season {seasonInfo.season}{seasonInfo.daysLeft > 0 ? ` · ${seasonInfo.daysLeft}d left` : ''}
                 </div>
+                <div style={{ width: '1px', height: '10px', background: 'var(--panel-line)' }} />
               </>
             )}
+            {lastUpdated && (
+              <div style={{ fontFamily: 'var(--mono)', fontSize: '10px', color: 'var(--txt-dim)' }}>
+                updated {lastUpdated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </div>
+            )}
           </div>
+
           {myRank > 0 && (
             <div className="mt-2" style={{ fontFamily: 'var(--pixel)', fontSize: '9px', color: 'var(--neon-grn)' }}>
               YOUR RANK: #{myRank}
             </div>
           )}
-          {/* Filter tabs: two distinct groups */}
-          <div className="flex flex-col items-center gap-2 mt-3">
-            {/* Group 1: RANK BY (sort mode) */}
-            <div className="flex items-center gap-2 flex-wrap justify-center">
-              <span style={{ fontFamily: 'var(--pixel)', fontSize: '6px', color: 'var(--txt-dim)', letterSpacing: '.1em', opacity: viewMode === 'last' ? 0.4 : 1 }}>
-                RANK BY
-              </span>
-              <button onClick={() => { setViewMode('current'); handleSortChange('wins'); }} disabled={viewMode === 'last'} style={{
-                fontFamily: 'var(--pixel)', fontSize: '8px', padding: '4px 14px', cursor: viewMode === 'last' ? 'default' : 'pointer',
-                background: sortMode === 'wins' && viewMode !== 'last' ? 'rgba(176,38,255,.2)' : 'transparent',
-                border: `2px solid ${sortMode === 'wins' && viewMode !== 'last' ? 'var(--neon-p)' : 'var(--panel-line)'}`,
-                color: sortMode === 'wins' && viewMode !== 'last' ? 'var(--neon-p)' : 'var(--txt-dim)',
-                opacity: viewMode === 'last' ? 0.4 : 1,
-              }}>★ ALL WINS</button>
-              <button onClick={() => { setViewMode('current'); handleSortChange('pvp'); }} disabled={viewMode === 'last'} style={{
-                fontFamily: 'var(--pixel)', fontSize: '8px', padding: '4px 14px', cursor: viewMode === 'last' ? 'default' : 'pointer',
-                background: sortMode === 'pvp' && viewMode !== 'last' ? 'rgba(0,204,255,.2)' : 'transparent',
-                border: `2px solid ${sortMode === 'pvp' && viewMode !== 'last' ? '#00ccff' : 'var(--panel-line)'}`,
-                color: sortMode === 'pvp' && viewMode !== 'last' ? '#00ccff' : 'var(--txt-dim)',
-                opacity: viewMode === 'last' ? 0.4 : 1,
-              }}>⚔ P2P WINS</button>
-              <button onClick={() => { setViewMode('current'); handleSortChange('mmr'); }} disabled={viewMode === 'last'} style={{
-                fontFamily: 'var(--pixel)', fontSize: '8px', padding: '4px 14px', cursor: viewMode === 'last' ? 'default' : 'pointer',
-                background: sortMode === 'mmr' && viewMode !== 'last' ? 'rgba(255,214,10,.2)' : 'transparent',
-                border: `2px solid ${sortMode === 'mmr' && viewMode !== 'last' ? 'var(--neon-yel)' : 'var(--panel-line)'}`,
-                color: sortMode === 'mmr' && viewMode !== 'last' ? 'var(--neon-yel)' : 'var(--txt-dim)',
-                opacity: viewMode === 'last' ? 0.4 : 1,
-              }}>◈ MMR</button>
-            </div>
 
-            {/* Group 2: SEASON view (only when configured) */}
-            {seasonInfo?.configured && (
-              <div className="flex items-center gap-2 flex-wrap justify-center">
-                <span style={{ fontFamily: 'var(--pixel)', fontSize: '6px', color: 'var(--txt-dim)', letterSpacing: '.1em' }}>
-                  SEASON
-                </span>
-                <button onClick={() => setViewMode('current')} style={{
-                  fontFamily: 'var(--pixel)', fontSize: '8px', padding: '4px 14px', cursor: 'pointer',
-                  background: viewMode === 'current' ? 'rgba(0,229,255,.12)' : 'transparent',
-                  border: `2px solid ${viewMode === 'current' ? 'var(--neon-b)' : 'var(--panel-line)'}`,
-                  color: viewMode === 'current' ? 'var(--neon-b)' : 'var(--txt-dim)',
-                }}>◆ S{seasonInfo.season}{seasonInfo.daysLeft > 0 ? ` · ${seasonInfo.daysLeft}d` : ''}</button>
-                <button onClick={() => setViewMode('last')} style={{
-                  fontFamily: 'var(--pixel)', fontSize: '8px', padding: '4px 14px', cursor: 'pointer',
-                  background: viewMode === 'last' ? 'rgba(192,192,192,.12)' : 'transparent',
-                  border: `2px solid ${viewMode === 'last' ? '#c0c0c0' : 'var(--panel-line)'}`,
-                  color: viewMode === 'last' ? '#c0c0c0' : 'var(--txt-dim)',
-                }}>🏆 S{seasonInfo.season - 1}</button>
-              </div>
-            )}
+          {/* Single row of mutually exclusive tabs */}
+          <div className="flex gap-2 justify-center mt-4 flex-wrap">
+            {tabs.map((tab, i) => {
+              if (tab.onlyWhenConfigured && !seasonInfo?.configured) return null;
+              const isActive = mode === tab.key;
+              // Visual separator before the archive tab
+              const needsSep = tab.key === 'last' && tabs.slice(0, i).some(t => !t.onlyWhenConfigured || seasonInfo?.configured);
+              return (
+                <div key={tab.key} className="flex items-center gap-2">
+                  {needsSep && (
+                    <div style={{ width: '1px', height: '20px', background: 'var(--panel-line)', margin: '0 2px' }} />
+                  )}
+                  <button
+                    onClick={() => handleModeChange(tab.key)}
+                    style={{
+                      fontFamily: 'var(--pixel)', fontSize: '8px', padding: '5px 14px', cursor: 'pointer',
+                      background: isActive ? tab.bg : 'transparent',
+                      border: `2px solid ${isActive ? tab.color : 'var(--panel-line)'}`,
+                      color: isActive ? tab.color : 'var(--txt-dim)',
+                      transition: 'all .15s',
+                    }}
+                  >
+                    {tab.label}
+                  </button>
+                </div>
+              );
+            })}
           </div>
         </div>
 
@@ -433,7 +430,7 @@ export function Leaderboard() {
               ))}
             </div>
           </div>
-        ) : viewMode === 'last' ? (
+        ) : mode === 'last' ? (
           <LastSeasonView
             top3={seasonInfo?.lastSeasonTop3 ?? []}
             season={seasonInfo?.season ? seasonInfo.season - 1 : 0}
@@ -489,14 +486,14 @@ export function Leaderboard() {
                       </div>
                     )}
                     {isLive ? (
-                      sortMode === 'mmr' ? (
+                      mode === 'mmr' ? (
                         <div style={{ fontFamily: 'var(--pixel)', fontSize: '10px', color: 'var(--neon-yel)' }}>
                           {e.mmr}
                           <span style={{ fontSize: '6px', color: 'var(--txt-dim)', marginLeft: '3px' }}>MMR</span>
                         </div>
                       ) : (
                         <div style={{ fontFamily: 'var(--pixel)', fontSize: '10px', color: 'var(--neon-grn)' }}>
-                          {sortMode === 'pvp' ? e.seasonPvpWins : e.seasonWins}W
+                          {mode === 'pvp' ? e.seasonPvpWins : e.seasonWins}W
                           <span style={{ fontSize: '6px', color: 'var(--txt-dim)', marginLeft: '3px' }}>S{seasonInfo?.season ?? ''}</span>
                         </div>
                       )
@@ -549,13 +546,13 @@ export function Leaderboard() {
                         </div>
                       </div>
                       <div className="text-right flex-shrink-0 flex items-center gap-3">
-                        {isLive && sortMode === 'mmr' ? (
+                        {isLive && mode === 'mmr' ? (
                           <div style={{ fontFamily: 'var(--pixel)', fontSize: '9px', color: 'var(--neon-yel)' }}>
                             {e.mmr} <span style={{ fontSize: '6px', color: 'var(--txt-dim)' }}>MMR</span>
                           </div>
                         ) : isLive ? (
                           <div style={{ fontFamily: 'var(--pixel)', fontSize: '9px', color: 'var(--neon-grn)' }}>
-                            {sortMode === 'pvp' ? e.seasonPvpWins : e.seasonWins}W
+                            {mode === 'pvp' ? e.seasonPvpWins : e.seasonWins}W
                           </div>
                         ) : (
                           <div style={{ fontFamily: 'var(--pixel)', fontSize: '9px', color: 'var(--neon-grn)' }}>{e.wins}W</div>
@@ -573,8 +570,8 @@ export function Leaderboard() {
           </>
         )}
 
-        {/* Player search */}
-        {isLive && viewMode === 'current' && (
+        {/* Player search — only on current season views */}
+        {isLive && mode !== 'last' && (
           <div className="mb-4">
             <div style={{ fontFamily: 'var(--pixel)', fontSize: '7px', color: 'var(--txt-dim)', marginBottom: '8px', letterSpacing: '.1em' }}>
               🔍 FIND PLAYER
@@ -629,7 +626,7 @@ export function Leaderboard() {
                           </div>
                           <div className="text-right flex-shrink-0 flex items-center gap-3">
                             <div style={{ fontFamily: 'var(--pixel)', fontSize: '9px', color: 'var(--neon-grn)' }}>
-                              {sortMode === 'pvp' ? r.seasonPvpWins : r.seasonWins}W
+                              {mode === 'pvp' ? r.seasonPvpWins : r.seasonWins}W
                             </div>
                             <div style={{ fontFamily: 'var(--pixel)', fontSize: '9px', color: 'var(--neon-pink)' }}>{r.losses}L</div>
                             <div style={{ fontFamily: 'var(--pixel)', fontSize: '9px', color: winRate >= 60 ? 'var(--neon-grn)' : winRate >= 40 ? 'var(--neon-yel)' : 'var(--neon-pink)' }}>
