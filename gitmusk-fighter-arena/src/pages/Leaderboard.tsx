@@ -369,41 +369,56 @@ export function Leaderboard() {
               YOUR RANK: #{myRank}
             </div>
           )}
-          {/* Filter tabs: sort + season */}
-          <div className="flex gap-2 justify-center mt-3 flex-wrap">
-            <button onClick={() => handleSortChange('wins')} style={{
-              fontFamily: 'var(--pixel)', fontSize: '8px', padding: '4px 14px', cursor: 'pointer',
-              background: sortMode === 'wins' ? 'rgba(176,38,255,.2)' : 'transparent',
-              border: `2px solid ${sortMode === 'wins' ? 'var(--neon-p)' : 'var(--panel-line)'}`,
-              color: sortMode === 'wins' ? 'var(--neon-p)' : 'var(--txt-dim)',
-            }}>★ ALL WINS</button>
-            <button onClick={() => handleSortChange('pvp')} style={{
-              fontFamily: 'var(--pixel)', fontSize: '8px', padding: '4px 14px', cursor: 'pointer',
-              background: sortMode === 'pvp' ? 'rgba(0,204,255,.2)' : 'transparent',
-              border: `2px solid ${sortMode === 'pvp' ? '#00ccff' : 'var(--panel-line)'}`,
-              color: sortMode === 'pvp' ? '#00ccff' : 'var(--txt-dim)',
-            }}>⚔ P2P WINS</button>
-            <button onClick={() => handleSortChange('mmr')} style={{
-              fontFamily: 'var(--pixel)', fontSize: '8px', padding: '4px 14px', cursor: 'pointer',
-              background: sortMode === 'mmr' ? 'rgba(255,214,10,.2)' : 'transparent',
-              border: `2px solid ${sortMode === 'mmr' ? 'var(--neon-yel)' : 'var(--panel-line)'}`,
-              color: sortMode === 'mmr' ? 'var(--neon-yel)' : 'var(--txt-dim)',
-            }}>◈ MMR</button>
-            {seasonInfo?.configured && <>
-              <div style={{ width: '1px', background: 'var(--panel-line)', margin: '0 2px' }} />
-              <button onClick={() => setViewMode('current')} style={{
-                fontFamily: 'var(--pixel)', fontSize: '8px', padding: '4px 14px', cursor: 'pointer',
-                background: viewMode === 'current' ? 'rgba(255,214,10,.15)' : 'transparent',
-                border: `2px solid ${viewMode === 'current' ? 'var(--neon-yel)' : 'var(--panel-line)'}`,
-                color: viewMode === 'current' ? 'var(--neon-yel)' : 'var(--txt-dim)',
-              }}>◆ S{seasonInfo.season}{seasonInfo.daysLeft > 0 ? ` · ${seasonInfo.daysLeft}d` : ''}</button>
-              <button onClick={() => setViewMode('last')} style={{
-                fontFamily: 'var(--pixel)', fontSize: '8px', padding: '4px 14px', cursor: 'pointer',
-                background: viewMode === 'last' ? 'rgba(192,192,192,.12)' : 'transparent',
-                border: `2px solid ${viewMode === 'last' ? '#c0c0c0' : 'var(--panel-line)'}`,
-                color: viewMode === 'last' ? '#c0c0c0' : 'var(--txt-dim)',
-              }}>🏆 S{seasonInfo.season - 1}</button>
-            </>}
+          {/* Filter tabs: two distinct groups */}
+          <div className="flex flex-col items-center gap-2 mt-3">
+            {/* Group 1: RANK BY (sort mode) */}
+            <div className="flex items-center gap-2 flex-wrap justify-center">
+              <span style={{ fontFamily: 'var(--pixel)', fontSize: '6px', color: 'var(--txt-dim)', letterSpacing: '.1em', opacity: viewMode === 'last' ? 0.4 : 1 }}>
+                RANK BY
+              </span>
+              <button onClick={() => { setViewMode('current'); handleSortChange('wins'); }} disabled={viewMode === 'last'} style={{
+                fontFamily: 'var(--pixel)', fontSize: '8px', padding: '4px 14px', cursor: viewMode === 'last' ? 'default' : 'pointer',
+                background: sortMode === 'wins' && viewMode !== 'last' ? 'rgba(176,38,255,.2)' : 'transparent',
+                border: `2px solid ${sortMode === 'wins' && viewMode !== 'last' ? 'var(--neon-p)' : 'var(--panel-line)'}`,
+                color: sortMode === 'wins' && viewMode !== 'last' ? 'var(--neon-p)' : 'var(--txt-dim)',
+                opacity: viewMode === 'last' ? 0.4 : 1,
+              }}>★ ALL WINS</button>
+              <button onClick={() => { setViewMode('current'); handleSortChange('pvp'); }} disabled={viewMode === 'last'} style={{
+                fontFamily: 'var(--pixel)', fontSize: '8px', padding: '4px 14px', cursor: viewMode === 'last' ? 'default' : 'pointer',
+                background: sortMode === 'pvp' && viewMode !== 'last' ? 'rgba(0,204,255,.2)' : 'transparent',
+                border: `2px solid ${sortMode === 'pvp' && viewMode !== 'last' ? '#00ccff' : 'var(--panel-line)'}`,
+                color: sortMode === 'pvp' && viewMode !== 'last' ? '#00ccff' : 'var(--txt-dim)',
+                opacity: viewMode === 'last' ? 0.4 : 1,
+              }}>⚔ P2P WINS</button>
+              <button onClick={() => { setViewMode('current'); handleSortChange('mmr'); }} disabled={viewMode === 'last'} style={{
+                fontFamily: 'var(--pixel)', fontSize: '8px', padding: '4px 14px', cursor: viewMode === 'last' ? 'default' : 'pointer',
+                background: sortMode === 'mmr' && viewMode !== 'last' ? 'rgba(255,214,10,.2)' : 'transparent',
+                border: `2px solid ${sortMode === 'mmr' && viewMode !== 'last' ? 'var(--neon-yel)' : 'var(--panel-line)'}`,
+                color: sortMode === 'mmr' && viewMode !== 'last' ? 'var(--neon-yel)' : 'var(--txt-dim)',
+                opacity: viewMode === 'last' ? 0.4 : 1,
+              }}>◈ MMR</button>
+            </div>
+
+            {/* Group 2: SEASON view (only when configured) */}
+            {seasonInfo?.configured && (
+              <div className="flex items-center gap-2 flex-wrap justify-center">
+                <span style={{ fontFamily: 'var(--pixel)', fontSize: '6px', color: 'var(--txt-dim)', letterSpacing: '.1em' }}>
+                  SEASON
+                </span>
+                <button onClick={() => setViewMode('current')} style={{
+                  fontFamily: 'var(--pixel)', fontSize: '8px', padding: '4px 14px', cursor: 'pointer',
+                  background: viewMode === 'current' ? 'rgba(0,229,255,.12)' : 'transparent',
+                  border: `2px solid ${viewMode === 'current' ? 'var(--neon-b)' : 'var(--panel-line)'}`,
+                  color: viewMode === 'current' ? 'var(--neon-b)' : 'var(--txt-dim)',
+                }}>◆ S{seasonInfo.season}{seasonInfo.daysLeft > 0 ? ` · ${seasonInfo.daysLeft}d` : ''}</button>
+                <button onClick={() => setViewMode('last')} style={{
+                  fontFamily: 'var(--pixel)', fontSize: '8px', padding: '4px 14px', cursor: 'pointer',
+                  background: viewMode === 'last' ? 'rgba(192,192,192,.12)' : 'transparent',
+                  border: `2px solid ${viewMode === 'last' ? '#c0c0c0' : 'var(--panel-line)'}`,
+                  color: viewMode === 'last' ? '#c0c0c0' : 'var(--txt-dim)',
+                }}>🏆 S{seasonInfo.season - 1}</button>
+              </div>
+            )}
           </div>
         </div>
 
