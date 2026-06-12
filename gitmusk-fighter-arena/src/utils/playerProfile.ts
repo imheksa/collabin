@@ -33,6 +33,8 @@ export interface PlayerProfile {
   // Daily XP cap tracking
   dailyXpGained: number;
   dailyXpDate: string;
+  // MMR rating
+  mmr: number;
 }
 
 export interface CombatModifiers {
@@ -47,6 +49,8 @@ export interface MatchReward {
   oldLevel: number;
   newLevel: number;
   newAchievements: Achievement[];
+  mmrDelta: number;
+  newMmr: number;
 }
 
 export interface Achievement {
@@ -103,6 +107,16 @@ export function xpProgressInLevel(xp: number, level: number): number {
 
 export function xpNeededForNextLevel(level: number): number {
   return xpForLevel(level + 1) - xpForLevel(level);
+}
+
+// ─── MMR (Elo-style rating) ───────────────────────────────────────────────────
+export const MMR_DEFAULT = 500;
+
+function calcMmrChange(myMmr: number, oppMmr: number, won: boolean, isPvP: boolean): number {
+  const K = isPvP ? 24 : 16;
+  const expected = 1 / (1 + Math.pow(10, (oppMmr - myMmr) / 400));
+  const raw = Math.round(K * ((won ? 1 : 0) - expected));
+  return Math.max(-20, Math.min(20, raw));
 }
 
 // ─── Daily XP cap ────────────────────────────────────────────────────────────
@@ -254,10 +268,11 @@ export function getProfile(username: string): PlayerProfile {
       if (!p.badges) p.badges = [];
       if (p.dailyXpGained === undefined) p.dailyXpGained = 0;
       if (!p.dailyXpDate) p.dailyXpDate = '';
+      if (p.mmr === undefined) p.mmr = MMR_DEFAULT;
       return p;
     }
   } catch { /* blocked */ }
-  return { username, xp: 0, level: 1, wins: 0, losses: 0, pvpWins: 0, maxCombo: 0, winStreak: 0, lossStreak: 0, maxWinStreak: 0, achievements: [], matchHistory: [], currentSeason: 1, seasonWins: 0, seasonLosses: 0, seasonPvpWins: 0, badges: [], dailyXpGained: 0, dailyXpDate: '' };
+  return { username, xp: 0, level: 1, wins: 0, losses: 0, pvpWins: 0, maxCombo: 0, winStreak: 0, lossStreak: 0, maxWinStreak: 0, achievements: [], matchHistory: [], currentSeason: 1, seasonWins: 0, seasonLosses: 0, seasonPvpWins: 0, badges: [], dailyXpGained: 0, dailyXpDate: '', mmr: MMR_DEFAULT };
 }
 
 export function saveProfile(p: PlayerProfile): void {
@@ -295,6 +310,7 @@ export interface CloudStats {
   seasonWins?: number;
   seasonLosses?: number;
   seasonPvpWins?: number;
+  mmr?: number;
 }
 
 export function mergeCloudProfile(username: string, cloud: CloudStats): PlayerProfile {
@@ -313,6 +329,7 @@ export function mergeCloudProfile(username: string, cloud: CloudStats): PlayerPr
     seasonWins:    cloud.seasonWins    ?? local.seasonWins    ?? 0,
     seasonLosses:  cloud.seasonLosses  ?? local.seasonLosses  ?? 0,
     seasonPvpWins: cloud.seasonPvpWins ?? local.seasonPvpWins ?? 0,
+    mmr:           cloud.mmr           ?? local.mmr           ?? MMR_DEFAULT,
   };
   merged.level = levelFromXp(merged.xp);
   const earned = ACHIEVEMENTS.map(a => a.id).filter(id => checkCondition(id, merged));
@@ -331,6 +348,7 @@ export function recordMatch(
   opponent?: { username: string; archetype: string },
   isPvP?: boolean,
   currentSeason?: number,
+  opponentMmr?: number,
 ): MatchReward {
   const profile = getProfile(username);
 
@@ -387,6 +405,12 @@ export function recordMatch(
   }
   profile.maxCombo = Math.max(profile.maxCombo, maxCombo);
 
+  // MMR update
+  const myMmr = profile.mmr ?? MMR_DEFAULT;
+  const oppMmr = opponentMmr ?? MMR_DEFAULT;
+  const mmrDelta = calcMmrChange(myMmr, oppMmr, won, !!isPvP);
+  profile.mmr = Math.max(0, myMmr + mmrDelta);
+
   if (opponent) {
     const entry: MatchHistoryEntry = {
       opponent: opponent.username,
@@ -413,5 +437,7 @@ export function recordMatch(
     oldLevel,
     newLevel: profile.level,
     newAchievements: newAchIds.map(id => ACHIEVEMENTS.find(a => a.id === id)!).filter(Boolean),
+    mmrDelta,
+    newMmr: profile.mmr,
   };
 }

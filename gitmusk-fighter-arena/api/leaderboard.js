@@ -20,9 +20,12 @@ export default async function handler(req, res) {
   const DEMO_USERNAMES = ['elonmusk', 'VitalikButerin', 'cz_binance', 'cobie', 'KarpathyAI', 'nikitabier'];
 
   try {
-    const sortBy = req.query?.sort === 'pvp' ? 'season_pvp_wins.desc,pvp_wins.desc' : 'season_wins.desc,wins.desc';
+    const sort = req.query?.sort;
+    const sortBy = sort === 'pvp' ? 'season_pvp_wins.desc,pvp_wins.desc'
+                 : sort === 'mmr' ? 'mmr.desc,wins.desc'
+                 : 'season_wins.desc,wins.desc';
     const params = new URLSearchParams({
-      select: 'username,display_name,avatar_url,level,wins,losses,pvp_wins,season_wins,season_pvp_wins,max_combo,win_streak,archetype_label,fighter_color,base_power,badges',
+      select: 'username,display_name,avatar_url,level,wins,losses,pvp_wins,season_wins,season_pvp_wins,max_combo,win_streak,archetype_label,fighter_color,base_power,badges,mmr',
       order: sortBy,
       limit: '25',
     });

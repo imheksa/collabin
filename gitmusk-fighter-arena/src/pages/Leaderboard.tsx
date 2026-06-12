@@ -55,6 +55,7 @@ interface EntryRow {
   archetype: string;
   level: number;
   badges: string[];
+  mmr: number;
 }
 
 const AUTO_REFRESH_MS = 60 * 60 * 1000; // 1 hour
@@ -134,12 +135,12 @@ export function Leaderboard() {
   const [cloudResult, setCloudResult] = useState<LeaderboardResult | null>(null);
   const [seasonInfo, setSeasonInfo] = useState<SeasonInfo | null>(null);
   const [loading, setLoading] = useState(true);
-  const [sortMode, setSortMode] = useState<'wins' | 'pvp'>('wins');
+  const [sortMode, setSortMode] = useState<'wins' | 'pvp' | 'mmr'>('wins');
   const [viewMode, setViewMode] = useState<'current' | 'last'>('current');
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
-  const loadData = useCallback(async (sort: 'wins' | 'pvp' = sortMode, refresh = false) => {
+  const loadData = useCallback(async (sort: 'wins' | 'pvp' | 'mmr' = sortMode, refresh = false) => {
     setLoading(true);
     const [result, season] = await Promise.all([fetchLeaderboard(sort), fetchSeasonInfo(refresh)]);
     setCloudResult(result);
@@ -156,7 +157,7 @@ export function Leaderboard() {
     return () => clearInterval(id);
   }, [loadData, sortMode]);
 
-  const handleSortChange = (mode: 'wins' | 'pvp') => {
+  const handleSortChange = (mode: 'wins' | 'pvp' | 'mmr') => {
     setSortMode(mode);
     loadData(mode);
   };
@@ -184,6 +185,7 @@ export function Leaderboard() {
         archetype: e.archetypeLabel,
         level: e.level,
         badges: e.badges,
+        mmr: e.mmr ?? 500,
       }));
 
       if (player1 && !cloudUsernames.has(player1.profile.username)) {
@@ -203,6 +205,7 @@ export function Leaderboard() {
             archetype: player1.stats.archetypeLabel,
             level: 1,
             badges: [],
+            mmr: 500,
           });
         }
       }
@@ -210,12 +213,15 @@ export function Leaderboard() {
       // Show empty state only if nobody has any season activity at all
       const hasActivity = sortMode === 'pvp'
         ? rows.some(r => r.seasonPvpWins > 0)
+        : sortMode === 'mmr'
+        ? rows.some(r => r.mmr !== 500)
         : rows.some(r => r.seasonWins > 0);
       if (!hasActivity) return { entries: [], isLive: true };
 
-      // Show ALL players sorted by season wins (including those with 0)
       const sorted = sortMode === 'pvp'
         ? [...rows].sort((a, b) => b.seasonPvpWins - a.seasonPvpWins || b.seasonWins - a.seasonWins)
+        : sortMode === 'mmr'
+        ? [...rows].sort((a, b) => b.mmr - a.mmr || b.wins - a.wins)
         : [...rows].sort((a, b) => b.seasonWins - a.seasonWins || b.wins - a.wins);
       return { entries: sorted.slice(0, 10), isLive: true };
     }
@@ -239,6 +245,7 @@ export function Leaderboard() {
         archetype: stats.archetypeLabel,
         level: 1,
         badges: [],
+        mmr: 500,
       };
     });
 
@@ -259,6 +266,7 @@ export function Leaderboard() {
           archetype: player1.stats.archetypeLabel,
           level: 1,
           badges: [],
+          mmr: 500,
         });
       }
     }
@@ -375,6 +383,12 @@ export function Leaderboard() {
               border: `2px solid ${sortMode === 'pvp' ? '#00ccff' : 'var(--panel-line)'}`,
               color: sortMode === 'pvp' ? '#00ccff' : 'var(--txt-dim)',
             }}>⚔ P2P WINS</button>
+            <button onClick={() => handleSortChange('mmr')} style={{
+              fontFamily: 'var(--pixel)', fontSize: '8px', padding: '4px 14px', cursor: 'pointer',
+              background: sortMode === 'mmr' ? 'rgba(255,214,10,.2)' : 'transparent',
+              border: `2px solid ${sortMode === 'mmr' ? 'var(--neon-yel)' : 'var(--panel-line)'}`,
+              color: sortMode === 'mmr' ? 'var(--neon-yel)' : 'var(--txt-dim)',
+            }}>◈ MMR</button>
             {seasonInfo?.configured && <>
               <div style={{ width: '1px', background: 'var(--panel-line)', margin: '0 2px' }} />
               <button onClick={() => setViewMode('current')} style={{
@@ -460,10 +474,17 @@ export function Leaderboard() {
                       </div>
                     )}
                     {isLive ? (
-                      <div style={{ fontFamily: 'var(--pixel)', fontSize: '10px', color: 'var(--neon-grn)' }}>
-                        {sortMode === 'pvp' ? e.seasonPvpWins : e.seasonWins}W
-                        <span style={{ fontSize: '6px', color: 'var(--txt-dim)', marginLeft: '3px' }}>S{seasonInfo?.season ?? ''}</span>
-                      </div>
+                      sortMode === 'mmr' ? (
+                        <div style={{ fontFamily: 'var(--pixel)', fontSize: '10px', color: 'var(--neon-yel)' }}>
+                          {e.mmr}
+                          <span style={{ fontSize: '6px', color: 'var(--txt-dim)', marginLeft: '3px' }}>MMR</span>
+                        </div>
+                      ) : (
+                        <div style={{ fontFamily: 'var(--pixel)', fontSize: '10px', color: 'var(--neon-grn)' }}>
+                          {sortMode === 'pvp' ? e.seasonPvpWins : e.seasonWins}W
+                          <span style={{ fontSize: '6px', color: 'var(--txt-dim)', marginLeft: '3px' }}>S{seasonInfo?.season ?? ''}</span>
+                        </div>
+                      )
                     ) : (
                       <div style={{ fontFamily: 'var(--pixel)', fontSize: '9px', color: 'var(--neon-grn)' }}>{e.wins}W</div>
                     )}
@@ -513,7 +534,11 @@ export function Leaderboard() {
                         </div>
                       </div>
                       <div className="text-right flex-shrink-0 flex items-center gap-3">
-                        {isLive ? (
+                        {isLive && sortMode === 'mmr' ? (
+                          <div style={{ fontFamily: 'var(--pixel)', fontSize: '9px', color: 'var(--neon-yel)' }}>
+                            {e.mmr} <span style={{ fontSize: '6px', color: 'var(--txt-dim)' }}>MMR</span>
+                          </div>
+                        ) : isLive ? (
                           <div style={{ fontFamily: 'var(--pixel)', fontSize: '9px', color: 'var(--neon-grn)' }}>
                             {sortMode === 'pvp' ? e.seasonPvpWins : e.seasonWins}W
                           </div>

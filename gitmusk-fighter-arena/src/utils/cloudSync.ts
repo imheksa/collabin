@@ -17,6 +17,7 @@ export interface CloudLeaderboardEntry {
   color: string;
   basePower: number;
   badges: string[];
+  mmr: number;
 }
 
 export interface LeaderboardResult {
@@ -103,6 +104,7 @@ export async function syncProfile(profile: PlayerProfile, fighter: Fighter): Pro
         seasonWins: profile.seasonWins ?? 0,
         seasonLosses: profile.seasonLosses ?? 0,
         seasonPvpWins: profile.seasonPvpWins ?? 0,
+        mmr: profile.mmr ?? 500,
       }),
     });
   } catch { /* silent — local data is still intact */ }
@@ -136,10 +138,11 @@ export async function restoreProfileFromCloud(username: string): Promise<PlayerP
     seasonWins: cloud.seasonWins,
     seasonLosses: cloud.seasonLosses,
     seasonPvpWins: cloud.seasonPvpWins,
+    mmr: cloud.mmr,
   });
 }
 
-export async function fetchLeaderboard(sort: 'wins' | 'pvp' = 'wins'): Promise<LeaderboardResult> {
+export async function fetchLeaderboard(sort: 'wins' | 'pvp' | 'mmr' = 'wins'): Promise<LeaderboardResult> {
   try {
     const res = await fetch(`/api/leaderboard?sort=${sort}`);
     if (!res.ok) return { entries: [], configured: false };
@@ -160,6 +163,7 @@ export async function fetchLeaderboard(sort: 'wins' | 'pvp' = 'wins'): Promise<L
       color: String(row.fighter_color ?? '#b026ff'),
       basePower: Number(row.base_power ?? 0),
       badges: Array.isArray(row.badges) ? (row.badges as string[]) : [],
+      mmr: Number(row.mmr ?? 500),
     }));
     return { entries, configured: Boolean(data.configured) };
   } catch { return { entries: [], configured: false }; }

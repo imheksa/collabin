@@ -213,11 +213,13 @@ export function Results() {
       const seasonInfo = await fetchSeasonInfo();
       const isP1Win = matchResult.winner.profile.username === player1.profile.username;
       const isPvP = !!matchId;
+      const opponentMmr = getProfile(player2.profile.username).mmr;
       const reward = recordMatch(
         player1.profile.username, isP1Win, matchResult.maxCombo, matchResult.duration,
         { username: player2.profile.username, archetype: player2.stats.archetype },
         isPvP,
         seasonInfo.season,
+        opponentMmr,
       );
       setLastMatchReward(reward);
       const updated = getProfile(player1.profile.username);

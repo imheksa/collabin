@@ -39,7 +39,7 @@ export default async function handler(req, res) {
   const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
   const { username, displayName, avatarUrl, level, xp, wins, losses, pvpWins,
     maxCombo, winStreak, maxWinStreak, archetype, archetypeLabel, color,
-    basePower, seasonWins, seasonLosses, seasonPvpWins, currentSeason } = body ?? {};
+    basePower, seasonWins, seasonLosses, seasonPvpWins, currentSeason, mmr } = body ?? {};
 
   if (!username || typeof username !== 'string' || !/^[a-zA-Z0-9_]{1,50}$/.test(username)) {
     return res.status(400).json({ error: 'Invalid username' });
@@ -49,11 +49,10 @@ export default async function handler(req, res) {
   }
 
   // Fetch current stats to enforce incremental constraints
-  // (new wins can't jump by more than 1 compared to server record)
-  let prevWins = 0, prevSeasonWins = 0, prevPvpWins = 0;
+  let prevWins = 0, prevSeasonWins = 0, prevPvpWins = 0, prevMmr = 500;
   try {
     const prevRes = await fetch(
-      `${supabaseUrl}/rest/v1/player_stats?username=eq.${encodeURIComponent(username)}&select=wins,season_wins,pvp_wins&limit=1`,
+      `${supabaseUrl}/rest/v1/player_stats?username=eq.${encodeURIComponent(username)}&select=wins,season_wins,pvp_wins,mmr&limit=1`,
       { headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` } }
     );
     const prev = await prevRes.json();
@@ -61,13 +60,16 @@ export default async function handler(req, res) {
       prevWins = prev[0].wins ?? 0;
       prevSeasonWins = prev[0].season_wins ?? 0;
       prevPvpWins = prev[0].pvp_wins ?? 0;
+      prevMmr = prev[0].mmr ?? 500;
     }
   } catch { /* use defaults */ }
 
-  // Wins can only go up by 1 per request (not jump by hundreds)
+  // Wins can only go up by 1 per request; MMR can change by at most ±25
   const clampedWins = Math.min(safeInt(wins, 99999), prevWins + 1);
   const clampedSeasonWins = Math.min(safeInt(seasonWins, 99999), prevSeasonWins + 1);
   const clampedPvpWins = Math.min(safeInt(pvpWins, 99999), prevPvpWins + 1);
+  const rawMmr = safeInt(mmr, 9999);
+  const clampedMmr = Math.min(Math.max(rawMmr, prevMmr - 25), prevMmr + 25);
 
   try {
     const upstream = await fetch(`${supabaseUrl}/rest/v1/player_stats`, {
@@ -98,6 +100,7 @@ export default async function handler(req, res) {
         season_wins: clampedSeasonWins,
         season_losses: safeInt(seasonLosses, 99999),
         season_pvp_wins: clampedPvpWins,
+        mmr: clampedMmr,
         updated_at: new Date().toISOString(),
       }),
     });
