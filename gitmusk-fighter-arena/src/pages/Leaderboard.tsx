@@ -65,41 +65,74 @@ const calcGlobal = (e: EntryRow) => e.mmr + e.seasonWins * 10 + e.pvpWins * 15;
 
 const AUTO_REFRESH_MS = 60 * 60 * 1000;
 
-// Compact last-season champions strip shown inside the SEASON tab
-function LastSeasonStrip({ top3, season }: { top3: SeasonHistoryEntry[]; season: number }) {
-  if (top3.length === 0) return null;
+function LastSeasonStrip({ top3, season, full = false }: { top3: SeasonHistoryEntry[]; season: number; full?: boolean }) {
   const COLORS = ['#ffd60a', '#c0c0c0', '#cd7f32'];
   const LABELS = ['👑', '🥈', '🥉'];
-  return (
-    <div className="g-panel dark" style={{ padding: '16px', marginTop: '16px' }}>
-      <div style={{
-        fontFamily: 'var(--pixel)', fontSize: '7px', color: 'var(--txt-dim)',
-        textAlign: 'center', marginBottom: '12px', letterSpacing: '.12em',
-      }}>
-        ◆ SEASON {season} CHAMPIONS ◆
+
+  if (top3.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 gap-3">
+        <div style={{ fontFamily: 'var(--pixel)', fontSize: '28px', color: 'var(--txt-dim)' }}>🏆</div>
+        <div style={{ fontFamily: 'var(--pixel)', fontSize: '9px', color: 'var(--txt-dim)', letterSpacing: '.12em' }}>
+          NO RECORDS FOR SEASON {season}
+        </div>
       </div>
-      <div className="grid grid-cols-3 gap-3">
-        {top3.map((e, i) => (
-          <div key={e.username} className="text-center" style={{ opacity: 0.85 }}>
-            <div style={{ fontFamily: 'var(--pixel)', fontSize: '14px', color: COLORS[i], marginBottom: '6px' }}>
-              {LABELS[i]}
-            </div>
-            <div className="w-9 h-9 mx-auto overflow-hidden mb-1" style={{ border: `2px solid ${COLORS[i]}` }}>
-              <img src={e.avatarUrl} className="w-full h-full object-cover"
-                onError={ev => { (ev.target as HTMLImageElement).src = `https://api.dicebear.com/7.x/pixel-art/svg?seed=${e.username}`; }} />
-            </div>
-            <div style={{ fontFamily: 'var(--pixel)', fontSize: '7px', color: '#fff' }}>
-              @{e.username.slice(0, 8)}
-            </div>
-            <div style={{ fontFamily: 'var(--pixel)', fontSize: '9px', color: 'var(--neon-grn)', marginTop: '2px' }}>
-              {e.wins}W
-            </div>
-            {e.badge && <div className="mt-1 flex justify-center"><BadgeChip badge={e.badge} /></div>}
-          </div>
-        ))}
+    );
+  }
+
+  // Full view: use the same podium layout (silver-left · gold-center · bronze-right)
+  if (full) {
+    const order = [
+      { e: top3[1], realIdx: 1 },
+      { e: top3[0], realIdx: 0 },
+      { e: top3[2], realIdx: 2 },
+    ];
+    return (
+      <div>
+        <div style={{ fontFamily: 'var(--pixel)', fontSize: '8px', color: 'var(--txt-dim)', textAlign: 'center', marginBottom: '16px', letterSpacing: '.1em' }}>
+          ◆ SEASON {season} CHAMPIONS ◆
+        </div>
+        <div className="grid grid-cols-3 gap-3">
+          {order.map(({ e, realIdx }) => {
+            if (!e) return <div key={realIdx} />;
+            return (
+              <div key={e.username} className="g-panel text-center" style={{
+                borderColor: COLORS[realIdx],
+                boxShadow: `inset 0 0 0 4px var(--void), 0 0 0 4px var(--void), 0 0 24px ${COLORS[realIdx]}60`,
+                padding: '16px 12px',
+                transform: realIdx === 0 ? 'translateY(-8px)' : 'none',
+                opacity: 0.9,
+              }}>
+                <div className="corners">
+                  <i style={{ background: COLORS[realIdx] }}></i>
+                  <i style={{ background: COLORS[realIdx] }}></i>
+                  <i style={{ background: COLORS[realIdx] }}></i>
+                  <i style={{ background: COLORS[realIdx] }}></i>
+                </div>
+                <div style={{ fontFamily: 'var(--pixel)', fontSize: realIdx === 0 ? '22px' : '16px', color: COLORS[realIdx], marginBottom: '8px' }}>
+                  {LABELS[realIdx]}
+                </div>
+                <div className="w-10 h-10 mx-auto overflow-hidden mb-2" style={{ border: `3px solid ${COLORS[realIdx]}` }}>
+                  <img src={e.avatarUrl} className="w-full h-full object-cover"
+                    onError={ev => { (ev.target as HTMLImageElement).src = `https://api.dicebear.com/7.x/pixel-art/svg?seed=${e.username}`; }} />
+                </div>
+                <div style={{ fontFamily: 'var(--pixel)', fontSize: '8px', color: '#fff', marginBottom: '4px' }}>
+                  @{e.username.slice(0, 8)}
+                </div>
+                <div style={{ fontFamily: 'var(--pixel)', fontSize: '10px', color: 'var(--neon-grn)', marginTop: '4px' }}>
+                  {e.wins}W
+                  <span style={{ fontSize: '6px', color: 'var(--txt-dim)', marginLeft: '3px' }}>S{season}</span>
+                </div>
+                {e.badge && <div className="mt-1"><BadgeChip badge={e.badge} /></div>}
+              </div>
+            );
+          })}
+        </div>
       </div>
-    </div>
-  );
+    );
+  }
+
+  return null;
 }
 
 export function Leaderboard() {
@@ -108,6 +141,7 @@ export function Leaderboard() {
   const [seasonInfo, setSeasonInfo] = useState<SeasonInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [mode, setMode] = useState<ViewMode>('season');
+  const [seasonView, setSeasonView] = useState<'current' | 'last'>('current');
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -281,7 +315,7 @@ export function Leaderboard() {
   const rest = entries.slice(3);
 
   const tabs: { key: ViewMode; label: string; sub: string; color: string; bg: string }[] = [
-    { key: 'season', label: '🏆 SEASON',  sub: 'current + last',   color: 'var(--neon-p)',   bg: 'rgba(176,38,255,.2)' },
+    { key: 'season', label: '🏆 SEASON',  sub: `S${seasonInfo?.season ?? ''} · current & past`,   color: 'var(--neon-p)',   bg: 'rgba(176,38,255,.2)' },
     { key: 'global', label: '🌐 GLOBAL',  sub: 'MMR + S.Wins + P2P', color: 'var(--neon-yel)', bg: 'rgba(255,214,10,.2)' },
     { key: 'pvp',    label: '⚔ P2P MODE', sub: 'player vs player',  color: '#00ccff',         bg: 'rgba(0,204,255,.2)'  },
   ];
@@ -374,6 +408,24 @@ export function Leaderboard() {
             })}
           </div>
 
+          {/* Season sub-tabs: Current / Last */}
+          {mode === 'season' && seasonInfo?.configured && (
+            <div className="flex gap-2 justify-center mt-3">
+              <button onClick={() => setSeasonView('current')} style={{
+                fontFamily: 'var(--pixel)', fontSize: '7px', padding: '4px 16px', cursor: 'pointer',
+                background: seasonView === 'current' ? 'rgba(176,38,255,.15)' : 'transparent',
+                border: `2px solid ${seasonView === 'current' ? 'var(--neon-p)' : 'var(--panel-line)'}`,
+                color: seasonView === 'current' ? 'var(--neon-p)' : 'var(--txt-dim)',
+              }}>◆ S{seasonInfo.season} CURRENT{seasonInfo.daysLeft > 0 ? ` · ${seasonInfo.daysLeft}d` : ''}</button>
+              <button onClick={() => setSeasonView('last')} style={{
+                fontFamily: 'var(--pixel)', fontSize: '7px', padding: '4px 16px', cursor: 'pointer',
+                background: seasonView === 'last' ? 'rgba(192,192,192,.12)' : 'transparent',
+                border: `2px solid ${seasonView === 'last' ? '#c0c0c0' : 'var(--panel-line)'}`,
+                color: seasonView === 'last' ? '#c0c0c0' : 'var(--txt-dim)',
+              }}>🏆 S{seasonInfo.season - 1} LAST SEASON</button>
+            </div>
+          )}
+
           {/* Global formula hint */}
           {mode === 'global' && (
             <div style={{ fontFamily: 'var(--mono)', fontSize: '9px', color: 'var(--txt-dim)', marginTop: '8px' }}>
@@ -393,6 +445,12 @@ export function Leaderboard() {
               ))}
             </div>
           </div>
+        ) : mode === 'season' && seasonView === 'last' ? (
+          <LastSeasonStrip
+            top3={seasonInfo?.lastSeasonTop3 ?? []}
+            season={seasonInfo?.season ? seasonInfo.season - 1 : 0}
+            full
+          />
         ) : isLive && entries.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 gap-3">
             <div style={{ fontFamily: 'var(--pixel)', fontSize: '32px', color: 'var(--neon-p)', textShadow: '0 0 20px var(--neon-p)' }}>⚔</div>
@@ -521,13 +579,6 @@ export function Leaderboard() {
               </div>
             )}
 
-            {/* Last season strip — shown only in SEASON tab */}
-            {mode === 'season' && seasonInfo?.configured && (seasonInfo.lastSeasonTop3?.length ?? 0) > 0 && (
-              <LastSeasonStrip
-                top3={seasonInfo.lastSeasonTop3}
-                season={seasonInfo.season - 1}
-              />
-            )}
           </>
         )}
 
