@@ -934,10 +934,10 @@ export function FightingArena({ player1, player2, onMatchEnd, p2AI = true, p2pMo
           up:      k.has('ArrowUp')    || k.has('w') || k.has('W'),
           down:    k.has('ArrowDown')  || k.has('s') || k.has('S'),
           block:   k.has('ArrowDown')  || k.has('s') || k.has('S'),
-          punch:   k.has('1') || k.has('f') || k.has('F'),
-          kick:    k.has('2') || k.has('g') || k.has('G'),
-          special: k.has('3') || k.has('h') || k.has('H'),
-          ultimate:k.has('4') || k.has('v') || k.has('V'),
+          punch:   k.has('z') || k.has('Z') || k.has('1') || k.has('f') || k.has('F'),
+          kick:    k.has('x') || k.has('X') || k.has('2') || k.has('g') || k.has('G'),
+          special: k.has('c') || k.has('C') || k.has('3') || k.has('h') || k.has('H'),
+          ultimate:k.has('v') || k.has('V') || k.has('4'),
           ts: Date.now(),
         } satisfies P2PInput,
       });
@@ -945,9 +945,16 @@ export function FightingArena({ player1, player2, onMatchEnd, p2AI = true, p2pMo
 
     sendInputRef.current = sendP2Input;
 
+    const GAME_KEYS = new Set([
+      'ArrowLeft','ArrowRight','ArrowUp','ArrowDown',
+      'a','A','d','D','w','W','s','S',
+      'z','Z','x','X','c','C','v','V',
+      'f','F','g','G','h','H','t','T',
+      '1','2','3','4',
+    ]);
     const onKey = (e: KeyboardEvent) => {
       keysRef.current.add(e.key);
-      e.preventDefault();
+      if (GAME_KEYS.has(e.key)) e.preventDefault();
       if (p2pMode === 'client') sendP2Input();
     };
     const onKeyUp = (e: KeyboardEvent) => {
@@ -1020,14 +1027,14 @@ export function FightingArena({ player1, player2, onMatchEnd, p2AI = true, p2pMo
       if (p2pMode !== 'client') {
       // P1 controls: WASD + F/G/H/V + S=block (locked out while stunned)
       if (p1.stateTimer <= 0 && p1.stunTimer <= 0) {
-        if (keys.has('a') || keys.has('A')) { p1.vx = -WALK_SPEED; p1.state = 'walk_back'; p1.facing = -1; }
-        else if (keys.has('d') || keys.has('D')) { p1.vx = WALK_SPEED; p1.state = 'walk_fwd'; p1.facing = 1; }
+        if (keys.has('ArrowLeft')  || keys.has('a') || keys.has('A')) { p1.vx = -WALK_SPEED; p1.state = 'walk_back'; p1.facing = -1; }
+        else if (keys.has('ArrowRight') || keys.has('d') || keys.has('D')) { p1.vx = WALK_SPEED; p1.state = 'walk_fwd'; p1.facing = 1; }
         else { p1.vx = 0; }
-        if ((keys.has('w') || keys.has('W')) && p1.isGrounded) { p1.vy = JUMP_FORCE; p1.isGrounded = false; }
-        if (keys.has('s') || keys.has('S')) { p1.state = 'block'; p1.vx = 0; }
-        if (keys.has('f') || keys.has('F')) doAttack(p1, p2, player1, player2, 'punch');
-        if (keys.has('g') || keys.has('G')) doAttack(p1, p2, player1, player2, 'kick');
-        if (keys.has('h') || keys.has('H')) doAttack(p1, p2, player1, player2, 'special');
+        if ((keys.has('ArrowUp') || keys.has('w') || keys.has('W')) && p1.isGrounded) { p1.vy = JUMP_FORCE; p1.isGrounded = false; }
+        if (keys.has('ArrowDown') || keys.has('s') || keys.has('S')) { p1.state = 'block'; p1.vx = 0; }
+        if (keys.has('z') || keys.has('Z') || keys.has('f') || keys.has('F')) doAttack(p1, p2, player1, player2, 'punch');
+        if (keys.has('x') || keys.has('X') || keys.has('g') || keys.has('G')) doAttack(p1, p2, player1, player2, 'kick');
+        if (keys.has('c') || keys.has('C') || keys.has('h') || keys.has('H')) doAttack(p1, p2, player1, player2, 'special');
         if (keys.has('v') || keys.has('V')) doAttack(p1, p2, player1, player2, 'ultimate');
       }
 
@@ -1082,16 +1089,16 @@ export function FightingArena({ player1, player2, onMatchEnd, p2AI = true, p2pMo
             }
           }
         } else {
-          // Local 2-player keyboard: Arrow keys + 1/2/3/4
-          if (keys.has('ArrowLeft')) { p2.vx = -WALK_SPEED; p2.state = 'walk_back'; p2.facing = -1; }
-          else if (keys.has('ArrowRight')) { p2.vx = WALK_SPEED; p2.state = 'walk_fwd'; p2.facing = 1; }
+          // Local 2-player: WASD move + F/G/H/T attack (P1 uses Arrow + Z/X/C/V)
+          if (keys.has('a') || keys.has('A')) { p2.vx = -WALK_SPEED; p2.state = 'walk_back'; p2.facing = -1; }
+          else if (keys.has('d') || keys.has('D')) { p2.vx = WALK_SPEED; p2.state = 'walk_fwd'; p2.facing = 1; }
           else { p2.vx = 0; }
-          if (keys.has('ArrowUp') && p2.isGrounded) { p2.vy = JUMP_FORCE; p2.isGrounded = false; }
-          if (keys.has('ArrowDown')) { p2.state = 'block'; p2.vx = 0; }
-          if (keys.has('1')) doAttack(p2, p1, player2, player1, 'punch');
-          if (keys.has('2')) doAttack(p2, p1, player2, player1, 'kick');
-          if (keys.has('3')) doAttack(p2, p1, player2, player1, 'special');
-          if (keys.has('4')) doAttack(p2, p1, player2, player1, 'ultimate');
+          if ((keys.has('w') || keys.has('W')) && p2.isGrounded) { p2.vy = JUMP_FORCE; p2.isGrounded = false; }
+          if (keys.has('s') || keys.has('S')) { p2.state = 'block'; p2.vx = 0; }
+          if (keys.has('f') || keys.has('F') || keys.has('1')) doAttack(p2, p1, player2, player1, 'punch');
+          if (keys.has('g') || keys.has('G') || keys.has('2')) doAttack(p2, p1, player2, player1, 'kick');
+          if (keys.has('h') || keys.has('H') || keys.has('3')) doAttack(p2, p1, player2, player1, 'special');
+          if (keys.has('t') || keys.has('T') || keys.has('4')) doAttack(p2, p1, player2, player1, 'ultimate');
         }
       }
 
@@ -1417,11 +1424,11 @@ export function FightingArena({ player1, player2, onMatchEnd, p2AI = true, p2pMo
       <div className="hidden sm:flex gap-6 mt-2 text-xs font-mono text-gray-600 flex-wrap justify-center">
         <div>
           <span style={{ color: p1Color }}>P1:</span>{' '}
-          WASD=move · F=punch · G=kick · <span style={{ color: '#ffff00' }}>H=special(5hits)</span> · V=ult · S=block
+          ←→↑↓=move/jump/block · Z=punch · X=kick · <span style={{ color: '#ffff00' }}>C=special</span> · V=ult
         </div>
         <div>
-          <span style={{ color: p2Color }}>P2:</span>{' '}
-          ←→↑=move · 1=punch · 2=kick · <span style={{ color: '#ffff00' }}>3=special(5hits)</span> · 4=ult · ↓=block
+          <span style={{ color: p2Color }}>P2 (local):</span>{' '}
+          WASD=move · F=punch · G=kick · <span style={{ color: '#ffff00' }}>H=special</span> · T=ult · S=block
         </div>
       </div>
 
