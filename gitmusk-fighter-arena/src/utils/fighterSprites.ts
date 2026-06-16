@@ -11,7 +11,7 @@
  * All sprites drawn facing RIGHT. facing=-1 mirrors via ctx.scale(-1,1).
  */
 
-const P = 5;
+const P = 8;
 
 function d(
   ctx: CanvasRenderingContext2D,
@@ -252,7 +252,7 @@ function drawBodyAndLimbs(
   } else if (isPunch) {
     d(ctx, p.limb, ox, oy, 0, 7, 2, 4);    // back arm normal
     d(ctx, p.limb, ox, oy, 8, 7, 4, 2);    // front arm extended (past right edge)
-    d(ctx, p.limb, ox, oy, 10, 9, 2, 2);   // fist
+    d(ctx, '#ffee00', ox, oy, 10, 9, 2, 2); // fist impact flash
   } else if (isUlt) {
     d(ctx, p.limb, ox, oy, 0, 4, 2, 5);    // left arm raised
     d(ctx, p.limb, ox, oy, 8, 4, 2, 5);    // right arm raised
@@ -273,7 +273,7 @@ function drawBodyAndLimbs(
     // Kicking leg extended forward-up
     d(ctx, p.limb, ox, oy, 6, 10, 3, 2);   // thigh raised
     d(ctx, p.limb, ox, oy, 8,  8, 3, 2);   // shin forward
-    d(ctx, p.boot, ox, oy, 10, 7, 2, 2);   // boot at kick end
+    d(ctx, '#ff6600', ox, oy, 10, 7, 2, 2); // boot impact flash
   } else if (isWalk) {
     const lp = walkPhase;
     const lRow = lp === 0 ? 12 : 13;
@@ -322,20 +322,29 @@ export function drawArchetypeFighter(
   const pal = PALS[archetype] ?? PALS.degen;
   const walkPhase = Math.floor(now / 150) % 2;
 
-  // Gentle idle bob: ±2 canvas pixels
-  const bob = state === 'idle' ? Math.round(Math.sin(now / 500) * 2) : 0;
-  const drawOy = oy + bob;
+  const isWalking = state === 'walk_fwd' || state === 'walk_back';
+  const bob = state === 'idle' ? Math.round(Math.sin(now / 400) * 3) : 0;
+  const walkBob = isWalking ? (walkPhase === 0 ? -3 : 0) : 0;
+  const drawOy = oy + bob + walkBob;
 
   ctx.save();
 
   // Mirror sprite for left-facing characters
   if (facing === -1) {
-    const cx = ox + 25; // FW / 2
+    const cx = ox + P * 5; // FW / 2
     ctx.translate(cx, 0);
     ctx.scale(-1, 1);
     ctx.translate(-cx, 0);
   }
 
+  // Shadow/outline pass — cast dark halo around full silhouette
+  ctx.shadowColor = 'rgba(0,0,0,0.9)';
+  ctx.shadowBlur = 10;
+  drawHead(ctx, archetype, pal, ox, drawOy);
+  drawBodyAndLimbs(ctx, archetype, pal, ox, drawOy, state, walkPhase, isGrounded);
+
+  // Color pass — draw again on top to hide internal shadow artifacts
+  ctx.shadowBlur = 0;
   drawHead(ctx, archetype, pal, ox, drawOy);
   drawBodyAndLimbs(ctx, archetype, pal, ox, drawOy, state, walkPhase, isGrounded);
 

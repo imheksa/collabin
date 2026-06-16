@@ -11,8 +11,8 @@ import { drawArchetypeFighter } from '../utils/fighterSprites';
 const W = 800;
 const H = 400;
 const FLOOR_Y = 310;
-const FW = 50;
-const FH = 90;
+const FW = 80;
+const FH = 144;
 const GRAVITY = 0.6;
 const JUMP_FORCE = -13;
 const WALK_SPEED = 4;
@@ -744,7 +744,7 @@ export function FightingArena({ player1, player2, onMatchEnd, p2AI = true, p2pMo
     attacker.stateTimer = cooldowns[move];
     attacker.attackCooldown = cooldowns[move];
 
-    const range = { punch: 80, kick: 100, special: 130, ultimate: 170 };
+    const range = { punch: 110, kick: 140, special: 185, ultimate: 240 };
     const dist = Math.abs((attacker.x + FW / 2) - (defender.x + FW / 2));
     const hitX = defender.x + FW / 2;
     const hitY = defender.y + FH / 3;
