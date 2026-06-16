@@ -35,75 +35,180 @@ async function renderCard(canvas: HTMLCanvasElement, me: Fighter, opponent: Figh
   const bg = ctx.createLinearGradient(0, 0, CARD_W, CARD_H);
   bg.addColorStop(0, '#0a0118'); bg.addColorStop(1, '#1d0b3a');
   ctx.fillStyle = bg; ctx.fillRect(0, 0, CARD_W, CARD_H);
-  for (let y = 0; y < CARD_H; y += 4) { ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.fillRect(0, y, CARD_W, 2); }
-  const [r, g, b] = hexToRgb(me.stats.color);
-  ctx.strokeStyle = me.stats.color; ctx.lineWidth = 3; ctx.shadowColor = me.stats.color; ctx.shadowBlur = 16;
-  ctx.strokeRect(3, 3, CARD_W - 6, CARD_H - 6); ctx.shadowBlur = 0;
-  ctx.strokeStyle = `rgba(${r},${g},${b},0.3)`; ctx.lineWidth = 1;
-  ctx.strokeRect(8, 8, CARD_W - 16, CARD_H - 16);
-  const mono = (size: number) => `bold ${size}px "Courier New", monospace`;
-  ctx.fillStyle = `rgba(${r},${g},${b},0.12)`; ctx.fillRect(0, 0, CARD_W, 38);
-  ctx.fillStyle = '#ff2d75'; ctx.shadowColor = '#ff2d75'; ctx.shadowBlur = 8;
-  ctx.font = mono(10); ctx.textAlign = 'center';
-  ctx.fillText('⚔  EX ARENA  ⚔', CARD_W / 2, 24); ctx.shadowBlur = 0;
-  const resultColor = isWin ? '#00ff9d' : '#ff2d75';
-  ctx.fillStyle = resultColor; ctx.shadowColor = resultColor; ctx.shadowBlur = 18;
-  ctx.font = mono(22); ctx.textAlign = 'center';
-  ctx.fillText(isWin ? 'VICTORY!' : 'DEFEATED', CARD_W / 2, 80); ctx.shadowBlur = 0;
-  ctx.fillStyle = '#ffffff50'; ctx.font = mono(9);
-  ctx.fillText(isWin ? `vs @${opponent.profile.username}` : `by @${opponent.profile.username}`, CARD_W / 2, 96);
-  ctx.strokeStyle = '#3a1c5e'; ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.moveTo(20, 106); ctx.lineTo(CARD_W - 20, 106); ctx.stroke();
-  const aX = 80, aY = 175, aR = 38;
-  const meImg = await loadImg(me.profile.username, me.profile.avatarUrl);
-  if (meImg) { ctx.save(); ctx.beginPath(); ctx.arc(aX, aY, aR, 0, Math.PI * 2); ctx.clip(); ctx.drawImage(meImg, aX - aR, aY - aR, aR * 2, aR * 2); ctx.restore(); }
-  else { ctx.fillStyle = me.stats.color; ctx.beginPath(); ctx.arc(aX, aY, aR, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#000'; ctx.font = mono(22); ctx.textAlign = 'center'; ctx.fillText(me.profile.username[0].toUpperCase(), aX, aY + 8); }
-  ctx.strokeStyle = me.stats.color; ctx.shadowColor = me.stats.color; ctx.shadowBlur = 14; ctx.lineWidth = 3;
-  ctx.beginPath(); ctx.arc(aX, aY, aR + 4, 0, Math.PI * 2); ctx.stroke(); ctx.shadowBlur = 0;
-  if (isWin) { ctx.fillStyle = '#00ff9d'; ctx.shadowColor = '#00ff9d'; ctx.shadowBlur = 8; ctx.font = mono(8); ctx.textAlign = 'center'; ctx.fillText('🏆 WINNER', aX, aY - aR - 8); ctx.shadowBlur = 0; }
-  ctx.textAlign = 'left'; const sx = 132;
-  ctx.fillStyle = '#ffffff'; ctx.shadowColor = me.stats.color; ctx.shadowBlur = 6; ctx.font = mono(14);
-  ctx.fillText(`@${me.profile.username.slice(0, 12)}`, sx, 148); ctx.shadowBlur = 0;
-  ctx.fillStyle = me.stats.color; ctx.font = mono(8); ctx.fillText(me.stats.archetypeLabel.toUpperCase(), sx, 163);
+  for (let y = 0; y < CARD_H; y += 4) { ctx.fillStyle = 'rgba(0,0,0,0.15)'; ctx.fillRect(0, y, CARD_W, 2); }
 
-  // Stat bars — 4 rows, clean layout
-  const sBarW = 128;
-  [
-    { label: 'PWR',  value: me.stats.basePower, color: me.stats.color, max: 100 },
-    { label: 'DEF',  value: me.stats.defense,   color: '#00ccff',     max: 100 },
-    { label: 'SPD',  value: me.stats.speed,      color: '#00ff41',     max: 100 },
-    { label: 'CRIT', value: me.stats.critRate,   color: '#ffd60a',     max: 80  },
-  ].forEach(({ label, value, color, max }, i) => {
-    const sy = 176 + i * 14;
-    ctx.fillStyle = '#555'; ctx.font = mono(6); ctx.textAlign = 'left';
-    ctx.fillText(`${label} ${value}`, sx, sy);
-    ctx.fillStyle = '#22103f'; ctx.fillRect(sx + 42, sy - 8, sBarW, 5);
-    ctx.fillStyle = color; ctx.shadowColor = color; ctx.shadowBlur = 3;
-    ctx.fillRect(sx + 42, sy - 8, sBarW * Math.min(1, value / max), 5); ctx.shadowBlur = 0;
-  });
-  ctx.globalAlpha = isWin ? 0.4 : 0.8;
-  const oX = CARD_W - 80, oY = 175, oR = 30;
-  const oppImg = await loadImg(opponent.profile.username, opponent.profile.avatarUrl);
-  if (oppImg) { ctx.save(); ctx.beginPath(); ctx.arc(oX, oY, oR, 0, Math.PI * 2); ctx.clip(); ctx.drawImage(oppImg, oX - oR, oY - oR, oR * 2, oR * 2); ctx.restore(); }
-  else { ctx.fillStyle = opponent.stats.color; ctx.beginPath(); ctx.arc(oX, oY, oR, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#000'; ctx.font = mono(16); ctx.textAlign = 'center'; ctx.fillText(opponent.profile.username[0].toUpperCase(), oX, oY + 6); }
-  ctx.strokeStyle = opponent.stats.color; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(oX, oY, oR + 3, 0, Math.PI * 2); ctx.stroke();
-  ctx.textAlign = 'right'; ctx.fillStyle = '#ffffff'; ctx.font = mono(10);
-  ctx.fillText(`@${opponent.profile.username.slice(0, 10)}`, CARD_W - 20, 150);
-  ctx.fillStyle = opponent.stats.color; ctx.font = mono(7); ctx.fillText(opponent.stats.archetypeLabel.toUpperCase(), CARD_W - 20, 163);
-  if (isWin) { ctx.strokeStyle = '#ff2d75'; ctx.lineWidth = 3; ctx.globalAlpha = 0.5; ctx.beginPath(); ctx.moveTo(oX - oR - 4, oY - oR - 4); ctx.lineTo(oX + oR + 4, oY + oR + 4); ctx.stroke(); ctx.beginPath(); ctx.moveTo(oX + oR + 4, oY - oR - 4); ctx.lineTo(oX - oR - 4, oY + oR + 4); ctx.stroke(); }
-  ctx.globalAlpha = 1;
-  ctx.fillStyle = `rgba(${r},${g},${b},0.1)`; ctx.fillRect(0, 238, CARD_W, 42);
-  ctx.strokeStyle = `rgba(${r},${g},${b},0.3)`; ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.moveTo(0, 238); ctx.lineTo(CARD_W, 238); ctx.stroke();
-  [{ label: 'COMBO', value: `${maxCombo}x`, color: '#ffd60a' }, { label: 'DURATION', value: `${duration}s`, color: '#00e5ff' }, { label: 'RARITY', value: me.stats.rarity.toUpperCase(), color: me.stats.color }, { label: 'TIER', value: me.stats.tier.toUpperCase(), color: '#b026ff' }]
-    .forEach(({ label, value, color }, i) => {
-      const sw = CARD_W / 4; const cx = sw * i + sw / 2;
-      ctx.fillStyle = '#555'; ctx.font = mono(7); ctx.textAlign = 'center'; ctx.fillText(label, cx, 253);
-      ctx.fillStyle = color; ctx.shadowColor = color; ctx.shadowBlur = 6; ctx.font = mono(11);
-      ctx.fillText(value, cx, 270); ctx.shadowBlur = 0;
+  const mono = (size: number) => `bold ${size}px "Courier New", monospace`;
+  const [r, g, b] = hexToRgb(me.stats.color);
+
+  // Border
+  ctx.strokeStyle = me.stats.color; ctx.lineWidth = 3; ctx.shadowColor = me.stats.color; ctx.shadowBlur = 14;
+  ctx.strokeRect(2, 2, CARD_W - 4, CARD_H - 4); ctx.shadowBlur = 0;
+
+  // Top bar
+  ctx.fillStyle = `rgba(${r},${g},${b},0.14)`; ctx.fillRect(0, 0, CARD_W, 36);
+  ctx.fillStyle = '#ff2d75'; ctx.shadowColor = '#ff2d75'; ctx.shadowBlur = 8;
+  ctx.font = mono(9); ctx.textAlign = 'center';
+  ctx.fillText('⚔  EX ARENA  ⚔', CARD_W / 2, 23); ctx.shadowBlur = 0;
+
+  // Result + subtitle
+  const resultColor = isWin ? '#00ff9d' : '#ff2d75';
+  ctx.fillStyle = resultColor; ctx.shadowColor = resultColor; ctx.shadowBlur = 16;
+  ctx.font = mono(16); ctx.textAlign = 'center';
+  ctx.fillText(isWin ? '🏆 VICTORY!' : '💀 DEFEATED', CARD_W / 2, 57); ctx.shadowBlur = 0;
+  ctx.fillStyle = '#ffffff50'; ctx.font = mono(7); ctx.textAlign = 'center';
+  ctx.fillText(isWin ? `vs @${opponent.profile.username}` : `by @${opponent.profile.username}`, CARD_W / 2, 70);
+
+  // Dividers
+  ctx.strokeStyle = '#3a1c5e'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(16, 76); ctx.lineTo(CARD_W - 16, 76); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(CARD_W / 2, 76); ctx.lineTo(CARD_W / 2, 240); ctx.stroke();
+
+  // VS label
+  ctx.fillStyle = '#ffd60a'; ctx.shadowColor = '#ffd60a'; ctx.shadowBlur = 8;
+  ctx.font = mono(11); ctx.textAlign = 'center'; ctx.fillText('VS', CARD_W / 2, 134); ctx.shadowBlur = 0;
+
+  // Load both avatars in parallel
+  const [meImg, oppImg] = await Promise.all([
+    loadImg(me.profile.username, me.profile.avatarUrl),
+    loadImg(opponent.profile.username, opponent.profile.avatarUrl),
+  ]);
+
+  // Draw one fighter column: name+archetype at top, avatar in middle, stat bars at bottom
+  const drawCol = (f: Fighter, img: HTMLImageElement | null, winner: boolean, opp: Fighter, cx: number) => {
+    const fc = f.stats.color;
+    const winBorder = winner ? '#00ff9d' : '#ff2d75';
+    ctx.globalAlpha = winner ? 1 : 0.82;
+
+    // Name
+    ctx.fillStyle = '#fff'; ctx.shadowColor = fc; ctx.shadowBlur = 4;
+    ctx.font = mono(8); ctx.textAlign = 'center';
+    ctx.fillText(`@${f.profile.username.slice(0, 11)}`, cx, 91); ctx.shadowBlur = 0;
+
+    // Archetype
+    ctx.fillStyle = fc; ctx.font = mono(6); ctx.textAlign = 'center';
+    ctx.fillText(f.stats.archetypeLabel.toUpperCase().slice(0, 16), cx, 103);
+
+    // Winner tag
+    if (winner) {
+      ctx.fillStyle = '#00ff9d'; ctx.shadowColor = '#00ff9d'; ctx.shadowBlur = 5;
+      ctx.font = mono(6); ctx.textAlign = 'center'; ctx.fillText('★ WINNER', cx, 115); ctx.shadowBlur = 0;
+    }
+
+    // Avatar circle
+    const aR = 30; const aY = 148;
+    if (img) {
+      ctx.save(); ctx.beginPath(); ctx.arc(cx, aY, aR, 0, Math.PI * 2); ctx.clip();
+      ctx.drawImage(img, cx - aR, aY - aR, aR * 2, aR * 2); ctx.restore();
+    } else {
+      ctx.fillStyle = fc; ctx.beginPath(); ctx.arc(cx, aY, aR, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#000'; ctx.font = mono(18); ctx.textAlign = 'center';
+      ctx.fillText(f.profile.username[0].toUpperCase(), cx, aY + 6);
+    }
+    ctx.strokeStyle = winBorder; ctx.shadowColor = winBorder; ctx.shadowBlur = 10; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(cx, aY, aR + 3, 0, Math.PI * 2); ctx.stroke(); ctx.shadowBlur = 0;
+
+    // Stat bars with +/- match result indicator
+    const barW = 96; const bx = cx - barW / 2 - 8;
+    [
+      { lbl: 'PWR',  v: f.stats.basePower, ov: opp.stats.basePower, bc: fc,        max: 100 },
+      { lbl: 'DEF',  v: f.stats.defense,   ov: opp.stats.defense,   bc: '#00ccff', max: 100 },
+      { lbl: 'SPD',  v: f.stats.speed,     ov: opp.stats.speed,     bc: '#00ff41', max: 100 },
+      { lbl: 'CRIT', v: f.stats.critRate,  ov: opp.stats.critRate,  bc: '#ffd60a', max: 80  },
+    ].forEach(({ lbl, v, ov, bc, max }, i) => {
+      const sy = 186 + i * 13;
+      const better = v >= ov;
+      const ic = better ? '#00ff9d' : '#ff2d75';
+      ctx.fillStyle = '#666'; ctx.font = mono(5.5); ctx.textAlign = 'left';
+      ctx.fillText(`${lbl}:${v}`, bx, sy);
+      ctx.fillStyle = '#150828'; ctx.fillRect(bx, sy + 2, barW, 5);
+      ctx.fillStyle = bc; ctx.shadowColor = bc; ctx.shadowBlur = 3;
+      ctx.fillRect(bx, sy + 2, barW * Math.min(1, v / max), 5); ctx.shadowBlur = 0;
+      ctx.fillStyle = ic; ctx.shadowColor = ic; ctx.shadowBlur = 4;
+      ctx.font = mono(8); ctx.textAlign = 'left';
+      ctx.fillText(better ? '+' : '−', bx + barW + 4, sy + 7); ctx.shadowBlur = 0;
     });
+    ctx.globalAlpha = 1;
+  };
+
+  drawCol(me,       meImg,  isWin,  opponent, Math.round(CARD_W * 0.27));
+  drawCol(opponent, oppImg, !isWin, me,       Math.round(CARD_W * 0.73));
+
+  // Bottom strip
+  ctx.fillStyle = `rgba(${r},${g},${b},0.1)`; ctx.fillRect(0, 242, CARD_W, 48);
+  ctx.strokeStyle = `rgba(${r},${g},${b},0.3)`; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(0, 242); ctx.lineTo(CARD_W, 242); ctx.stroke();
+  [
+    { label: 'COMBO',    value: `${maxCombo}x`,              color: '#ffd60a'      },
+    { label: 'DURATION', value: `${duration}s`,              color: '#00e5ff'      },
+    { label: 'RARITY',   value: me.stats.rarity.toUpperCase(), color: me.stats.color },
+    { label: 'TIER',     value: me.stats.tier.toUpperCase(), color: '#b026ff'      },
+  ].forEach(({ label, value, color }, i) => {
+    const sw = CARD_W / 4; const colX = sw * i + sw / 2;
+    ctx.fillStyle = '#555'; ctx.font = mono(7); ctx.textAlign = 'center'; ctx.fillText(label, colX, 257);
+    ctx.fillStyle = color; ctx.shadowColor = color; ctx.shadowBlur = 5; ctx.font = mono(10);
+    ctx.fillText(value, colX, 272); ctx.shadowBlur = 0;
+  });
+
+  // Footer
   ctx.fillStyle = `rgba(${r},${g},${b},0.06)`; ctx.fillRect(0, 284, CARD_W, CARD_H - 284);
-  ctx.fillStyle = '#444'; ctx.font = mono(7); ctx.textAlign = 'center'; ctx.fillText(`🎮  ${GAME_URL}`, CARD_W / 2, 305);
+  ctx.fillStyle = '#3a3060'; ctx.font = mono(7); ctx.textAlign = 'center'; ctx.fillText(`🎮  ${GAME_URL}`, CARD_W / 2, 305);
+}
+
+function FighterCard({ fighter, opponent, isWinner }: { fighter: Fighter; opponent: Fighter; isWinner: boolean }) {
+  const STATS = [
+    { label: 'PWR',  val: fighter.stats.basePower, oppVal: opponent.stats.basePower, color: '#ff2d75', max: 100 },
+    { label: 'DEF',  val: fighter.stats.defense,   oppVal: opponent.stats.defense,   color: '#00e5ff', max: 100 },
+    { label: 'SPD',  val: fighter.stats.speed,      oppVal: opponent.stats.speed,     color: '#00ff9d', max: 100 },
+    { label: 'CRIT', val: fighter.stats.critRate,   oppVal: opponent.stats.critRate,  color: '#ffd60a', max: 80  },
+  ];
+  const borderColor = isWinner ? 'var(--neon-grn)' : 'var(--neon-pink)';
+  const glow = isWinner ? 'rgba(0,255,157,.22)' : 'rgba(255,45,117,.16)';
+  const fallback = `https://api.dicebear.com/7.x/pixel-art/png?seed=${encodeURIComponent(fighter.profile.username)}&size=80`;
+  return (
+    <div style={{ background: 'var(--void-2)', border: `3px solid ${borderColor}`, boxShadow: `0 0 18px ${glow}`, padding: '12px', display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: 0, opacity: isWinner ? 1 : 0.85 }}>
+      {/* Name + Archetype at top */}
+      <div style={{ textAlign: 'center', width: '100%', marginBottom: '10px' }}>
+        <div style={{ fontFamily: 'var(--pixel)', fontSize: '8px', color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: '4px' }}>
+          @{fighter.profile.username}
+        </div>
+        <div style={{ fontFamily: 'var(--pixel)', fontSize: '6px', color: fighter.stats.color, letterSpacing: '.05em' }}>
+          {fighter.stats.archetypeLabel.toUpperCase()}
+        </div>
+      </div>
+      {/* Profile photo */}
+      <div style={{ width: '58px', height: '58px', borderRadius: '50%', overflow: 'hidden', border: `3px solid ${fighter.stats.color}`, marginBottom: '6px', background: fighter.stats.color + '40', flexShrink: 0 }}>
+        <img
+          src={fighter.profile.avatarUrl || fallback}
+          onError={(e) => { (e.currentTarget as HTMLImageElement).src = fallback; }}
+          style={{ width: '100%', height: '100%', objectFit: 'cover', imageRendering: 'pixelated' }}
+          alt={fighter.profile.username}
+        />
+      </div>
+      {/* Win/loss badge */}
+      <div style={{ fontFamily: 'var(--pixel)', fontSize: '7px', color: borderColor, textShadow: `0 0 8px ${borderColor}`, marginBottom: '10px', letterSpacing: '.05em' }}>
+        {isWinner ? '🏆 WINNER' : '💀 LOSER'}
+      </div>
+      {/* Stats with +/- match result bars */}
+      <div style={{ width: '100%' }}>
+        {STATS.map(({ label, val, oppVal, color, max }) => {
+          const better = val >= oppVal;
+          return (
+            <div key={label} style={{ marginBottom: '6px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <span style={{ fontFamily: 'var(--pixel)', fontSize: '6px', color: 'var(--txt-dim)', width: '26px', flexShrink: 0 }}>{label}</span>
+                <div style={{ flex: 1, height: '6px', background: 'var(--void)', border: '1px solid var(--panel-line)', overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: `${(val / max) * 100}%`, background: color, boxShadow: `0 0 4px ${color}` }} />
+                </div>
+                <span style={{ fontFamily: 'var(--pixel)', fontSize: '8px', color: better ? 'var(--neon-grn)' : 'var(--neon-pink)', width: '10px', textAlign: 'center', flexShrink: 0, textShadow: `0 0 6px ${better ? 'var(--neon-grn)' : 'var(--neon-pink)'}` }}>
+                  {better ? '+' : '−'}
+                </span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 function buildTweetText(me: Fighter, opponent: Fighter, isWin: boolean, maxCombo: number, duration: number) {
@@ -305,6 +410,17 @@ export function Results() {
               ⚠ OPPONENT DISCONNECTED — YOU WIN!
             </div>
           )}
+        </div>
+
+        {/* Fighter comparison panel */}
+        <div className="mb-5" style={{ opacity: show ? 1 : 0, transition: 'opacity .5s .08s' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: '8px', alignItems: 'start' }}>
+            <FighterCard fighter={player1} opponent={player2} isWinner={isP1Win} />
+            <div style={{ display: 'flex', alignItems: 'center', padding: '54px 6px 0', fontFamily: 'var(--pixel)', fontSize: '13px', color: 'var(--neon-yel)', textShadow: '2px 2px 0 var(--neon-pink)' }}>
+              VS
+            </div>
+            <FighterCard fighter={player2} opponent={player1} isWinner={!isP1Win} />
+          </div>
         </div>
 
         {/* Stats strip */}
