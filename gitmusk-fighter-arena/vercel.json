@@ -8,6 +8,10 @@
       "destination": "https://pbs.twimg.com/:path*"
     },
     {
+      "source": "/unavatar/:path*",
+      "destination": "https://unavatar.io/:path*"
+    },
+    {
       "source": "/((?!api/).*)",
       "destination": "/index.html"
     }

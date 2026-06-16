@@ -8,28 +8,16 @@ import { supabase } from '../lib/supabase';
 
 const GAME_URL = typeof window !== 'undefined' ? window.location.origin : 'https://exarena.xyz';
 
-async function resolveAvatarBlobUrl(avatarUrl: string, username: string): Promise<string> {
-  const fallback = `https://api.dicebear.com/7.x/pixel-art/png?seed=${encodeURIComponent(username)}&size=80`;
-  try {
-    if (avatarUrl) {
-      const fetchUrl = avatarUrl.startsWith('https://pbs.twimg.com')
-        ? avatarUrl.replace('https://pbs.twimg.com', '/img-proxy')
-        : avatarUrl;
-      const resp = await fetch(fetchUrl);
-      if (resp.ok) {
-        const blob = await resp.blob();
-        return URL.createObjectURL(blob);
-      }
-    }
-  } catch { /* fall through */ }
-  try {
-    const resp = await fetch(fallback);
-    if (resp.ok) {
-      const blob = await resp.blob();
-      return URL.createObjectURL(blob);
-    }
-  } catch { /* use URL directly */ }
-  return fallback;
+// Map avatar URLs to same-origin Vercel proxy paths so html2canvas can capture them
+function resolveProxyUrl(avatarUrl: string, username: string): string {
+  if (avatarUrl?.startsWith('https://pbs.twimg.com')) {
+    return avatarUrl.replace('https://pbs.twimg.com', '/img-proxy');
+  }
+  if (avatarUrl?.startsWith('https://unavatar.io')) {
+    return avatarUrl.replace('https://unavatar.io', '/unavatar');
+  }
+  if (avatarUrl) return avatarUrl;
+  return `https://api.dicebear.com/7.x/pixel-art/png?seed=${encodeURIComponent(username)}&size=80`;
 }
 
 function FighterCard({ fighter, opponent, isWinner, avatarSrc }: { fighter: Fighter; opponent: Fighter; isWinner: boolean; avatarSrc?: string }) {
@@ -103,7 +91,6 @@ export function Results() {
   const [copied, setCopied] = useState(false);
   const [shareImgUrl, setShareImgUrl] = useState<string | null>(null);
   const [generatingCard, setGeneratingCard] = useState(false);
-  const [avatarSrcs, setAvatarSrcs] = useState<Record<string, string>>({});
   const fighterPanelRef = useRef<HTMLDivElement>(null);
 
   // Rematch state
@@ -222,33 +209,6 @@ export function Results() {
     })();
   }, []);
 
-  // Pre-load both avatars as blob URLs so html2canvas can capture them without CORS issues
-  useEffect(() => {
-    if (!player1 || !player2) return;
-    let revoked = false;
-    const prevUrls: string[] = [];
-    (async () => {
-      const [src1, src2] = await Promise.all([
-        resolveAvatarBlobUrl(player1.profile.avatarUrl, player1.profile.username),
-        resolveAvatarBlobUrl(player2.profile.avatarUrl, player2.profile.username),
-      ]);
-      if (revoked) {
-        if (src1.startsWith('blob:')) URL.revokeObjectURL(src1);
-        if (src2.startsWith('blob:')) URL.revokeObjectURL(src2);
-        return;
-      }
-      prevUrls.push(src1, src2);
-      setAvatarSrcs({
-        [player1.profile.username]: src1,
-        [player2.profile.username]: src2,
-      });
-    })();
-    return () => {
-      revoked = true;
-      prevUrls.forEach(u => { if (u.startsWith('blob:')) URL.revokeObjectURL(u); });
-    };
-  }, [player1?.profile.username, player2?.profile.username]);
-
   const generateShareCard = useCallback(async () => {
     if (!fighterPanelRef.current) return;
     setGeneratingCard(true);
@@ -269,13 +229,12 @@ export function Results() {
     }
   }, []);
 
-  // Auto-generate share card once panel is visible and avatars are loaded
+  // Auto-generate share card once panel is visible; delay lets proxy images load in DOM first
   useEffect(() => {
-    if (!show || Object.keys(avatarSrcs).length < 2) return;
-    // Delay to allow images to render in DOM
-    const t = setTimeout(() => generateShareCard(), 400);
+    if (!show) return;
+    const t = setTimeout(() => generateShareCard(), 600);
     return () => clearTimeout(t);
-  }, [show, avatarSrcs, generateShareCard]);
+  }, [show, generateShareCard]);
 
   // Revoke shareImgUrl on unmount (it's a data URL so no-op, but good habit)
   useEffect(() => () => { setShareImgUrl(null); }, []);
@@ -349,14 +308,14 @@ export function Results() {
           )}
         </div>
 
-        {/* Fighter comparison panel — this is captured directly as the share card */}
+        {/* Fighter comparison panel — captured directly as the share card */}
         <div ref={fighterPanelRef} className="mb-5" style={{ opacity: show ? 1 : 0, transition: 'opacity .5s .08s' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: '8px', alignItems: 'start' }}>
-            <FighterCard fighter={player1} opponent={player2} isWinner={isP1Win} avatarSrc={avatarSrcs[player1.profile.username]} />
+            <FighterCard fighter={player1} opponent={player2} isWinner={isP1Win} avatarSrc={resolveProxyUrl(player1.profile.avatarUrl, player1.profile.username)} />
             <div style={{ display: 'flex', alignItems: 'center', padding: '54px 6px 0', fontFamily: 'var(--pixel)', fontSize: '13px', color: 'var(--neon-yel)', textShadow: '2px 2px 0 var(--neon-pink)' }}>
               VS
             </div>
-            <FighterCard fighter={player2} opponent={player1} isWinner={!isP1Win} avatarSrc={avatarSrcs[player2.profile.username]} />
+            <FighterCard fighter={player2} opponent={player1} isWinner={!isP1Win} avatarSrc={resolveProxyUrl(player2.profile.avatarUrl, player2.profile.username)} />
           </div>
         </div>
 
