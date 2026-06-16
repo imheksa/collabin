@@ -8,28 +8,41 @@ import { supabase } from '../lib/supabase';
 const GAME_URL = typeof window !== 'undefined' ? window.location.origin : 'https://exarena.xyz';
 const CARD_W = 600, CARD_H = 480;
 
+function loadImgFromSrc(src: string, cors = false): Promise<HTMLImageElement | null> {
+  return new Promise(resolve => {
+    const img = new Image();
+    if (cors) img.crossOrigin = 'anonymous';
+    const t = setTimeout(() => resolve(null), 4000);
+    img.onload = () => { clearTimeout(t); resolve(img); };
+    img.onerror = () => { clearTimeout(t); resolve(null); };
+    img.src = src;
+  });
+}
+
 async function loadImg(_username: string, avatarUrl: string): Promise<HTMLImageElement | null> {
   const dicebear = `https://api.dicebear.com/7.x/pixel-art/png?seed=${encodeURIComponent(_username)}&size=80`;
 
-  // Route pbs.twimg.com avatars through Vercel's server-side rewrite (/img-proxy/* → pbs.twimg.com/*).
-  // The browser sees a same-origin URL so canvas drawImage never taints — no CORS issue.
-  const proxyUrl = avatarUrl?.startsWith('https://pbs.twimg.com')
-    ? avatarUrl.replace('https://pbs.twimg.com', '/img-proxy')
-    : null;
-
-  const sources = [proxyUrl, dicebear].filter(Boolean) as string[];
-  for (const src of sources) {
-    const result = await new Promise<HTMLImageElement | null>(resolve => {
-      const img = new Image();
-      if (!src.startsWith('/')) img.crossOrigin = 'anonymous';
-      const t = setTimeout(() => resolve(null), 4000);
-      img.onload = () => { clearTimeout(t); resolve(img); };
-      img.onerror = () => { clearTimeout(t); resolve(null); };
-      img.src = src;
-    });
-    if (result) return result;
+  if (avatarUrl) {
+    // Real X users: route pbs.twimg.com through Vercel's same-origin rewrite (no canvas CORS taint)
+    if (avatarUrl.startsWith('https://pbs.twimg.com')) {
+      const proxied = avatarUrl.replace('https://pbs.twimg.com', '/img-proxy');
+      const img = await loadImgFromSrc(proxied, false);
+      if (img) return img;
+    } else {
+      // Demo AI fighters (unavatar.io) or other: fetch → blob URL (same-origin, no taint)
+      try {
+        const resp = await fetch(avatarUrl);
+        if (resp.ok) {
+          const blob = await resp.blob();
+          const blobUrl = URL.createObjectURL(blob);
+          const img = await loadImgFromSrc(blobUrl, false);
+          if (img) return img;
+        }
+      } catch { /* fall through to dicebear */ }
+    }
   }
-  return null;
+
+  return loadImgFromSrc(dicebear, true);
 }
 
 function hexToRgb(hex: string) {
