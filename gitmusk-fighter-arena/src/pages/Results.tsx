@@ -6,7 +6,7 @@ import { syncProfile, fetchSeasonInfo } from '../utils/cloudSync';
 import { supabase } from '../lib/supabase';
 
 const GAME_URL = typeof window !== 'undefined' ? window.location.origin : 'https://exarena.xyz';
-const CARD_W = 600, CARD_H = 315;
+const CARD_W = 600, CARD_H = 480;
 
 async function loadImg(username: string, avatarUrl: string): Promise<HTMLImageElement | null> {
   const dicebear = `https://api.dicebear.com/7.x/pixel-art/png?seed=${encodeURIComponent(username)}&size=80`;
@@ -32,40 +32,36 @@ function hexToRgb(hex: string) {
 async function renderCard(canvas: HTMLCanvasElement, me: Fighter, opponent: Fighter, isWin: boolean, maxCombo: number, duration: number) {
   canvas.width = CARD_W; canvas.height = CARD_H;
   const ctx = canvas.getContext('2d')!;
-  const bg = ctx.createLinearGradient(0, 0, CARD_W, CARD_H);
+
+  // Background
+  const bg = ctx.createLinearGradient(0, 0, 0, CARD_H);
   bg.addColorStop(0, '#0a0118'); bg.addColorStop(1, '#1d0b3a');
   ctx.fillStyle = bg; ctx.fillRect(0, 0, CARD_W, CARD_H);
-  for (let y = 0; y < CARD_H; y += 4) { ctx.fillStyle = 'rgba(0,0,0,0.15)'; ctx.fillRect(0, y, CARD_W, 2); }
+  for (let y = 0; y < CARD_H; y += 4) { ctx.fillStyle = 'rgba(0,0,0,0.13)'; ctx.fillRect(0, y, CARD_W, 2); }
 
   const mono = (size: number) => `bold ${size}px "Courier New", monospace`;
   const [r, g, b] = hexToRgb(me.stats.color);
 
-  // Border
+  // Outer border
   ctx.strokeStyle = me.stats.color; ctx.lineWidth = 3; ctx.shadowColor = me.stats.color; ctx.shadowBlur = 14;
   ctx.strokeRect(2, 2, CARD_W - 4, CARD_H - 4); ctx.shadowBlur = 0;
 
-  // Top bar
-  ctx.fillStyle = `rgba(${r},${g},${b},0.14)`; ctx.fillRect(0, 0, CARD_W, 36);
-  ctx.fillStyle = '#ff2d75'; ctx.shadowColor = '#ff2d75'; ctx.shadowBlur = 8;
-  ctx.font = mono(9); ctx.textAlign = 'center';
-  ctx.fillText('⚔  EX ARENA  ⚔', CARD_W / 2, 23); ctx.shadowBlur = 0;
+  // Header bar — "// BATTLE RESULTS"
+  ctx.fillStyle = '#00e5ff'; ctx.fillRect(20, 16, 24, 4);
+  ctx.fillStyle = '#00e5ff'; ctx.font = mono(8); ctx.textAlign = 'left';
+  ctx.fillText('// BATTLE RESULTS', 52, 21);
 
-  // Result + subtitle
+  // Winner name
+  const winnerName = (isWin ? me : opponent).profile.username.toUpperCase();
+  ctx.fillStyle = '#ffd60a'; ctx.shadowColor = '#ffd60a'; ctx.shadowBlur = 12;
+  ctx.font = mono(22); ctx.textAlign = 'center';
+  ctx.fillText(winnerName.slice(0, 14), CARD_W / 2, 58); ctx.shadowBlur = 0;
+
+  // VICTORY / DEFEATED
   const resultColor = isWin ? '#00ff9d' : '#ff2d75';
-  ctx.fillStyle = resultColor; ctx.shadowColor = resultColor; ctx.shadowBlur = 16;
-  ctx.font = mono(16); ctx.textAlign = 'center';
-  ctx.fillText(isWin ? '🏆 VICTORY!' : '💀 DEFEATED', CARD_W / 2, 57); ctx.shadowBlur = 0;
-  ctx.fillStyle = '#ffffff50'; ctx.font = mono(7); ctx.textAlign = 'center';
-  ctx.fillText(isWin ? `vs @${opponent.profile.username}` : `by @${opponent.profile.username}`, CARD_W / 2, 70);
-
-  // Dividers
-  ctx.strokeStyle = '#3a1c5e'; ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.moveTo(16, 76); ctx.lineTo(CARD_W - 16, 76); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(CARD_W / 2, 76); ctx.lineTo(CARD_W / 2, 240); ctx.stroke();
-
-  // VS label
-  ctx.fillStyle = '#ffd60a'; ctx.shadowColor = '#ffd60a'; ctx.shadowBlur = 8;
-  ctx.font = mono(11); ctx.textAlign = 'center'; ctx.fillText('VS', CARD_W / 2, 134); ctx.shadowBlur = 0;
+  ctx.fillStyle = resultColor; ctx.shadowColor = resultColor; ctx.shadowBlur = 14;
+  ctx.font = mono(15); ctx.textAlign = 'center';
+  ctx.fillText(isWin ? '🏆  VICTORY' : '💀  DEFEATED', CARD_W / 2, 84); ctx.shadowBlur = 0;
 
   // Load both avatars in parallel
   const [meImg, oppImg] = await Promise.all([
@@ -73,85 +69,119 @@ async function renderCard(canvas: HTMLCanvasElement, me: Fighter, opponent: Figh
     loadImg(opponent.profile.username, opponent.profile.avatarUrl),
   ]);
 
-  // Draw one fighter column: name+archetype at top, avatar in middle, stat bars at bottom
-  const drawCol = (f: Fighter, img: HTMLImageElement | null, winner: boolean, opp: Fighter, cx: number) => {
+  // Draw a fighter card column, mirroring the DOM FighterCard component
+  const drawCard = (f: Fighter, img: HTMLImageElement | null, winner: boolean, opp: Fighter, cardX: number, cardY: number, cardW: number, cardH: number) => {
     const fc = f.stats.color;
-    const winBorder = winner ? '#00ff9d' : '#ff2d75';
+    const bdrCol = winner ? '#00ff9d' : '#ff2d75';
+    const [cr, cg, cb] = hexToRgb(bdrCol);
+
     ctx.globalAlpha = winner ? 1 : 0.82;
+
+    // Card background + border
+    ctx.fillStyle = '#140827'; ctx.fillRect(cardX, cardY, cardW, cardH);
+    ctx.strokeStyle = bdrCol; ctx.shadowColor = bdrCol; ctx.shadowBlur = 14; ctx.lineWidth = 3;
+    ctx.strokeRect(cardX + 1.5, cardY + 1.5, cardW - 3, cardH - 3); ctx.shadowBlur = 0;
+
+    // Subtle inner glow
+    const grd = ctx.createLinearGradient(cardX, cardY, cardX, cardY + 60);
+    grd.addColorStop(0, `rgba(${cr},${cg},${cb},0.08)`); grd.addColorStop(1, 'transparent');
+    ctx.fillStyle = grd; ctx.fillRect(cardX, cardY, cardW, 60);
+
+    const cx = cardX + cardW / 2;
 
     // Name
     ctx.fillStyle = '#fff'; ctx.shadowColor = fc; ctx.shadowBlur = 4;
     ctx.font = mono(8); ctx.textAlign = 'center';
-    ctx.fillText(`@${f.profile.username.slice(0, 11)}`, cx, 91); ctx.shadowBlur = 0;
+    ctx.fillText(`@${f.profile.username.slice(0, 13)}`, cx, cardY + 22); ctx.shadowBlur = 0;
 
     // Archetype
     ctx.fillStyle = fc; ctx.font = mono(6); ctx.textAlign = 'center';
-    ctx.fillText(f.stats.archetypeLabel.toUpperCase().slice(0, 16), cx, 103);
+    ctx.fillText(f.stats.archetypeLabel.toUpperCase().slice(0, 16), cx, cardY + 36);
 
-    // Winner tag
-    if (winner) {
-      ctx.fillStyle = '#00ff9d'; ctx.shadowColor = '#00ff9d'; ctx.shadowBlur = 5;
-      ctx.font = mono(6); ctx.textAlign = 'center'; ctx.fillText('★ WINNER', cx, 115); ctx.shadowBlur = 0;
-    }
-
-    // Avatar circle
-    const aR = 30; const aY = 148;
+    // Avatar
+    const aR = 36; const aY = cardY + 90;
     if (img) {
       ctx.save(); ctx.beginPath(); ctx.arc(cx, aY, aR, 0, Math.PI * 2); ctx.clip();
       ctx.drawImage(img, cx - aR, aY - aR, aR * 2, aR * 2); ctx.restore();
     } else {
       ctx.fillStyle = fc; ctx.beginPath(); ctx.arc(cx, aY, aR, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#000'; ctx.font = mono(18); ctx.textAlign = 'center';
-      ctx.fillText(f.profile.username[0].toUpperCase(), cx, aY + 6);
+      ctx.fillStyle = '#000'; ctx.font = mono(20); ctx.textAlign = 'center';
+      ctx.fillText(f.profile.username[0].toUpperCase(), cx, aY + 7);
     }
-    ctx.strokeStyle = winBorder; ctx.shadowColor = winBorder; ctx.shadowBlur = 10; ctx.lineWidth = 3;
+    ctx.strokeStyle = fc; ctx.shadowColor = fc; ctx.shadowBlur = 10; ctx.lineWidth = 3;
     ctx.beginPath(); ctx.arc(cx, aY, aR + 3, 0, Math.PI * 2); ctx.stroke(); ctx.shadowBlur = 0;
 
-    // Stat bars with +/- match result indicator
-    const barW = 96; const bx = cx - barW / 2 - 8;
+    // Winner/Loser badge
+    ctx.fillStyle = bdrCol; ctx.shadowColor = bdrCol; ctx.shadowBlur = 6;
+    ctx.font = mono(7); ctx.textAlign = 'center';
+    ctx.fillText(winner ? '🏆 WINNER' : '💀 LOSER', cx, cardY + 148); ctx.shadowBlur = 0;
+
+    // Stat bars with +/- indicator
+    const barW = cardW - 48; const bx = cardX + 22;
     [
       { lbl: 'PWR',  v: f.stats.basePower, ov: opp.stats.basePower, bc: fc,        max: 100 },
       { lbl: 'DEF',  v: f.stats.defense,   ov: opp.stats.defense,   bc: '#00ccff', max: 100 },
       { lbl: 'SPD',  v: f.stats.speed,     ov: opp.stats.speed,     bc: '#00ff41', max: 100 },
       { lbl: 'CRIT', v: f.stats.critRate,  ov: opp.stats.critRate,  bc: '#ffd60a', max: 80  },
     ].forEach(({ lbl, v, ov, bc, max }, i) => {
-      const sy = 186 + i * 13;
+      const sy = cardY + 164 + i * 16;
       const better = v >= ov;
       const ic = better ? '#00ff9d' : '#ff2d75';
-      ctx.fillStyle = '#666'; ctx.font = mono(5.5); ctx.textAlign = 'left';
-      ctx.fillText(`${lbl}:${v}`, bx, sy);
-      ctx.fillStyle = '#150828'; ctx.fillRect(bx, sy + 2, barW, 5);
+      // label
+      ctx.fillStyle = '#888'; ctx.font = mono(6); ctx.textAlign = 'left';
+      ctx.fillText(lbl, bx, sy);
+      // bar track
+      const bStart = bx + 30; const bLen = barW - 44;
+      ctx.fillStyle = '#0a0118'; ctx.fillRect(bStart, sy - 8, bLen, 7);
+      ctx.strokeStyle = '#3a1c5e'; ctx.lineWidth = 1; ctx.strokeRect(bStart, sy - 8, bLen, 7);
+      // bar fill
       ctx.fillStyle = bc; ctx.shadowColor = bc; ctx.shadowBlur = 3;
-      ctx.fillRect(bx, sy + 2, barW * Math.min(1, v / max), 5); ctx.shadowBlur = 0;
-      ctx.fillStyle = ic; ctx.shadowColor = ic; ctx.shadowBlur = 4;
-      ctx.font = mono(8); ctx.textAlign = 'left';
-      ctx.fillText(better ? '+' : '−', bx + barW + 4, sy + 7); ctx.shadowBlur = 0;
+      ctx.fillRect(bStart, sy - 8, bLen * Math.min(1, v / max), 7); ctx.shadowBlur = 0;
+      // +/- indicator
+      ctx.fillStyle = ic; ctx.shadowColor = ic; ctx.shadowBlur = 5;
+      ctx.font = mono(9); ctx.textAlign = 'right';
+      ctx.fillText(better ? '+' : '−', bx + barW - 2, sy); ctx.shadowBlur = 0;
     });
+
     ctx.globalAlpha = 1;
   };
 
-  drawCol(me,       meImg,  isWin,  opponent, Math.round(CARD_W * 0.27));
-  drawCol(opponent, oppImg, !isWin, me,       Math.round(CARD_W * 0.73));
+  // Card dimensions
+  const cardY = 96; const cardH = 232; const gap = 14;
+  const cardW = Math.floor((CARD_W - 56 - gap) / 2);
+  drawCard(me,       meImg,  isWin,  opponent, 20,              cardY, cardW, cardH);
+  drawCard(opponent, oppImg, !isWin, me,       20 + cardW + gap, cardY, cardW, cardH);
 
-  // Bottom strip
-  ctx.fillStyle = `rgba(${r},${g},${b},0.1)`; ctx.fillRect(0, 242, CARD_W, 48);
-  ctx.strokeStyle = `rgba(${r},${g},${b},0.3)`; ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.moveTo(0, 242); ctx.lineTo(CARD_W, 242); ctx.stroke();
+  // VS label between cards
+  ctx.fillStyle = '#ffd60a'; ctx.shadowColor = '#ffd60a'; ctx.shadowBlur = 8;
+  ctx.font = mono(10); ctx.textAlign = 'center';
+  ctx.fillText('VS', 20 + cardW + gap / 2, cardY + cardH / 2 - 18); ctx.shadowBlur = 0;
+
+  // Bottom strip — ROUNDS / DURATION / COMBO
+  const stripY = cardY + cardH + 16;
+  const stripH = 62;
   [
-    { label: 'COMBO',    value: `${maxCombo}x`,              color: '#ffd60a'      },
-    { label: 'DURATION', value: `${duration}s`,              color: '#00e5ff'      },
-    { label: 'RARITY',   value: me.stats.rarity.toUpperCase(), color: me.stats.color },
-    { label: 'TIER',     value: me.stats.tier.toUpperCase(), color: '#b026ff'      },
+    { label: 'ROUNDS',   value: String(Math.round(duration / 60) || 1), color: '#00e5ff' },
+    { label: 'DURATION', value: `${duration}s`,                          color: '#ffd60a' },
+    { label: 'MAX COMBO', value: `${maxCombo}x`,                         color: '#ff2d75' },
   ].forEach(({ label, value, color }, i) => {
-    const sw = CARD_W / 4; const colX = sw * i + sw / 2;
-    ctx.fillStyle = '#555'; ctx.font = mono(7); ctx.textAlign = 'center'; ctx.fillText(label, colX, 257);
-    ctx.fillStyle = color; ctx.shadowColor = color; ctx.shadowBlur = 5; ctx.font = mono(10);
-    ctx.fillText(value, colX, 272); ctx.shadowBlur = 0;
+    const sw = CARD_W / 3; const cx2 = sw * i + sw / 2;
+    // tile bg
+    ctx.fillStyle = '#140827'; ctx.fillRect(cx2 - sw / 2 + 6, stripY, sw - 12, stripH);
+    ctx.strokeStyle = color + '40'; ctx.lineWidth = 2;
+    ctx.strokeRect(cx2 - sw / 2 + 6, stripY, sw - 12, stripH);
+    // label
+    ctx.fillStyle = '#666'; ctx.font = mono(7); ctx.textAlign = 'center'; ctx.fillText(label, cx2, stripY + 18);
+    // value
+    ctx.fillStyle = color; ctx.shadowColor = color; ctx.shadowBlur = 6; ctx.font = mono(14);
+    ctx.fillText(value, cx2, stripY + 46); ctx.shadowBlur = 0;
   });
 
   // Footer
-  ctx.fillStyle = `rgba(${r},${g},${b},0.06)`; ctx.fillRect(0, 284, CARD_W, CARD_H - 284);
-  ctx.fillStyle = '#3a3060'; ctx.font = mono(7); ctx.textAlign = 'center'; ctx.fillText(`🎮  ${GAME_URL}`, CARD_W / 2, 305);
+  const footerY = stripY + stripH + 14;
+  ctx.fillStyle = '#3a1c5e40'; ctx.fillRect(0, footerY, CARD_W, CARD_H - footerY);
+  ctx.fillStyle = '#3a3060'; ctx.font = mono(7); ctx.textAlign = 'center';
+  ctx.fillText(`🎮  ${GAME_URL}`, CARD_W / 2, CARD_H - 12);
 }
 
 function FighterCard({ fighter, opponent, isWinner }: { fighter: Fighter; opponent: Fighter; isWinner: boolean }) {
