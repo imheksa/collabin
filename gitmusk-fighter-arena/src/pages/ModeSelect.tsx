@@ -308,11 +308,8 @@ export function ModeSelect() {
                   </div>
                 </div>
                 <div className="flex flex-col gap-3">
-                  <button onClick={startRandomSearch} className="g-btn ghost full" style={{ fontSize: '11px' }}>
-                    ▶ FREE MATCH
-                  </button>
-                  <button onClick={startRankedSearch} className="g-btn full" style={{ fontSize: '11px', background: 'rgba(255,214,10,.15)', borderColor: 'var(--neon-yel)', color: 'var(--neon-yel)' }}>
-                    🏆 RANKED MATCH — MMR BASED
+                  <button onClick={startRankedSearch} className="g-btn full" style={{ fontSize: '13px' }}>
+                    ▶ PLAY NOW
                   </button>
                   <button onClick={() => setShowP2eInfo(true)} className="g-btn full" style={{ fontSize: '11px', opacity: 0.65 }}>
                     💰 P2E MATCH — COMING SOON
