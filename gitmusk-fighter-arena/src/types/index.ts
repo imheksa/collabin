@@ -63,7 +63,7 @@ export type GameScreen =
   | 'leaderboard'
   | 'profile';
 
-export type GameMode = 'free' | 'p2e';
+export type GameMode = 'free' | 'p2e' | 'ranked';
 export type MatchMode = 'random' | 'friend';
 
 export interface MatchResult {

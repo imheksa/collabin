@@ -85,6 +85,31 @@ export function getLevelTier(level: number): LevelTier {
   return LEVEL_TIERS[0];
 }
 
+// ─── MMR Rank Tiers ──────────────────────────────────────────────────────────
+
+export interface MmrTier {
+  name: string;
+  color: string;
+  icon: string;
+  minMmr: number;
+}
+
+export const MMR_TIERS: MmrTier[] = [
+  { minMmr: 1200, name: 'DIAMOND',  color: '#00e5ff', icon: '💎' },
+  { minMmr: 1000, name: 'PLATINUM', color: '#c0d8ff', icon: '🏅' },
+  { minMmr: 800,  name: 'GOLD',     color: '#ffd60a', icon: '🥇' },
+  { minMmr: 600,  name: 'SILVER',   color: '#c0c0c0', icon: '🥈' },
+  { minMmr: 400,  name: 'BRONZE',   color: '#cd7f32', icon: '🥉' },
+  { minMmr: 0,    name: 'IRON',     color: '#888888', icon: '⚙️'  },
+];
+
+export function getMmrTier(mmr: number): MmrTier {
+  for (const tier of MMR_TIERS) {
+    if (mmr >= tier.minMmr) return tier;
+  }
+  return MMR_TIERS[MMR_TIERS.length - 1];
+}
+
 // ─── XP / Level formulas ─────────────────────────────────────────────────────
 // XP to go from level N → N+1 = 240 * N
 // Total cumulative XP to reach level N = 120 * N * (N - 1)

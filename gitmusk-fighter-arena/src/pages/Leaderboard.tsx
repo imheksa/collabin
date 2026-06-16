@@ -4,6 +4,7 @@ import { DEMO_PROFILES } from '../data/mockProfiles';
 import { calculateFighterStats } from '../utils/statsCalculator';
 import { getAllLocalStats } from '../utils/leaderboard';
 import { fetchLeaderboard, fetchSeasonInfo, LeaderboardResult, SeasonInfo, SeasonHistoryEntry } from '../utils/cloudSync';
+import { getMmrTier } from '../utils/playerProfile';
 
 const BADGE_META: Record<string, { color: string; emoji: string }> = {
   champ:  { color: '#ffd60a', emoji: '👑' },
@@ -509,7 +510,8 @@ export function Leaderboard() {
                     </div>
                     {mode === 'global' && isLive && (
                       <div style={{ fontFamily: 'var(--mono)', fontSize: '7px', color: 'var(--txt-dim)', marginTop: '2px' }}>
-                        {e.mmr}MMR · {e.seasonWins}S · {e.pvpWins}P2P
+                        <span style={{ color: getMmrTier(e.mmr).color }}>{getMmrTier(e.mmr).icon}</span>
+                        {' '}{e.mmr}MMR · {e.seasonWins}S · {e.pvpWins}P2P
                       </div>
                     )}
                     <div style={{ fontFamily: 'var(--mono)', fontSize: '9px', color: winRate >= 60 ? 'var(--neon-grn)' : winRate >= 40 ? 'var(--neon-yel)' : 'var(--neon-pink)' }}>
@@ -560,7 +562,8 @@ export function Leaderboard() {
                         </div>
                         {mode === 'global' && isLive && (
                           <div style={{ fontFamily: 'var(--mono)', fontSize: '7px', color: 'var(--txt-dim)' }}>
-                            {e.mmr}MMR · {e.seasonWins}S · {e.pvpWins}P2P
+                            <span style={{ color: getMmrTier(e.mmr).color }}>{getMmrTier(e.mmr).icon}</span>
+                            {' '}{e.mmr}MMR · {e.seasonWins}S · {e.pvpWins}P2P
                           </div>
                         )}
                       </div>

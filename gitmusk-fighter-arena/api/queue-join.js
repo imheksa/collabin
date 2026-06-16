@@ -14,7 +14,7 @@ export default async function handler(req, res) {
   if (!url || !key) return res.status(500).json({ error: 'Supabase not configured' });
 
   const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-  const { username, fighterData } = body ?? {};
+  const { username, fighterData, mmr: myMmr, ranked = false } = body ?? {};
   if (!username || !fighterData) return res.status(400).json({ error: 'username and fighterData required' });
 
   const headers = {
@@ -25,13 +25,29 @@ export default async function handler(req, res) {
 
   // Find a waiting player (not same user, created within 90s)
   const sinceTs = new Date(Date.now() - 90000).toISOString();
+  const candidateLimit = ranked ? 10 : 1;
   const findRes = await fetch(
-    `${url}/rest/v1/match_queue?status=eq.waiting&username=neq.${encodeURIComponent(username)}&created_at=gte.${sinceTs}&order=created_at.asc&limit=1`,
+    `${url}/rest/v1/match_queue?status=eq.waiting&username=neq.${encodeURIComponent(username)}&created_at=gte.${sinceTs}&order=created_at.asc&limit=${candidateLimit}`,
     { headers }
   );
-  const waiting = await findRes.json();
+  const candidates = await findRes.json();
 
-  if (Array.isArray(waiting) && waiting.length > 0) {
+  // For ranked queue: prefer opponent within ±150 MMR, fallback to closest
+  let waiting = [];
+  if (Array.isArray(candidates) && candidates.length > 0) {
+    if (ranked && myMmr !== undefined) {
+      const MMR_RANGE = 150;
+      const inRange = candidates.filter(w => {
+        const oppMmr = w.fighter_data?.profile?.mmr ?? 500;
+        return Math.abs(oppMmr - myMmr) <= MMR_RANGE;
+      });
+      waiting = inRange.length > 0 ? [inRange[0]] : [candidates[0]];
+    } else {
+      waiting = [candidates[0]];
+    }
+  }
+
+  if (waiting.length > 0) {
     const waiter = waiting[0];
 
     // Atomically claim the waiter — only succeeds if still 'waiting'

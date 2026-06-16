@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useGameStore } from '../stores/gameStore';
 import { Fighter } from '../types';
-import { recordMatch, getProfile, getLevelTier, ACHIEVEMENT_RARITY_COLORS } from '../utils/playerProfile';
+import { recordMatch, getProfile, getLevelTier, getMmrTier, ACHIEVEMENT_RARITY_COLORS } from '../utils/playerProfile';
 import { syncProfile, fetchSeasonInfo } from '../utils/cloudSync';
 import { supabase } from '../lib/supabase';
 
@@ -360,6 +360,42 @@ export function Results() {
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {/* MMR Rating panel */}
+        {lastMatchReward && (
+          <div className="g-panel mb-5" style={{ padding: '16px 20px', opacity: show ? 1 : 0, transition: 'opacity .6s .3s' }}>
+            <div className="corners"><i></i><i></i><i></i><i></i></div>
+            {(() => {
+              const { mmrDelta, newMmr } = lastMatchReward;
+              const oldMmr = newMmr - mmrDelta;
+              const tier = getMmrTier(newMmr);
+              const positive = mmrDelta >= 0;
+              return (
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div style={{ fontFamily: 'var(--pixel)', fontSize: '7px', color: 'var(--txt-dim)', marginBottom: '8px', letterSpacing: '.15em' }}>
+                      MMR RATING
+                    </div>
+                    <div style={{ fontFamily: 'var(--pixel)', fontSize: '12px', color: tier.color }}>
+                      {tier.icon} {tier.name}
+                    </div>
+                    <div style={{ fontFamily: 'var(--mono)', fontSize: '10px', color: 'var(--txt-dim)', marginTop: '4px' }}>
+                      {oldMmr} → {newMmr} MMR
+                    </div>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontFamily: 'var(--pixel)', fontSize: '26px', color: positive ? 'var(--neon-grn)' : 'var(--neon-pink)', textShadow: `0 0 12px ${positive ? 'var(--neon-grn)' : 'var(--neon-pink)'}` }}>
+                      {positive ? '+' : ''}{mmrDelta}
+                    </div>
+                    <div style={{ fontFamily: 'var(--pixel)', fontSize: '9px', color: positive ? 'var(--neon-grn)' : 'var(--neon-pink)' }}>
+                      MMR {positive ? '▲' : '▼'}
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         )}
 

@@ -2,12 +2,14 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useGameStore } from '../stores/gameStore';
 import { Fighter } from '../types';
+import { getProfile, MMR_DEFAULT } from '../utils/playerProfile';
 
 export type MatchmakingStatus = 'idle' | 'waiting' | 'matched' | 'error';
 
 export function useMatchmaking() {
   const { player1, setPlayer2, setMatchId, setIsHost, setScreen } = useGameStore();
   const [status, setStatus] = useState<MatchmakingStatus>('idle');
+  const [isRanked, setIsRanked] = useState(false);
   const [queueId, setQueueIdState] = useState<string | null>(null);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const queueIdRef = useRef<string | null>(null);
@@ -47,10 +49,13 @@ export function useMatchmaking() {
     }, 5000);
   }, [handleMatch]);
 
-  const joinQueue = useCallback(async () => {
+  const joinQueue = useCallback(async (ranked = false) => {
     if (!player1) return;
     resolvedRef.current = false;
     setStatus('waiting');
+    setIsRanked(ranked);
+
+    const myMmr = getProfile(player1.profile.username).mmr ?? MMR_DEFAULT;
 
     try {
       const res = await fetch('/api/queue-join', {
@@ -59,6 +64,8 @@ export function useMatchmaking() {
         body: JSON.stringify({
           username: player1.profile.username,
           fighterData: { profile: player1.profile, stats: player1.stats },
+          mmr: myMmr,
+          ranked,
         }),
       });
       const data = await res.json();
@@ -111,6 +118,7 @@ export function useMatchmaking() {
     resolvedRef.current = true;
     stopAll();
     setStatus('idle');
+    setIsRanked(false);
     setQueueIdState(null);
     queueIdRef.current = null;
 
@@ -130,5 +138,5 @@ export function useMatchmaking() {
     return () => stopAll();
   }, [stopAll]);
 
-  return { status, queueId, joinQueue, leaveQueue };
+  return { status, queueId, isRanked, joinQueue, leaveQueue };
 }

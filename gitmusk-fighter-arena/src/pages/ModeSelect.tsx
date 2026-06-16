@@ -34,7 +34,7 @@ export function ModeSelect() {
   const roomChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const currentMatchIdRef = useRef<string | null>(null);
 
-  const { status: mmStatus, joinQueue, leaveQueue } = useMatchmaking();
+  const { status: mmStatus, isRanked, joinQueue, leaveQueue } = useMatchmaking();
   const searching = mmStatus === 'waiting';
 
   // 30s timeout — fall back to AI opponent if no real match found
@@ -95,15 +95,23 @@ export function ModeSelect() {
   const startRandomSearch = async () => {
     setMode('free');
     if (!import.meta.env.VITE_SUPABASE_URL) {
-      // Fallback to demo mode if Supabase not configured
       const delay = 1500 + Math.random() * 2000;
       setTimeout(() => pickDemoOpponent(), delay);
       return;
     }
-    await joinQueue();
+    await joinQueue(false);
   };
 
-  // Auto-start matchmaking when navigated from FIGHT NOW on leaderboard
+  const startRankedSearch = async () => {
+    setMode('ranked');
+    if (!import.meta.env.VITE_SUPABASE_URL) {
+      const delay = 1500 + Math.random() * 2000;
+      setTimeout(() => pickDemoOpponent(), delay);
+      return;
+    }
+    await joinQueue(true);
+  };
+
   useEffect(() => {
     if (!autoMatchmake) return;
     setAutoMatchmake(false);
@@ -300,8 +308,11 @@ export function ModeSelect() {
                   </div>
                 </div>
                 <div className="flex flex-col gap-3">
-                  <button onClick={() => { setMode('free'); startRandomSearch(); }} className="g-btn ghost full" style={{ fontSize: '11px' }}>
+                  <button onClick={startRandomSearch} className="g-btn ghost full" style={{ fontSize: '11px' }}>
                     ▶ FREE MATCH
+                  </button>
+                  <button onClick={startRankedSearch} className="g-btn full" style={{ fontSize: '11px', background: 'rgba(255,214,10,.15)', borderColor: 'var(--neon-yel)', color: 'var(--neon-yel)' }}>
+                    🏆 RANKED MATCH — MMR BASED
                   </button>
                   <button onClick={() => setShowP2eInfo(true)} className="g-btn full" style={{ fontSize: '11px', opacity: 0.65 }}>
                     💰 P2E MATCH — COMING SOON
@@ -320,9 +331,11 @@ export function ModeSelect() {
                     ⚡
                   </div>
                 </div>
-                <div style={{ fontFamily: 'var(--pixel)', fontSize: '11px', color: '#fff', marginBottom: '8px' }}>SEARCHING{searchDots}</div>
+                <div style={{ fontFamily: 'var(--pixel)', fontSize: '11px', color: isRanked ? 'var(--neon-yel)' : '#fff', marginBottom: '8px' }}>
+                  {isRanked ? '🏆 RANKED SEARCH' : 'SEARCHING'}{searchDots}
+                </div>
                 <div style={{ fontFamily: 'var(--body)', fontSize: '20px', color: 'var(--txt-dim)', marginBottom: '24px' }}>
-                  Scanning {onlinePlayers} fighters...
+                  {isRanked ? 'Finding opponent within your MMR range...' : `Scanning ${onlinePlayers} fighters...`}
                 </div>
                 <button onClick={leaveQueue} className="g-btn ghost sm">✕ CANCEL</button>
               </div>
