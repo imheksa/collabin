@@ -10,7 +10,9 @@ const CARD_W = 600, CARD_H = 480;
 
 async function loadImg(username: string, avatarUrl: string): Promise<HTMLImageElement | null> {
   const dicebear = `https://api.dicebear.com/7.x/pixel-art/png?seed=${encodeURIComponent(username)}&size=80`;
-  const sources = [`/.netlify/functions/avatar-proxy?username=${encodeURIComponent(username)}`, avatarUrl, dicebear];
+  // Proxy the X avatar through our own API to avoid canvas CORS issues
+  const proxied = avatarUrl ? `/api/avatar-proxy?url=${encodeURIComponent(avatarUrl)}` : null;
+  const sources = [proxied, dicebear].filter(Boolean) as string[];
   for (const src of sources) {
     const result = await new Promise<HTMLImageElement | null>(resolve => {
       const img = new Image(); img.crossOrigin = 'anonymous';
