@@ -1437,7 +1437,7 @@ export function FightingArena({ player1, player2, onMatchEnd, p2AI = true, p2pMo
         style={{ maxWidth: '800px', touchAction: 'none', userSelect: 'none' }}>
 
         {/* D-pad */}
-        <div style={{ position: 'relative', width: '138px', height: '138px', flexShrink: 0 }}>
+        <div className="arena-dpad" style={{ position: 'relative', width: '138px', height: '138px', flexShrink: 0 }}>
           <div style={{
             position: 'absolute', top: '50%', left: '50%',
             transform: 'translate(-50%,-50%)',
@@ -1489,6 +1489,7 @@ export function FightingArena({ player1, player2, onMatchEnd, p2AI = true, p2pMo
           ] as const).map(({ label, key, color }) => (
             <button
               key={label}
+              className="arena-action-btn"
               onTouchStart={(e) => { e.preventDefault(); touchPress(key); }}
               onTouchEnd={(e) => { e.preventDefault(); touchRelease(key); }}
               onTouchCancel={(e) => { e.preventDefault(); touchRelease(key); }}

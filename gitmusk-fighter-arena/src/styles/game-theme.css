@@ -182,4 +182,12 @@
   .g-flow-step { padding: 12px; gap: 12px; }
   .g-flow-step .n { width: 32px; height: 32px; font-size: 10px; }
   .g-flow-step .l { font-size: 9px; }
+  .g-bar-wrap .lbl { font-size: 9px; width: 50px; }
+  .g-bar-wrap .val { font-size: 9px; width: 36px; }
+}
+
+/* Touch gamepad responsive sizing */
+@media (max-width: 480px) {
+  .arena-dpad { width: clamp(100px, 32vw, 138px) !important; height: clamp(100px, 32vw, 138px) !important; }
+  .arena-action-btn { width: clamp(44px, 13vw, 62px) !important; height: clamp(44px, 13vw, 62px) !important; font-size: clamp(14px, 4vw, 20px) !important; }
 }

@@ -220,29 +220,29 @@ function drawBodyAndLimbs(
 
   // ── Torso ──
   d(ctx, p.body, ox, oy, 2, 6, 6);         // shoulders
-  d(ctx, p.body, ox, oy, 1, 7, 8, 5);      // chest
+  d(ctx, p.body, ox, oy, 1, 7, 8, 3);      // chest (rows 7-9, shortened to give room for longer legs)
 
   switch (archetype) {
     case 'ai_builder':
       d(ctx, p.eyes, ox, oy, 3, 8, 4);     // chest circuit line
-      d(ctx, p.bdet, ox, oy, 4, 10, 2);
+      d(ctx, p.bdet, ox, oy, 4, 9, 2);
       break;
     case 'founder_ceo':
-      d(ctx, '#ffffff', ox, oy, 3, 7, 4, 4);
-      d(ctx, '#1155aa', ox, oy, 4, 7, 2, 5);
+      d(ctx, '#ffffff', ox, oy, 3, 7, 4, 3);
+      d(ctx, '#1155aa', ox, oy, 4, 7, 2, 4);
       break;
     case 'meme_account':
-      d(ctx, p.eyes, ox, oy, 3, 9, 4, 2);  // hoodie logo
+      d(ctx, p.eyes, ox, oy, 3, 8, 4);     // hoodie logo
       break;
     case 'og_holder':
       d(ctx, p.belt, ox, oy, 5, 8);        // vest button
-      d(ctx, p.belt, ox, oy, 5, 10);
+      d(ctx, p.belt, ox, oy, 5, 9);
       break;
     case 'crypto_trader':
-      d(ctx, p.bdet, ox, oy, 2, 7, 2, 4);  // left lapel
-      d(ctx, p.bdet, ox, oy, 6, 7, 2, 4);  // right lapel
-      d(ctx, '#fff',  ox, oy, 4, 7, 2, 4); // shirt
-      d(ctx, '#cc8800', ox, oy, 4, 8, 2, 3);
+      d(ctx, p.bdet, ox, oy, 2, 7, 2, 3);  // left lapel
+      d(ctx, p.bdet, ox, oy, 6, 7, 2, 3);  // right lapel
+      d(ctx, '#fff',  ox, oy, 4, 7, 2, 3); // shirt
+      d(ctx, '#cc8800', ox, oy, 4, 8, 2, 2);
       break;
     case 'developer':
       d(ctx, p.belt, ox, oy, 2, 9, 6);     // gi band
@@ -252,52 +252,52 @@ function drawBodyAndLimbs(
       break;
   }
 
-  d(ctx, p.belt, ox, oy, 2, 12, 6);        // belt
+  d(ctx, p.belt, ox, oy, 2, 10, 6);        // belt (moved up from row 12)
 
-  // ── Arms ──
+  // ── Arms (extended 50%: h 4→6) ──
   if (isBlock) {
-    d(ctx, p.limb, ox, oy, 2, 7, 6, 4);    // arms crossed in front
+    d(ctx, p.limb, ox, oy, 2, 7, 6, 6);    // arms crossed in front
   } else if (isPunch) {
-    d(ctx, p.limb, ox, oy, 0, 7, 2, 4);    // back arm normal
-    d(ctx, p.limb, ox, oy, 8, 7, 4, 2);    // front arm extended (past right edge)
-    d(ctx, '#ffee00', ox, oy, 10, 9, 2, 2); // fist impact flash
+    d(ctx, p.limb, ox, oy, 0, 7, 2, 6);    // back arm normal
+    d(ctx, p.limb, ox, oy, 8, 7, 6, 2);    // front arm extended (w 4→6 for 50% longer reach)
+    d(ctx, '#ffee00', ox, oy, 12, 9, 2, 2); // fist impact flash (further out)
   } else if (isUlt) {
-    d(ctx, p.limb, ox, oy, 0, 4, 2, 5);    // left arm raised
-    d(ctx, p.limb, ox, oy, 8, 4, 2, 5);    // right arm raised
+    d(ctx, p.limb, ox, oy, 0, 4, 2, 7);    // left arm raised (h 5→7)
+    d(ctx, p.limb, ox, oy, 8, 4, 2, 7);    // right arm raised
   } else if (isWalk) {
     const af = walkPhase;
-    d(ctx, p.limb, ox, oy, 0, 7 + af,     2, 4);  // left arm swings
-    d(ctx, p.limb, ox, oy, 8, 7 + (1-af), 2, 4);  // right arm opposite
+    d(ctx, p.limb, ox, oy, 0, 7 + af,     2, 6);  // left arm swings (h 4→6)
+    d(ctx, p.limb, ox, oy, 8, 7 + (1-af), 2, 6);  // right arm opposite
   } else {
-    d(ctx, p.limb, ox, oy, 0, 7, 2, 4);
-    d(ctx, p.limb, ox, oy, 8, 7, 2, 4);
+    d(ctx, p.limb, ox, oy, 0, 7, 2, 6);
+    d(ctx, p.limb, ox, oy, 8, 7, 2, 6);
   }
 
-  // ── Legs ──
+  // ── Legs (extended ~50%: start 2 rows earlier, h 4→6; boot stays at row 16) ──
   if (isKick) {
     // Standing (back) leg
-    d(ctx, p.limb, ox, oy, 2, 13, 3, 4);
+    d(ctx, p.limb, ox, oy, 2, 11, 3, 6);
     d(ctx, p.boot, ox, oy, 2, 16, 3, 2);
     // Kicking leg extended forward-up
     d(ctx, p.limb, ox, oy, 6, 10, 3, 2);   // thigh raised
-    d(ctx, p.limb, ox, oy, 8,  8, 3, 2);   // shin forward
-    d(ctx, '#ff6600', ox, oy, 10, 7, 2, 2); // boot impact flash
+    d(ctx, p.limb, ox, oy, 8,  8, 4, 2);   // shin forward (w 3→4 = longer reach)
+    d(ctx, '#ff6600', ox, oy, 12, 7, 2, 2); // boot impact flash (further out)
   } else if (isWalk) {
     const lp = walkPhase;
-    const lRow = lp === 0 ? 12 : 13;
-    const rRow = lp === 0 ? 13 : 12;
-    d(ctx, p.limb, ox, oy, 2, lRow, 3, 4);
-    d(ctx, p.boot, ox, oy, 2, lRow + 3, 3, 2);
-    d(ctx, p.limb, ox, oy, 6, rRow, 3, 4);
-    d(ctx, p.boot, ox, oy, 6, rRow + 3, 3, 2);
+    const lRow = lp === 0 ? 10 : 11;
+    const rRow = lp === 0 ? 11 : 10;
+    d(ctx, p.limb, ox, oy, 2, lRow, 3, 6);
+    d(ctx, p.boot, ox, oy, 2, lRow + 5, 3, 2);
+    d(ctx, p.limb, ox, oy, 6, rRow, 3, 6);
+    d(ctx, p.boot, ox, oy, 6, rRow + 5, 3, 2);
   } else if (isJump) {
-    d(ctx, p.limb, ox, oy, 2, 13, 3, 3);
-    d(ctx, p.limb, ox, oy, 6, 13, 3, 3);
+    d(ctx, p.limb, ox, oy, 2, 11, 3, 5);
+    d(ctx, p.limb, ox, oy, 6, 11, 3, 5);
     d(ctx, p.boot, ox, oy, 2, 15, 3, 2);
     d(ctx, p.boot, ox, oy, 6, 15, 3, 2);
   } else {
-    d(ctx, p.limb, ox, oy, 2, 13, 3, 4);
-    d(ctx, p.limb, ox, oy, 6, 13, 3, 4);
+    d(ctx, p.limb, ox, oy, 2, 11, 3, 6);
+    d(ctx, p.limb, ox, oy, 6, 11, 3, 6);
     d(ctx, p.boot, ox, oy, 2, 16, 3, 2);
     d(ctx, p.boot, ox, oy, 6, 16, 3, 2);
   }
