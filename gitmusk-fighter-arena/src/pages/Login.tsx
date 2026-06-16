@@ -73,22 +73,9 @@ export function Login() {
     setOauthLoading(true);
     setOauthError('');
     try {
-      const popup = await startXOAuthPopup(X_CLIENT_ID, REDIRECT_URI);
-      if (popup) {
-        // Popup opened — wait for it to close (user cancelled) and reset state.
-        // Success path is handled by App.tsx postMessage listener.
-        setPopupHandle(popup);
-        const poll = setInterval(() => {
-          if (popup.closed) {
-            clearInterval(poll);
-            setPopupHandle(null);
-            setOauthLoading(false);
-          }
-        }, 500);
-      } else {
-        // Popup was blocked — fall back to full-page redirect
-        await startXOAuth(X_CLIENT_ID, REDIRECT_URI);
-      }
+      // Primary: full-page redirect (works with any browser/mobile).
+      // Popup approach had session persistence issues with X's login flow.
+      await startXOAuth(X_CLIENT_ID, REDIRECT_URI);
     } catch {
       setOauthError('Failed to start X login. Please try again.');
       setOauthLoading(false);
@@ -173,26 +160,13 @@ export function Login() {
 
         {/* X OAuth button */}
         {OAUTH_ENABLED ? (
-          <div className="mb-5">
-            <button onClick={handleConnectX} disabled={oauthLoading}
-              className="g-btn full" style={{ background: '#1d9bf0', color: '#fff', boxShadow: '0 4px 0 0 #0d5a8a, 0 4px 0 4px var(--void), 0 8px 0 4px #5a1a99', fontSize: '10px', gap: '12px' }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.746l7.73-8.835L1.254 2.25H8.08l4.261 5.635zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-              </svg>
-              {oauthLoading && !popupHandle ? 'CONNECTING...' : oauthLoading ? 'WAITING FOR X...' : 'CONNECT WITH X — REAL STATS'}
-            </button>
-            {popupHandle && (
-              <div className="flex items-center justify-between mt-2" style={{ padding: '8px 12px', background: 'var(--void-2)', border: '2px solid #1d9bf0' }}>
-                <span style={{ fontFamily: 'var(--mono)', fontSize: '11px', color: 'var(--txt-dim)' }}>
-                  X login window is open — complete login there
-                </span>
-                <button onClick={handleCancelPopup}
-                  style={{ fontFamily: 'var(--pixel)', fontSize: '8px', color: 'var(--txt-dim)', background: 'none', border: 'none', cursor: 'pointer', marginLeft: '12px' }}>
-                  CANCEL
-                </button>
-              </div>
-            )}
-          </div>
+          <button onClick={handleConnectX} disabled={oauthLoading}
+            className="g-btn full mb-5" style={{ background: '#1d9bf0', color: '#fff', boxShadow: '0 4px 0 0 #0d5a8a, 0 4px 0 4px var(--void), 0 8px 0 4px #5a1a99', fontSize: '10px', gap: '12px' }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.746l7.73-8.835L1.254 2.25H8.08l4.261 5.635zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+            </svg>
+            {oauthLoading ? 'CONNECTING...' : 'CONNECT WITH X — REAL STATS'}
+          </button>
         ) : (
           <div className="g-panel dark mb-5" style={{ padding: '16px', textAlign: 'center' }}>
             <div style={{ fontFamily: 'var(--pixel)', fontSize: '8px', color: 'var(--txt-dim)' }}>
