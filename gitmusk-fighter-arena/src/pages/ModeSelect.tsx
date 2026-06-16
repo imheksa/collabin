@@ -435,58 +435,21 @@ export function ModeSelect() {
           <div
             onClick={e => e.stopPropagation()}
             className="g-panel"
-            style={{ width: '100%', maxWidth: '480px', padding: '28px', position: 'relative' }}
+            style={{ width: '100%', maxWidth: '380px', padding: '36px 28px', position: 'relative', textAlign: 'center' }}
           >
             <div className="corners"><i></i><i></i><i></i><i></i></div>
 
-            {/* Header */}
-            <div style={{ marginBottom: '20px' }}>
-              <span className="g-eyebrow">// PLAY-TO-EARN</span>
-              <h3 style={{ fontFamily: 'var(--pixel)', fontSize: '11px', color: '#fff', margin: '8px 0 4px', letterSpacing: '.1em', whiteSpace: 'nowrap' }}>
-                💰 FEATURE UNDER CONSTRUCTION
-              </h3>
-              <p style={{ fontFamily: 'var(--body)', fontSize: '17px', color: 'var(--txt-dim)', lineHeight: 1.5 }}>
-                We're building the P2E infrastructure. Two paths are on the table:
-              </p>
+            <span className="g-eyebrow">// PLAY-TO-EARN</span>
+
+            <div style={{ fontSize: '40px', margin: '18px 0 12px' }}>🚧</div>
+
+            <div style={{ fontFamily: 'var(--pixel)', fontSize: '14px', color: 'var(--neon-yel)', letterSpacing: '.15em', marginBottom: '12px' }}>
+              COMING SOON
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginBottom: '24px' }}>
-              {/* Option 1: Bankr */}
-              <div style={{ padding: '16px', background: 'var(--void-2)', borderLeft: '4px solid #ffd700' }}>
-                <div style={{ marginBottom: '8px' }}>
-                  <span style={{ fontFamily: 'var(--pixel)', fontSize: '8px', color: '#ffd700', letterSpacing: '.15em' }}>OPTION 1 · BANKR</span>
-                </div>
-                {[
-                  ['🔍', 'System checks if your X account is linked to Bankr'],
-                  ['💰', 'Verifies your Bankr wallet has sufficient balance'],
-                  ['⚔️', 'Deposit sent directly from your Bankr wallet to the Vault'],
-                  ['🏆', "Payout released to the winner's Bankr wallet instantly"],
-                ].map(([icon, text]) => (
-                  <div key={text} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', marginBottom: '8px' }}>
-                    <span style={{ fontSize: '14px', lineHeight: 1, marginTop: '2px', flexShrink: 0 }}>{icon}</span>
-                    <span style={{ fontFamily: 'var(--body)', fontSize: '15px', color: 'var(--txt-dim)', lineHeight: 1.5 }}>{text}</span>
-                  </div>
-                ))}
-              </div>
-
-              {/* Option 2: Web3 Wallet */}
-              <div style={{ padding: '16px', background: 'var(--void-2)', borderLeft: '4px solid var(--neon-b)' }}>
-                <div style={{ marginBottom: '8px' }}>
-                  <span style={{ fontFamily: 'var(--pixel)', fontSize: '8px', color: 'var(--neon-b)', letterSpacing: '.15em' }}>OPTION 2 · WEB3 WALLET</span>
-                </div>
-                {[
-                  ['🔗', 'Connect your wallet (MetaMask, WalletConnect, Coinbase)'],
-                  ['✍️', 'Both players sign a deposit transaction to the Vault'],
-                  ['🔒', 'Smart contract holds funds in escrow until match resolves'],
-                  ['⚡', 'Winner receives the full pot automatically on-chain'],
-                ].map(([icon, text]) => (
-                  <div key={text} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', marginBottom: '8px' }}>
-                    <span style={{ fontSize: '14px', lineHeight: 1, marginTop: '2px', flexShrink: 0 }}>{icon}</span>
-                    <span style={{ fontFamily: 'var(--body)', fontSize: '15px', color: 'var(--txt-dim)', lineHeight: 1.5 }}>{text}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
+            <p style={{ fontFamily: 'var(--body)', fontSize: '15px', color: 'var(--txt-dim)', lineHeight: 1.6, marginBottom: '28px' }}>
+              Play-to-Earn is under development.<br />Stay tuned for updates!
+            </p>
 
             <button
               onClick={() => setShowP2eInfo(false)}
