@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useGameStore } from './stores/gameStore';
 import { CRTOverlay } from './components/CRTOverlay';
 import { Landing } from './pages/Landing';
@@ -58,6 +58,21 @@ export default function App() {
     const state = params.get('state');
     const errorParam = params.get('error');
     const joinId = params.get('join');
+
+    // Popup mode: this page is the OAuth redirect inside a popup window.
+    // Send the result back to the opener and close.
+    if (window.opener && typeof window.opener.postMessage === 'function') {
+      if (code || errorParam) {
+        try {
+          window.opener.postMessage(
+            { type: 'x_oauth_popup_cb', code, state, error: errorParam },
+            window.location.origin,
+          );
+        } catch { /* cross-origin guard */ }
+        setTimeout(() => window.close(), 200);
+        return;
+      }
+    }
 
     if (errorParam) {
       window.history.replaceState({}, '', window.location.pathname);
@@ -125,7 +140,7 @@ export default function App() {
     }
   }
 
-  async function handleOAuthCallback(code: string, state: string) {
+  const handleOAuthCallback = useCallback(async (code: string, state: string) => {
     // Prefer sessionStorage (tab-specific — prevents multi-tab collisions on desktop).
     // Fall back to localStorage (mobile fallback — sessionStorage cleared during iOS redirects).
     const storedState =
@@ -173,7 +188,24 @@ export default function App() {
     } finally {
       setOauthProcessing(false);
     }
-  }
+  }, [setOauthError, setScreen, setOauthProcessing, setXAccessToken, setPlayer1, setPlayerProfile]);
+
+  // Listen for OAuth result posted from popup window
+  useEffect(() => {
+    function onPopupMessage(e: MessageEvent) {
+      if (e.origin !== window.location.origin) return;
+      if (e.data?.type !== 'x_oauth_popup_cb') return;
+      const { code, state, error } = e.data as { type: string; code?: string; state?: string; error?: string };
+      if (error) {
+        setOauthError('X login was cancelled.');
+        setScreen('login');
+      } else if (code && state) {
+        handleOAuthCallback(code, state);
+      }
+    }
+    window.addEventListener('message', onPopupMessage);
+    return () => window.removeEventListener('message', onPopupMessage);
+  }, [handleOAuthCallback, setOauthError, setScreen]);
 
   return (
     <div className="relative min-h-screen bg-arena-bg font-mono">
