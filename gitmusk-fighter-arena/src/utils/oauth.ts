@@ -18,7 +18,7 @@ export async function generateCodeChallenge(verifier: string): Promise<string> {
 }
 
 function buildOAuthUrl(clientId: string, redirectUri: string, state: string, challenge: string): string {
-  const url = new URL('https://twitter.com/i/oauth2/authorize');
+  const url = new URL('https://x.com/i/oauth2/authorize');
   url.searchParams.set('response_type', 'code');
   url.searchParams.set('client_id', clientId);
   url.searchParams.set('redirect_uri', redirectUri);
