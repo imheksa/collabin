@@ -8,22 +8,37 @@ import { supabase } from '../lib/supabase';
 const GAME_URL = typeof window !== 'undefined' ? window.location.origin : 'https://exarena.xyz';
 const CARD_W = 600, CARD_H = 480;
 
-async function loadImg(username: string, avatarUrl: string): Promise<HTMLImageElement | null> {
-  const dicebear = `https://api.dicebear.com/7.x/pixel-art/png?seed=${encodeURIComponent(username)}&size=80`;
-  // Proxy the X avatar through our own API to avoid canvas CORS issues
-  const proxied = avatarUrl ? `/api/avatar-proxy?url=${encodeURIComponent(avatarUrl)}` : null;
-  const sources = [proxied, dicebear].filter(Boolean) as string[];
-  for (const src of sources) {
-    const result = await new Promise<HTMLImageElement | null>(resolve => {
-      const img = new Image(); img.crossOrigin = 'anonymous';
-      const t = setTimeout(() => resolve(null), 4000);
-      img.onload = () => { clearTimeout(t); resolve(img); };
-      img.onerror = () => { clearTimeout(t); resolve(null); };
-      img.src = src;
-    });
-    if (result) return result;
+async function loadImg(_username: string, avatarUrl: string): Promise<HTMLImageElement | null> {
+  const dicebear = `https://api.dicebear.com/7.x/pixel-art/png?seed=${encodeURIComponent(_username)}&size=80`;
+
+  // Fetch the X avatar as a Blob and create an object URL.
+  // pbs.twimg.com serves Access-Control-Allow-Origin: * so fetch() succeeds,
+  // and a blob:// URL is always treated as same-origin by the canvas — no taint.
+  if (avatarUrl) {
+    try {
+      const resp = await fetch(avatarUrl);
+      if (resp.ok) {
+        const blob = await resp.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        const img = await new Promise<HTMLImageElement | null>(resolve => {
+          const el = new Image();
+          const t = setTimeout(() => resolve(null), 3000);
+          el.onload = () => { clearTimeout(t); resolve(el); };
+          el.onerror = () => { clearTimeout(t); resolve(null); };
+          el.src = blobUrl;
+        });
+        if (img) return img;
+      }
+    } catch { /* fall through to dicebear */ }
   }
-  return null;
+
+  return new Promise<HTMLImageElement | null>(resolve => {
+    const img = new Image(); img.crossOrigin = 'anonymous';
+    const t = setTimeout(() => resolve(null), 4000);
+    img.onload = () => { clearTimeout(t); resolve(img); };
+    img.onerror = () => { clearTimeout(t); resolve(null); };
+    img.src = dicebear;
+  });
 }
 
 function hexToRgb(hex: string) {
