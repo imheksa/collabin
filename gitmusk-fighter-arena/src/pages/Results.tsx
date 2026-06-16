@@ -11,34 +11,25 @@ const CARD_W = 600, CARD_H = 480;
 async function loadImg(_username: string, avatarUrl: string): Promise<HTMLImageElement | null> {
   const dicebear = `https://api.dicebear.com/7.x/pixel-art/png?seed=${encodeURIComponent(_username)}&size=80`;
 
-  // Fetch the X avatar as a Blob and create an object URL.
-  // pbs.twimg.com serves Access-Control-Allow-Origin: * so fetch() succeeds,
-  // and a blob:// URL is always treated as same-origin by the canvas — no taint.
-  if (avatarUrl) {
-    try {
-      const resp = await fetch(avatarUrl);
-      if (resp.ok) {
-        const blob = await resp.blob();
-        const blobUrl = URL.createObjectURL(blob);
-        const img = await new Promise<HTMLImageElement | null>(resolve => {
-          const el = new Image();
-          const t = setTimeout(() => resolve(null), 3000);
-          el.onload = () => { clearTimeout(t); resolve(el); };
-          el.onerror = () => { clearTimeout(t); resolve(null); };
-          el.src = blobUrl;
-        });
-        if (img) return img;
-      }
-    } catch { /* fall through to dicebear */ }
-  }
+  // Route pbs.twimg.com avatars through Vercel's server-side rewrite (/img-proxy/* → pbs.twimg.com/*).
+  // The browser sees a same-origin URL so canvas drawImage never taints — no CORS issue.
+  const proxyUrl = avatarUrl?.startsWith('https://pbs.twimg.com')
+    ? avatarUrl.replace('https://pbs.twimg.com', '/img-proxy')
+    : null;
 
-  return new Promise<HTMLImageElement | null>(resolve => {
-    const img = new Image(); img.crossOrigin = 'anonymous';
-    const t = setTimeout(() => resolve(null), 4000);
-    img.onload = () => { clearTimeout(t); resolve(img); };
-    img.onerror = () => { clearTimeout(t); resolve(null); };
-    img.src = dicebear;
-  });
+  const sources = [proxyUrl, dicebear].filter(Boolean) as string[];
+  for (const src of sources) {
+    const result = await new Promise<HTMLImageElement | null>(resolve => {
+      const img = new Image();
+      if (!src.startsWith('/')) img.crossOrigin = 'anonymous';
+      const t = setTimeout(() => resolve(null), 4000);
+      img.onload = () => { clearTimeout(t); resolve(img); };
+      img.onerror = () => { clearTimeout(t); resolve(null); };
+      img.src = src;
+    });
+    if (result) return result;
+  }
+  return null;
 }
 
 function hexToRgb(hex: string) {
