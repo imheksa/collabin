@@ -11,7 +11,7 @@
  * All sprites drawn facing RIGHT. facing=-1 mirrors via ctx.scale(-1,1).
  */
 
-const P = 8;
+const P = 5;
 
 function d(
   ctx: CanvasRenderingContext2D,
@@ -37,37 +37,45 @@ interface Pal {
 }
 
 const PALS: Record<string, Pal> = {
+  // Red biker: vivid red outfit, tan skin, black boots, white belt
   degen: {
-    hat:  '#cc2200', face: '#440000', eyes: '#ff8800',
-    body: '#dd2200', bdet: '#ff5500', limb: '#cc2200', boot: '#221100', belt: '#eeeeee',
+    hat:  '#cc1100', face: '#f0a878', eyes: '#ff6600',
+    body: '#dd1100', bdet: '#ff4400', limb: '#e8c090', boot: '#111111', belt: '#ffffff',
   },
+  // Suit trader: dark navy suit, light tan face, gold glasses, white shirt
   crypto_trader: {
-    hat:  '#553300', face: '#ffddbb', eyes: '#ffcc00',
-    body: '#886600', bdet: '#ccaa00', limb: '#886600', boot: '#222211', belt: '#ffdd55',
+    hat:  '#334466', face: '#f5c990', eyes: '#ffcc00',
+    body: '#223366', bdet: '#ffffff', limb: '#f5c990', boot: '#111122', belt: '#ffdd55',
   },
+  // Robot: teal-chrome body, glowing cyan eyes, dark blue limbs
   ai_builder: {
-    hat:  '#002233', face: '#004466', eyes: '#00ffff',
-    body: '#003355', bdet: '#006688', limb: '#002244', boot: '#001122', belt: '#00cccc',
+    hat:  '#1a4a5e', face: '#2a7090', eyes: '#00ffff',
+    body: '#1a4a6e', bdet: '#00cccc', limb: '#123050', boot: '#0a1828', belt: '#00dddd',
   },
+  // Hoodie meme: forest green hoodie, purple mask, neon magenta detail
   meme_account: {
-    hat:  '#1a6b1a', face: '#551177', eyes: '#ff00ff',
-    body: '#881199', bdet: '#bb44cc', limb: '#771188', boot: '#110011', belt: '#ee44ff',
+    hat:  '#2a7a2a', face: '#884488', eyes: '#ff22ff',
+    body: '#2a7a2a', bdet: '#ff22ff', limb: '#f0a878', boot: '#111111', belt: '#ff44ff',
   },
+  // CEO: white shirt+blue tie, light skin, dark hair, black boots
   founder_ceo: {
-    hat:  '#334466', face: '#ffd0a0', eyes: '#00ff44',
-    body: '#223399', bdet: '#4466bb', limb: '#222255', boot: '#111133', belt: '#ffffff',
+    hat:  '#222244', face: '#f5c990', eyes: '#00dd44',
+    body: '#ffffff', bdet: '#1155aa', limb: '#f5c990', boot: '#111122', belt: '#1155aa',
   },
+  // OG: brown vest, tan skin, top hat, gold monocle
   og_holder: {
-    hat:  '#443300', face: '#ddbb88', eyes: '#ffdd00',
-    body: '#776633', bdet: '#aa9944', limb: '#554422', boot: '#221100', belt: '#ffcc00',
+    hat:  '#3a2800', face: '#e8b878', eyes: '#ffcc00',
+    body: '#6a4a22', bdet: '#aa8833', limb: '#e8b878', boot: '#1a0e00', belt: '#ffcc00',
   },
+  // Influencer: pink outfit, light face, magenta eyes
   influencer: {
-    hat:  '#cc0055', face: '#ffddcc', eyes: '#ff44aa',
-    body: '#dd1177', bdet: '#ff55bb', limb: '#aa0044', boot: '#220011', belt: '#ffaacc',
+    hat:  '#cc0055', face: '#ffd0b0', eyes: '#ff44aa',
+    body: '#cc0055', bdet: '#ff55bb', limb: '#ffd0b0', boot: '#220011', belt: '#ffaacc',
   },
+  // Developer: black hoodie, dark mask, bright blue eyes
   developer: {
-    hat:  '#111122', face: '#222233', eyes: '#0088ff',
-    body: '#111133', bdet: '#223355', limb: '#111122', boot: '#000011', belt: '#003388',
+    hat:  '#111111', face: '#1a1a2e', eyes: '#0099ff',
+    body: '#111111', bdet: '#0055aa', limb: '#1a1a2e', boot: '#050505', belt: '#0077cc',
   },
 };
 
@@ -331,19 +339,19 @@ export function drawArchetypeFighter(
 
   // Mirror sprite for left-facing characters
   if (facing === -1) {
-    const cx = ox + P * 5; // FW / 2
+    const cx = ox + 25; // FW / 2
     ctx.translate(cx, 0);
     ctx.scale(-1, 1);
     ctx.translate(-cx, 0);
   }
 
-  // Shadow/outline pass — cast dark halo around full silhouette
-  ctx.shadowColor = 'rgba(0,0,0,0.9)';
-  ctx.shadowBlur = 10;
+  // Outline pass — dark halo around the full character silhouette
+  ctx.shadowColor = 'rgba(0,0,0,1)';
+  ctx.shadowBlur = 5;
   drawHead(ctx, archetype, pal, ox, drawOy);
   drawBodyAndLimbs(ctx, archetype, pal, ox, drawOy, state, walkPhase, isGrounded);
 
-  // Color pass — draw again on top to hide internal shadow artifacts
+  // Color pass on top (covers internal shadow artifacts, leaving only external outline)
   ctx.shadowBlur = 0;
   drawHead(ctx, archetype, pal, ox, drawOy);
   drawBodyAndLimbs(ctx, archetype, pal, ox, drawOy, state, walkPhase, isGrounded);
