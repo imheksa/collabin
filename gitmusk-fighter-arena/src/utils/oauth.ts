@@ -29,7 +29,7 @@ export async function startXOAuth(clientId: string, redirectUri: string): Promis
   localStorage.setItem('oauth_code_verifier', verifier);
   localStorage.setItem('oauth_state', state);
 
-  const url = new URL('https://twitter.com/i/oauth2/authorize');
+  const url = new URL('https://x.com/i/oauth2/authorize');
   url.searchParams.set('response_type', 'code');
   url.searchParams.set('client_id', clientId);
   url.searchParams.set('redirect_uri', redirectUri);
