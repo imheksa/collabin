@@ -1,10 +1,9 @@
 export const X_CLIENT_ID = import.meta.env.VITE_X_CLIENT_ID as string | undefined;
 
-// Strip trailing slash so it always matches X Developer Portal exactly.
-// Fallback uses origin only (no pathname) to avoid the trailing-slash mismatch
-// that window.location.origin + window.location.pathname produces at root ("/").
+// Always use the current origin so OAuth callback lands on the same domain the
+// user is on.  VITE_REDIRECT_URI can override this for local dev if needed.
 export const REDIRECT_URI: string = (
-  (import.meta.env.VITE_REDIRECT_URI as string | undefined) ??
+  (import.meta.env.VITE_REDIRECT_URI as string | undefined) ||
   (typeof window !== 'undefined' ? window.location.origin : '')
 ).replace(/\/$/, '');
 

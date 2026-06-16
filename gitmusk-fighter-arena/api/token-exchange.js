@@ -1,7 +1,7 @@
 // Vercel serverless function — token exchange proxy for X OAuth 2.0
 
 const CORS = {
-  'Access-Control-Allow-Origin': process.env.ALLOWED_ORIGIN || 'https://exarena.vercel.app',
+  'Access-Control-Allow-Origin': process.env.ALLOWED_ORIGIN || '*',
   'Access-Control-Allow-Headers': 'Content-Type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
@@ -54,9 +54,17 @@ export default async function handler(req, res) {
 
     const data = await upstream.json();
     res.setHeader('Content-Type', 'application/json');
-    return res.status(upstream.status).end(JSON.stringify(data));
+    // Propagate X API errors with detail so clients can show a meaningful message
+    if (!upstream.ok) {
+      const detail = data.error_description ?? data.error ?? `X API HTTP ${upstream.status}`;
+      return res.status(upstream.status).end(JSON.stringify({ ...data, _detail: detail }));
+    }
+    return res.status(200).end(JSON.stringify(data));
   } catch (err) {
     res.setHeader('Content-Type', 'application/json');
-    return res.status(500).end(JSON.stringify({ error: 'Token exchange failed' }));
+    return res.status(500).end(JSON.stringify({
+      error: 'token_exchange_proxy_error',
+      error_description: err instanceof Error ? err.message : String(err),
+    }));
   }
 }
