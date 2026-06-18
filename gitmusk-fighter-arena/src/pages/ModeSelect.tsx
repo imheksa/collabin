@@ -211,8 +211,8 @@ export function ModeSelect() {
         {/* Nav */}
         <nav className="g-nav" style={{ marginBottom: '28px', position: 'relative' }}>
           <div className="logo">
-            <div className="badge">X</div>
-            FIGHTER ARENA
+            <img className="badge" src="/logo-x-profile.png" alt="" />
+            EX ARENA
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>

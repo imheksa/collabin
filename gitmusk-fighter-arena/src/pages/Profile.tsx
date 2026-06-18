@@ -348,7 +348,7 @@ export function Profile() {
 
         {/* Nav */}
         <nav className="g-nav" style={{ position: 'relative', marginBottom: '28px' }}>
-          <div className="logo"><div className="badge">X</div>FIGHTER ARENA</div>
+          <div className="logo"><img className="badge" src="/logo-x-profile.png" alt="" />EX ARENA</div>
           <button onClick={() => setScreen('mode_select')} className="g-btn ghost sm">← BACK</button>
         </nav>
 

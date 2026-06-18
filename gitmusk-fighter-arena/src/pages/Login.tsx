@@ -95,8 +95,8 @@ export function Login() {
         {/* Nav */}
         <div className="g-nav mb-0" style={{ position: 'relative', marginBottom: '32px' }}>
           <div className="g-nav logo">
-            <div className="badge">X</div>
-            FIGHTER ARENA
+            <img className="badge" src="/logo-x-profile.png" alt="" />
+            EX ARENA
           </div>
           <button onClick={() => setScreen('landing')}
             className="g-btn ghost sm">← BACK</button>

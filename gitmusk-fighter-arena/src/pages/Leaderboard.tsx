@@ -335,7 +335,7 @@ export function Leaderboard() {
 
         {/* Nav */}
         <nav className="g-nav" style={{ position: 'relative', marginBottom: '28px' }}>
-          <div className="logo"><div className="badge">X</div>FIGHTER ARENA</div>
+          <div className="logo"><img className="badge" src="/logo-x-profile.png" alt="" />EX ARENA</div>
           <div className="flex items-center gap-2">
             {!loading && (
               <>

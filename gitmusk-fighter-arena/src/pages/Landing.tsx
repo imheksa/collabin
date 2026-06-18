@@ -502,7 +502,7 @@ export function Landing() {
 
       {/* NAV */}
       <nav>
-        <div className="logo"><div className="badge">X</div>FIGHTER ARENA</div>
+        <div className="logo"><img className="badge" src="/logo-x-profile.png" alt="" />EX ARENA</div>
         <div className="nav-links">
           <a href="#how">HOW IT WORKS</a>
           <a href="#chars">CHARACTERS</a>
@@ -933,7 +933,7 @@ export function Landing() {
       <footer>
         <div className="row">
           <div className="logo" style={{ fontSize:'11px' }}>
-            <div className="badge" style={{ width:'24px', height:'24px', fontSize:'10px', boxShadow:'3px 3px 0 var(--void),3px 3px 0 3px var(--neon-b)' }}>X</div>
+            <img className="badge" src="/logo-x-profile.png" alt="" style={{ width:'24px', height:'24px' }} />
             EX ARENA
           </div>
           <div style={{ color:'var(--txt-dim)', fontSize:'9px' }}>© 2026 · ALL RIGHTS RESERVED</div>
