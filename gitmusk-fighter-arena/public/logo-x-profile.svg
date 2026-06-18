@@ -1,0 +1,137 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#1d0b3a"/>
+      <stop offset="100%" stop-color="#080010"/>
+    </radialGradient>
+    <filter id="glow-purple">
+      <feGaussianBlur stdDeviation="6" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="glow-pink">
+      <feGaussianBlur stdDeviation="4" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="glow-cyan">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <linearGradient id="x-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ff2d75"/>
+      <stop offset="50%" stop-color="#b026ff"/>
+      <stop offset="100%" stop-color="#00e5ff"/>
+    </linearGradient>
+    <linearGradient id="border-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#b026ff"/>
+      <stop offset="50%" stop-color="#ff2d75"/>
+      <stop offset="100%" stop-color="#b026ff"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background circle -->
+  <circle cx="200" cy="200" r="200" fill="url(#bg)"/>
+
+  <!-- Scanline effect -->
+  <g opacity="0.08">
+    <line x1="0" y1="10" x2="400" y2="10" stroke="#fff" stroke-width="1" repeat="20"/>
+    <line x1="0" y1="18" x2="400" y2="18" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="26" x2="400" y2="26" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="34" x2="400" y2="34" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="42" x2="400" y2="42" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="50" x2="400" y2="50" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="58" x2="400" y2="58" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="66" x2="400" y2="66" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="74" x2="400" y2="74" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="82" x2="400" y2="82" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="90" x2="400" y2="90" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="98" x2="400" y2="98" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="106" x2="400" y2="106" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="114" x2="400" y2="114" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="122" x2="400" y2="122" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="130" x2="400" y2="130" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="138" x2="400" y2="138" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="146" x2="400" y2="146" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="154" x2="400" y2="154" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="162" x2="400" y2="162" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="170" x2="400" y2="170" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="178" x2="400" y2="178" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="186" x2="400" y2="186" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="194" x2="400" y2="194" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="202" x2="400" y2="202" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="210" x2="400" y2="210" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="218" x2="400" y2="218" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="226" x2="400" y2="226" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="234" x2="400" y2="234" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="242" x2="400" y2="242" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="250" x2="400" y2="250" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="258" x2="400" y2="258" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="266" x2="400" y2="266" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="274" x2="400" y2="274" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="282" x2="400" y2="282" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="290" x2="400" y2="290" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="298" x2="400" y2="298" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="306" x2="400" y2="306" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="314" x2="400" y2="314" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="322" x2="400" y2="322" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="330" x2="400" y2="330" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="338" x2="400" y2="338" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="346" x2="400" y2="346" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="354" x2="400" y2="354" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="362" x2="400" y2="362" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="370" x2="400" y2="370" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="378" x2="400" y2="378" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="386" x2="400" y2="386" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="394" x2="400" y2="394" stroke="#fff" stroke-width="1"/>
+  </g>
+
+  <!-- Outer glow ring -->
+  <circle cx="200" cy="200" r="175" fill="none" stroke="url(#border-grad)" stroke-width="3" opacity="0.5" filter="url(#glow-purple)"/>
+
+  <!-- Inner decorative ring -->
+  <circle cx="200" cy="200" r="155" fill="none" stroke="#b026ff" stroke-width="1" opacity="0.25" stroke-dasharray="8 4"/>
+
+  <!-- Central X badge background -->
+  <rect x="120" y="120" width="160" height="160" rx="20" fill="#140827" stroke="url(#border-grad)" stroke-width="4" filter="url(#glow-purple)"/>
+
+  <!-- Inner glow on badge -->
+  <rect x="124" y="124" width="152" height="76" rx="16" fill="#b026ff" opacity="0.06"/>
+
+  <!-- Big X letter -->
+  <text x="200" y="225" text-anchor="middle" font-family="'Press Start 2P', 'Courier New', monospace" font-size="110" font-weight="bold" fill="url(#x-grad)" filter="url(#glow-pink)">X</text>
+
+  <!-- "EX ARENA" text below badge -->
+  <text x="200" y="310" text-anchor="middle" font-family="'Press Start 2P', 'Courier New', monospace" font-size="18" fill="#ffd60a" filter="url(#glow-cyan)" letter-spacing="4">EX ARENA</text>
+
+  <!-- Sword icons (⚔) as pixel crosses -->
+  <!-- Left sword -->
+  <g transform="translate(80, 175)" opacity="0.7" filter="url(#glow-pink)">
+    <rect x="0" y="8" width="20" height="4" fill="#ff2d75"/>
+    <rect x="8" y="0" width="4" height="20" fill="#ff2d75"/>
+  </g>
+  <!-- Right sword -->
+  <g transform="translate(300, 175)" opacity="0.7" filter="url(#glow-cyan)">
+    <rect x="0" y="8" width="20" height="4" fill="#00e5ff"/>
+    <rect x="8" y="0" width="4" height="20" fill="#00e5ff"/>
+  </g>
+
+  <!-- Corner accent pixels -->
+  <!-- Top-left -->
+  <rect x="55" y="55" width="6" height="6" fill="#b026ff" opacity="0.6"/>
+  <rect x="65" y="55" width="6" height="6" fill="#b026ff" opacity="0.4"/>
+  <rect x="55" y="65" width="6" height="6" fill="#b026ff" opacity="0.4"/>
+  <!-- Top-right -->
+  <rect x="339" y="55" width="6" height="6" fill="#00e5ff" opacity="0.6"/>
+  <rect x="329" y="55" width="6" height="6" fill="#00e5ff" opacity="0.4"/>
+  <rect x="339" y="65" width="6" height="6" fill="#00e5ff" opacity="0.4"/>
+  <!-- Bottom-left -->
+  <rect x="55" y="339" width="6" height="6" fill="#ff2d75" opacity="0.6"/>
+  <rect x="65" y="339" width="6" height="6" fill="#ff2d75" opacity="0.4"/>
+  <rect x="55" y="329" width="6" height="6" fill="#ff2d75" opacity="0.4"/>
+  <!-- Bottom-right -->
+  <rect x="339" y="339" width="6" height="6" fill="#ffd60a" opacity="0.6"/>
+  <rect x="329" y="339" width="6" height="6" fill="#ffd60a" opacity="0.4"/>
+  <rect x="339" y="329" width="6" height="6" fill="#ffd60a" opacity="0.4"/>
+
+  <!-- Subtle "// FIGHTER" eyebrow text -->
+  <text x="200" y="345" text-anchor="middle" font-family="'Courier New', monospace" font-size="10" fill="#3a3060" letter-spacing="6">// FIGHTER</text>
+</svg>
