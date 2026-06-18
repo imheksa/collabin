@@ -8,6 +8,7 @@ export interface ArchetypeData {
   ultimateDescription: string;
   color: string;
   glowColor: string;
+  primaryKeywords: string[];
   keywords: string[];
   attackMod: number;
   defenseMod: number;
@@ -24,7 +25,8 @@ export const ARCHETYPES: Record<Archetype, ArchetypeData> = {
     ultimateDescription: 'Wipe opponent HP by 40% in one devastating strike',
     color: '#ffaa00',
     glowColor: '#ff6600',
-    keywords: ['trade', 'crypto', 'alpha', 'defi', 'degen', 'btc', 'eth', 'sol', 'pump', 'dump', 'chart'],
+    primaryKeywords: ['trader', 'trading', 'trade', 'dex', 'perps', 'futures', 'leverage', 'scalp', 'swing trade', 'day trade'],
+    keywords: ['alpha', 'chart', 'candle', 'ta ', 'technical analysis', 'long', 'short', 'liquidat', 'pnl', 'profit', 'loss', 'portfolio', 'market', 'hedge', 'spot', 'margin', 'order', 'bid', 'ask', 'whale alert', 'signal'],
     attackMod: 1.3,
     defenseMod: 0.7,
     speedMod: 1.1,
@@ -38,7 +40,8 @@ export const ARCHETYPES: Record<Archetype, ArchetypeData> = {
     ultimateDescription: 'Deploy AI drones that deal continuous damage for 5s',
     color: '#00ffff',
     glowColor: '#0080ff',
-    keywords: ['ai', 'ml', 'build', 'engineer', 'agent', 'llm', 'model', 'code', 'neural', 'gpt', 'claude'],
+    primaryKeywords: ['ai ', ' ai', 'artificial intelligence', 'machine learning', 'deep learning', 'researcher', 'research', 'llm', 'neural', 'ml '],
+    keywords: ['gpt', 'claude', 'agent', 'model', 'transformer', 'diffusion', 'rl ', 'reinforcement', 'computer vision', 'nlp', 'data scien', 'phd', 'professor', 'academic', 'paper', 'arxiv', 'lab', 'openai', 'anthropic', 'deepmind', 'hugging', 'pytorch', 'tensorflow'],
     attackMod: 1.0,
     defenseMod: 1.1,
     speedMod: 0.9,
@@ -52,7 +55,8 @@ export const ARCHETYPES: Record<Archetype, ArchetypeData> = {
     ultimateDescription: 'Spam 7 random hits in 2 seconds — total chaos',
     color: '#ff00ff',
     glowColor: '#bf00ff',
-    keywords: ['meme', 'lol', 'based', 'gm', 'wen', 'ser', 'fren', 'kek', 'wagmi', 'ngmi', 'pepe'],
+    primaryKeywords: ['meme', 'shitpost', 'parody', 'satire', 'comedian', 'comedy', 'humor', 'funny'],
+    keywords: ['lol', 'lmao', 'gm', 'ser', 'fren', 'kek', 'pepe', 'dank', 'ratio', 'cope', 'seethe', 'based', 'touch grass', 'jokes', 'troll', 'viral', 'clown'],
     attackMod: 1.1,
     defenseMod: 0.8,
     speedMod: 1.4,
@@ -66,7 +70,8 @@ export const ARCHETYPES: Record<Archetype, ArchetypeData> = {
     ultimateDescription: 'Stun opponent for 3s while dealing steady damage',
     color: '#00ff41',
     glowColor: '#00cc33',
-    keywords: ['founder', 'ceo', 'building', 'startup', 'vision', 'team', 'co-founder', 'launch', 'product'],
+    primaryKeywords: ['founder', 'ceo', 'co-founder', 'cofounder', 'cto', 'coo', 'cmo', 'chief', 'startup'],
+    keywords: ['building', 'vision', 'team', 'launch', 'product', 'company', 'venture', 'raise', 'series', 'seed', 'pre-seed', 'incubat', 'accelerat', 'ycombinator', 'yc ', 'entrepreneur', 'executive', 'director', 'head of', 'vp '],
     attackMod: 0.9,
     defenseMod: 1.2,
     speedMod: 1.0,
@@ -80,7 +85,8 @@ export const ARCHETYPES: Record<Archetype, ArchetypeData> = {
     ultimateDescription: 'Bypass all defenses for one guaranteed critical hit',
     color: '#00ccff',
     glowColor: '#0066ff',
-    keywords: ['dev', 'developer', 'open source', 'github', 'commit', 'pull request', 'deploy', 'stack', 'backend', 'frontend'],
+    primaryKeywords: ['developer', 'engineer', 'dev ', ' dev', 'software', 'full stack', 'fullstack', 'backend', 'frontend', 'solidity'],
+    keywords: ['open source', 'github', 'commit', 'deploy', 'stack', 'rust', 'python', 'javascript', 'typescript', 'golang', 'react', 'node', 'smart contract', 'protocol', 'infra', 'devrel', 'hacker', 'hackathon', 'code', 'programming', 'security', 'audit'],
     attackMod: 1.1,
     defenseMod: 1.0,
     speedMod: 1.0,
@@ -94,7 +100,8 @@ export const ARCHETYPES: Record<Archetype, ArchetypeData> = {
     ultimateDescription: 'Remove opponent rage bar completely and stun for 2s',
     color: '#ff6699',
     glowColor: '#ff0066',
-    keywords: ['follow', 'content', 'creator', 'brand', 'collab', 'sponsor', 'viral', 'growth'],
+    primaryKeywords: ['influencer', 'content creator', 'creator', 'youtuber', 'streamer', 'podcaster', 'podcast'],
+    keywords: ['follow', 'brand', 'collab', 'sponsor', 'growth', 'audience', 'subscribe', 'community', 'newsletter', 'thread', 'threadoor', 'media', 'journalist', 'writer', 'author', 'blog', 'vlog'],
     attackMod: 0.9,
     defenseMod: 1.0,
     speedMod: 1.2,
@@ -108,7 +115,8 @@ export const ARCHETYPES: Record<Archetype, ArchetypeData> = {
     ultimateDescription: 'Bet everything — 50% chance instant KO, 50% chance self-damage',
     color: '#ff3300',
     glowColor: '#ff0000',
-    keywords: ['ape', 'yolo', '100x', 'moon', 'nft', 'jeet', 'rugged', 'lfg', 'wagmi', 'casino'],
+    primaryKeywords: ['degen', 'ape', 'yolo', 'gambl', 'casino', 'memecoin', 'meme coin'],
+    keywords: ['100x', 'moon', 'jeet', 'rugged', 'rug', 'lfg', 'wagmi', 'ngmi', 'ponzi', 'airdrop', 'farm', 'yield', 'flip', 'pump', 'dump', 'fomo', 'fud', 'rekt', 'gwei', 'gas', 'mint', 'nft'],
     attackMod: 1.4,
     defenseMod: 0.6,
     speedMod: 1.2,
@@ -122,7 +130,8 @@ export const ARCHETYPES: Record<Archetype, ArchetypeData> = {
     ultimateDescription: 'Enter invincibility for 4s and deal steady chip damage',
     color: '#ffd700',
     glowColor: '#ffcc00',
-    keywords: ['og', 'early', '2010', '2011', '2012', '2013', '2014', 'veteran', 'since'],
+    primaryKeywords: ['og ', ' og', 'veteran', 'early adopter', 'since 2009', 'since 2010', 'since 2011', 'since 2012', 'since 2013', 'since 2014', 'since 2015'],
+    keywords: ['early', 'hodl', 'diamond hands', 'long term', 'holder', 'maxi', 'maximalist', 'genesis', 'pre-mine', 'satoshi'],
     attackMod: 0.9,
     defenseMod: 1.5,
     speedMod: 0.9,
@@ -136,6 +145,7 @@ export const ARCHETYPES: Record<Archetype, ArchetypeData> = {
     ultimateDescription: "Deal damage equal to 50% of the opponent's current HP",
     color: '#ffd700',
     glowColor: '#ffaa00',
+    primaryKeywords: [],
     keywords: [],
     attackMod: 1.25,
     defenseMod: 1.25,
@@ -145,14 +155,23 @@ export const ARCHETYPES: Record<Archetype, ArchetypeData> = {
 };
 
 export function detectArchetype(profile: { bio: string; username: string; accountAgeDays: number }): Archetype {
-  const text = `${profile.bio} ${profile.username}`.toLowerCase();
+  const text = ` ${profile.bio} ${profile.username} `.toLowerCase();
 
-  const scores: Record<Archetype, number> = {} as Record<Archetype, number>;
+  const scores: Record<string, number> = {};
   for (const [archetype, data] of Object.entries(ARCHETYPES)) {
-    scores[archetype as Archetype] = data.keywords.filter(k => text.includes(k)).length;
+    if (archetype === 'bankr_club') continue;
+    let score = 0;
+    for (const kw of data.primaryKeywords) {
+      if (text.includes(kw)) score += 3;
+    }
+    for (const kw of data.keywords) {
+      if (text.includes(kw)) score += 1;
+    }
+    scores[archetype] = score;
   }
 
-  if (profile.accountAgeDays > 3650) scores['og_holder'] += 3;
+  // Mild bonus for old accounts — not enough to override clear keyword matches
+  if (profile.accountAgeDays > 3650) scores['og_holder'] = (scores['og_holder'] || 0) + 1;
 
   const best = Object.entries(scores).sort(([, a], [, b]) => b - a)[0];
   return (best[1] > 0 ? best[0] : 'degen') as Archetype;
