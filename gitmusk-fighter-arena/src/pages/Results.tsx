@@ -187,7 +187,7 @@ export function Results() {
     if (!matchId || verificationStatus !== 'waiting') return;
     const poll = setInterval(async () => {
       try {
-        const r = await fetch(`/api/match-status?matchId=${matchId}`);
+        const r = await fetch(`/api/match-finish?matchId=${matchId}`);
         const data = await r.json();
         if (data.status && data.status !== 'waiting' && data.status !== 'pending') {
           setVerificationStatus(data.status);
@@ -231,7 +231,7 @@ export function Results() {
           p2FinalHp: matchResult.p2FinalHp ?? 0,
           disconnected: matchResult.disconnected ?? false,
         };
-        fetch('/api/match-report', {
+        fetch('/api/match-finish', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(report),
