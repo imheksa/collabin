@@ -1,5 +1,3 @@
-import { createHmac } from 'node:crypto';
-
 const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || 'https://exarena.vercel.app';
 const CORS = {
   'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
@@ -23,10 +21,13 @@ function sb(path, opts = {}) {
   });
 }
 
-function signMatch(matchId, winnerUsername, duration) {
-  return createHmac('sha256', SIGNING_SECRET)
-    .update(`${matchId}:${winnerUsername}:${duration}`)
-    .digest('hex');
+async function signMatch(matchId, winnerUsername, duration) {
+  const enc = new TextEncoder();
+  const keyData = await crypto.subtle.importKey(
+    'raw', enc.encode(SIGNING_SECRET), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'],
+  );
+  const sig = await crypto.subtle.sign('HMAC', keyData, enc.encode(`${matchId}:${winnerUsername}:${duration}`));
+  return Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
 function runHeuristics(report, match) {
@@ -155,7 +156,7 @@ export default async function handler(req, res) {
   for (const n of h2) { if (!heuristicNotes.includes(n)) heuristicNotes.push(n); }
 
   const hasSuspicious = heuristicNotes.length > 0;
-  const signature = signMatch(matchId, agreedWinner, r1.duration);
+  const signature = await signMatch(matchId, agreedWinner, r1.duration);
   const finalStatus = hasSuspicious ? 'flagged' : 'verified';
   const notes = hasSuspicious ? heuristicNotes.join(', ') : 'consensus_verified';
 
