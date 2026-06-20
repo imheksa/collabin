@@ -1,0 +1,173 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#1d0b3a"/>
+      <stop offset="100%" stop-color="#080010"/>
+    </radialGradient>
+    <filter id="glow-p">
+      <feGaussianBlur stdDeviation="6" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="glow-r">
+      <feGaussianBlur stdDeviation="8" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="aura">
+      <feGaussianBlur stdDeviation="18" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <linearGradient id="border-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#b026ff"/>
+      <stop offset="50%" stop-color="#ff2d75"/>
+      <stop offset="100%" stop-color="#b026ff"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <circle cx="200" cy="200" r="200" fill="url(#bg)"/>
+
+  <!-- Scanlines -->
+  <g opacity="0.07">
+    <line x1="0" y1="10" x2="400" y2="10" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="18" x2="400" y2="18" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="26" x2="400" y2="26" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="34" x2="400" y2="34" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="42" x2="400" y2="42" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="50" x2="400" y2="50" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="58" x2="400" y2="58" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="66" x2="400" y2="66" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="74" x2="400" y2="74" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="82" x2="400" y2="82" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="90" x2="400" y2="90" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="98" x2="400" y2="98" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="106" x2="400" y2="106" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="114" x2="400" y2="114" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="122" x2="400" y2="122" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="130" x2="400" y2="130" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="138" x2="400" y2="138" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="146" x2="400" y2="146" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="154" x2="400" y2="154" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="162" x2="400" y2="162" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="170" x2="400" y2="170" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="178" x2="400" y2="178" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="186" x2="400" y2="186" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="194" x2="400" y2="194" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="202" x2="400" y2="202" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="210" x2="400" y2="210" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="218" x2="400" y2="218" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="226" x2="400" y2="226" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="234" x2="400" y2="234" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="242" x2="400" y2="242" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="250" x2="400" y2="250" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="258" x2="400" y2="258" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="266" x2="400" y2="266" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="274" x2="400" y2="274" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="282" x2="400" y2="282" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="290" x2="400" y2="290" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="298" x2="400" y2="298" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="306" x2="400" y2="306" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="314" x2="400" y2="314" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="322" x2="400" y2="322" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="330" x2="400" y2="330" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="338" x2="400" y2="338" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="346" x2="400" y2="346" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="354" x2="400" y2="354" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="362" x2="400" y2="362" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="370" x2="400" y2="370" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="378" x2="400" y2="378" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="386" x2="400" y2="386" stroke="#fff" stroke-width="1"/>
+    <line x1="0" y1="394" x2="400" y2="394" stroke="#fff" stroke-width="1"/>
+  </g>
+
+  <!-- Outer glow ring -->
+  <circle cx="200" cy="200" r="180" fill="none" stroke="url(#border-grad)" stroke-width="3" opacity="0.4" filter="url(#glow-p)"/>
+
+  <!-- Inner ring -->
+  <circle cx="200" cy="200" r="160" fill="none" stroke="#b026ff" stroke-width="1" opacity="0.2" stroke-dasharray="8 4"/>
+
+  <!-- Fighter energy aura -->
+  <ellipse cx="200" cy="210" rx="80" ry="140" fill="#dd1100" opacity="0.08" filter="url(#aura)"/>
+  <ellipse cx="200" cy="210" rx="50" ry="100" fill="#ff6600" opacity="0.06" filter="url(#aura)"/>
+
+  <!--
+    DEGEN FIGHTER — idle pose
+    Grid: 10 cols × 18 rows, P=18px per block
+    Origin: ox=110, oy=38
+    Palette: hat=#cc1100 face=#f0a878 eyes=#ff6600
+             body=#dd1100 bdet=#ff4400 limb=#e8c090
+             boot=#111111 belt=#ffffff
+  -->
+  <g filter="url(#glow-r)">
+    <!-- === HEAD === -->
+    <!-- Mohawk base -->
+    <rect x="164" y="38" width="72" height="18" fill="#cc1100"/>
+    <!-- Mohawk spike tips (orange glow) -->
+    <rect x="182" y="38" width="36" height="18" fill="#ff6600"/>
+    <!-- Helmet forehead -->
+    <rect x="146" y="56" width="108" height="18" fill="#cc1100"/>
+    <!-- Helmet full width -->
+    <rect x="128" y="74" width="144" height="18" fill="#cc1100"/>
+    <!-- Visor glow -->
+    <rect x="146" y="74" width="108" height="18" fill="#ff6600"/>
+    <!-- Helmet lower -->
+    <rect x="128" y="92" width="144" height="18" fill="#cc1100"/>
+    <!-- Face through visor -->
+    <rect x="164" y="92" width="72" height="18" fill="#f0a878"/>
+    <!-- Chin guard -->
+    <rect x="146" y="110" width="108" height="18" fill="#cc1100"/>
+    <!-- Neck -->
+    <rect x="164" y="128" width="72" height="18" fill="#cc1100"/>
+
+    <!-- === BODY === -->
+    <!-- Shoulders -->
+    <rect x="146" y="146" width="108" height="18" fill="#dd1100"/>
+    <!-- Chest (rows 7-9) -->
+    <rect x="128" y="164" width="144" height="54" fill="#dd1100"/>
+    <!-- Degen chain/strap detail -->
+    <rect x="164" y="164" width="72" height="18" fill="#ff4400"/>
+    <!-- Buckle -->
+    <rect x="182" y="182" width="36" height="18" fill="#ffffff"/>
+    <!-- Belt -->
+    <rect x="146" y="218" width="108" height="18" fill="#ffffff"/>
+
+    <!-- === ARMS (idle) === -->
+    <!-- Left arm -->
+    <rect x="110" y="164" width="36" height="108" fill="#e8c090"/>
+    <!-- Right arm -->
+    <rect x="254" y="164" width="36" height="108" fill="#e8c090"/>
+
+    <!-- === LEGS === -->
+    <!-- Left leg -->
+    <rect x="146" y="236" width="54" height="108" fill="#e8c090"/>
+    <!-- Right leg -->
+    <rect x="218" y="236" width="54" height="108" fill="#e8c090"/>
+    <!-- Left boot -->
+    <rect x="146" y="326" width="54" height="36" fill="#111111"/>
+    <!-- Right boot -->
+    <rect x="218" y="326" width="54" height="36" fill="#111111"/>
+  </g>
+
+  <!-- Energy particles around fighter -->
+  <rect x="88" y="100" width="8" height="8" fill="#ff6600" opacity="0.7"/>
+  <rect x="78" y="120" width="6" height="6" fill="#ff6600" opacity="0.5"/>
+  <rect x="304" y="130" width="8" height="8" fill="#ff6600" opacity="0.7"/>
+  <rect x="314" y="110" width="6" height="6" fill="#ff6600" opacity="0.5"/>
+  <rect x="96" y="260" width="6" height="6" fill="#dd1100" opacity="0.5"/>
+  <rect x="300" y="250" width="6" height="6" fill="#dd1100" opacity="0.5"/>
+  <rect x="84" y="180" width="8" height="8" fill="#b026ff" opacity="0.5"/>
+  <rect x="310" y="200" width="8" height="8" fill="#b026ff" opacity="0.5"/>
+
+  <!-- Corner accent pixels -->
+  <rect x="50" y="50" width="8" height="8" fill="#b026ff" opacity="0.6"/>
+  <rect x="62" y="50" width="8" height="8" fill="#b026ff" opacity="0.3"/>
+  <rect x="50" y="62" width="8" height="8" fill="#b026ff" opacity="0.3"/>
+  <rect x="342" y="50" width="8" height="8" fill="#00e5ff" opacity="0.6"/>
+  <rect x="330" y="50" width="8" height="8" fill="#00e5ff" opacity="0.3"/>
+  <rect x="342" y="62" width="8" height="8" fill="#00e5ff" opacity="0.3"/>
+  <rect x="50" y="342" width="8" height="8" fill="#ff2d75" opacity="0.6"/>
+  <rect x="62" y="342" width="8" height="8" fill="#ff2d75" opacity="0.3"/>
+  <rect x="50" y="330" width="8" height="8" fill="#ff2d75" opacity="0.3"/>
+  <rect x="342" y="342" width="8" height="8" fill="#ffd60a" opacity="0.6"/>
+  <rect x="330" y="342" width="8" height="8" fill="#ffd60a" opacity="0.3"/>
+  <rect x="342" y="330" width="8" height="8" fill="#ffd60a" opacity="0.3"/>
+</svg>

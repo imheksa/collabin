@@ -1,0 +1,240 @@
+import { useCallback, useEffect, useState } from 'react';
+import { useGameStore } from './stores/gameStore';
+import { CRTOverlay } from './components/CRTOverlay';
+import { Landing } from './pages/Landing';
+import { Login } from './pages/Login';
+import { ModeSelect } from './pages/ModeSelect';
+import { VSScreen } from './pages/VSScreen';
+import { Arena } from './pages/Arena';
+import { Results } from './pages/Results';
+import { Leaderboard } from './pages/Leaderboard';
+import { Profile } from './pages/Profile';
+import { X_CLIENT_ID, REDIRECT_URI } from './config';
+import { exchangeCodeForToken, fetchXProfile } from './utils/xApiClient';
+import { calculateFighterStats } from './utils/statsCalculator';
+import { restoreProfileFromCloud } from './utils/cloudSync';
+import { Fighter } from './types';
+
+const SESSION_KEY = 'ex_arena_session';
+const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
+interface SavedSession {
+  fighter: Fighter;
+  token: string;
+  savedAt: number;
+}
+
+export function saveSession(fighter: Fighter, token: string) {
+  try {
+    const session: SavedSession = { fighter, token, savedAt: Date.now() };
+    localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+  } catch { /* ignore — storage may be unavailable */ }
+}
+
+export function clearSession() {
+  try { localStorage.removeItem(SESSION_KEY); } catch { /* ignore */ }
+}
+
+function loadSession(): SavedSession | null {
+  try {
+    const raw = localStorage.getItem(SESSION_KEY);
+    if (!raw) return null;
+    const session: SavedSession = JSON.parse(raw);
+    if (!session?.savedAt || Date.now() - session.savedAt > SESSION_TTL_MS) {
+      localStorage.removeItem(SESSION_KEY);
+      return null;
+    }
+    return session;
+  } catch { return null; }
+}
+
+export default function App() {
+  const { screen, setScreen, setPlayer1, setXAccessToken, setOauthError, setPlayerProfile, player1, setPlayer2, setMatchId, setIsHost } = useGameStore();
+  const [oauthProcessing, setOauthProcessing] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get('code');
+    const state = params.get('state');
+    const errorParam = params.get('error');
+    const joinId = params.get('join');
+
+    // Popup mode: this page is the OAuth redirect inside a popup window.
+    // Send the result back to the opener and close.
+    if (window.opener && typeof window.opener.postMessage === 'function') {
+      if (code || errorParam) {
+        try {
+          window.opener.postMessage(
+            { type: 'x_oauth_popup_cb', code, state, error: errorParam },
+            window.location.origin,
+          );
+        } catch { /* cross-origin guard */ }
+        setTimeout(() => window.close(), 200);
+        return;
+      }
+    }
+
+    if (errorParam) {
+      window.history.replaceState({}, '', window.location.pathname);
+      setOauthError('X login was cancelled.');
+      setScreen('login');
+      return;
+    }
+
+    if (code && state) {
+      handleOAuthCallback(code, state);
+      return;
+    }
+
+    if (joinId) {
+      window.history.replaceState({}, '', window.location.pathname);
+      // Store with 10-minute TTL so stale invites don't persist indefinitely
+      localStorage.setItem('pending_join', JSON.stringify({ id: joinId, exp: Date.now() + 10 * 60 * 1000 }));
+    }
+
+    // Restore saved session (7-day persistence)
+    const session = loadSession();
+    if (session) {
+      setXAccessToken(session.token);
+      setPlayer1(session.fighter);
+      restoreProfileFromCloud(session.fighter.profile.username).then(merged => {
+        if (merged) setPlayerProfile(merged);
+      });
+      setScreen('mode_select');
+    }
+  }, []);
+
+  // Handle pending room join after login
+  useEffect(() => {
+    const raw = localStorage.getItem('pending_join');
+    if (!raw || !player1) return;
+    localStorage.removeItem('pending_join');
+    try {
+      const { id, exp } = JSON.parse(raw);
+      if (id && exp && Date.now() < exp) handleRoomJoin(id);
+    } catch { /* malformed or old format — discard */ }
+  }, [player1]);
+
+  async function handleRoomJoin(matchId: string) {
+    if (!player1) return;
+    try {
+      const res = await fetch('/api/room-join', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          matchId,
+          username: player1.profile.username,
+          fighterData: { profile: player1.profile, stats: player1.stats },
+        }),
+      });
+      if (!res.ok) { setScreen('mode_select'); return; }
+      const data = await res.json();
+      const opponent = data.player1Data as Fighter;
+      setPlayer2(opponent);
+      setMatchId(matchId);
+      setIsHost(false);
+      setScreen('vs_screen');
+    } catch (err) {
+      console.error('Room join error:', err);
+      setScreen('mode_select');
+    }
+  }
+
+  const handleOAuthCallback = useCallback(async (code: string, state: string) => {
+    // Prefer sessionStorage (tab-specific — prevents multi-tab collisions on desktop).
+    // Fall back to localStorage (mobile fallback — sessionStorage cleared during iOS redirects).
+    const storedState =
+      (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('oauth_state')) ||
+      localStorage.getItem('oauth_state');
+    const verifier =
+      (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('oauth_code_verifier')) ||
+      localStorage.getItem('oauth_code_verifier');
+
+    window.history.replaceState({}, '', window.location.pathname);
+
+    if (!storedState || !verifier || !X_CLIENT_ID) {
+      setOauthError('OAuth verification failed: session data missing. Please try again.');
+      setScreen('login');
+      return;
+    }
+
+    if (state !== storedState) {
+      setOauthError('OAuth verification failed: state mismatch. If you have multiple tabs open, close extras and try again.');
+      setScreen('login');
+      return;
+    }
+
+    setOauthProcessing(true);
+
+    try {
+      const token = await exchangeCodeForToken(code, verifier, X_CLIENT_ID, REDIRECT_URI);
+      const profile = await fetchXProfile(token);
+      const stats = calculateFighterStats(profile);
+      const fighter: Fighter = { profile, stats };
+
+      try { sessionStorage.removeItem('oauth_state'); sessionStorage.removeItem('oauth_code_verifier'); } catch { /* ignore */ }
+      localStorage.removeItem('oauth_state');
+      localStorage.removeItem('oauth_code_verifier');
+
+      saveSession(fighter, token);
+      setXAccessToken(token);
+      setPlayer1(fighter);
+      restoreProfileFromCloud(profile.username).then(merged => { if (merged) setPlayerProfile(merged); });
+      setScreen('mode_select');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'X login failed.';
+      setOauthError(msg + ' You can still use demo mode below.');
+      setScreen('login');
+    } finally {
+      setOauthProcessing(false);
+    }
+  }, [setOauthError, setScreen, setOauthProcessing, setXAccessToken, setPlayer1, setPlayerProfile]);
+
+  // Listen for OAuth result posted from popup window
+  useEffect(() => {
+    function onPopupMessage(e: MessageEvent) {
+      if (e.origin !== window.location.origin) return;
+      if (e.data?.type !== 'x_oauth_popup_cb') return;
+      const { code, state, error } = e.data as { type: string; code?: string; state?: string; error?: string };
+      if (error) {
+        setOauthError('X login was cancelled.');
+        setScreen('login');
+      } else if (code && state) {
+        handleOAuthCallback(code, state);
+      }
+    }
+    window.addEventListener('message', onPopupMessage);
+    return () => window.removeEventListener('message', onPopupMessage);
+  }, [handleOAuthCallback, setOauthError, setScreen]);
+
+  return (
+    <div className="relative min-h-screen bg-arena-bg font-mono">
+      <CRTOverlay />
+
+      {oauthProcessing && (
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black bg-opacity-90">
+          <div className="font-pixel text-2xl mb-4 animate-pulse"
+            style={{ color: '#1d9bf0', textShadow: '0 0 20px #1d9bf0' }}>
+            AUTHENTICATING WITH X...
+          </div>
+          <div className="flex gap-2 mt-4">
+            {[0, 1, 2].map(i => (
+              <div key={i} className="w-3 h-3 rounded-full animate-bounce"
+                style={{ background: '#1d9bf0', animationDelay: `${i * 0.15}s` }} />
+            ))}
+          </div>
+          <div className="mt-6 font-mono text-gray-500 text-sm">Fetching your real stats...</div>
+        </div>
+      )}
+
+      {screen === 'landing' && <Landing />}
+      {screen === 'login' && <Login />}
+      {screen === 'mode_select' && <ModeSelect />}
+      {screen === 'vs_screen' && <VSScreen />}
+      {screen === 'arena' && <Arena />}
+      {screen === 'results' && <Results />}
+      {screen === 'leaderboard' && <Leaderboard />}
+      {screen === 'profile' && <Profile />}
+    </div>
+  );
+}

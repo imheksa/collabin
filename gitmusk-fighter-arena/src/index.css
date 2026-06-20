@@ -1,0 +1,46 @@
+@import './styles/game-theme.css';
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    background-color: #080010;
+    color: #ffffff;
+    overflow-x: hidden;
+  }
+
+  button {
+    touch-action: manipulation;
+  }
+}
+
+@layer utilities {
+  .text-glow-cyan {
+    text-shadow: 0 0 10px #00ffff, 0 0 20px #00ffff;
+  }
+  .text-glow-pink {
+    text-shadow: 0 0 10px #ff00ff, 0 0 20px #ff00ff;
+  }
+  .text-glow-yellow {
+    text-shadow: 0 0 10px #ffff00, 0 0 20px #ffff00;
+  }
+  .border-glow-purple {
+    box-shadow: 0 0 10px #bf00ff, 0 0 20px #bf00ff40;
+  }
+}
+
+/* Touch gamepad — hidden on desktop, shown on touch/mobile */
+.arena-touch-pad {
+  display: none;
+}
+
+@media (pointer: coarse), (max-width: 768px) {
+  .arena-touch-pad {
+    display: flex;
+  }
+}
