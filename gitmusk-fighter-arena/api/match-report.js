@@ -1,5 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
-import { createHmac } from 'crypto';
+import { createHmac } from 'node:crypto';
 
 const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || 'https://exarena.vercel.app';
 const CORS = {
@@ -10,10 +9,19 @@ const CORS = {
 
 const SIGNING_SECRET = process.env.MATCH_SIGNING_SECRET || 'dev-secret-change-me';
 
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY,
-);
+function sb(path, opts = {}) {
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_KEY;
+  return fetch(`${url}/rest/v1/${path}`, {
+    ...opts,
+    headers: {
+      'Content-Type': 'application/json',
+      apikey: key,
+      Authorization: `Bearer ${key}`,
+      ...(opts.headers || {}),
+    },
+  });
+}
 
 function signMatch(matchId, winnerUsername, duration) {
   return createHmac('sha256', SIGNING_SECRET)
@@ -23,20 +31,18 @@ function signMatch(matchId, winnerUsername, duration) {
 
 function runHeuristics(report, match) {
   const notes = [];
-  const { duration, p1_total_damage, p2_total_damage, p1_total_hits, p2_total_hits, p1_final_hp, p2_final_hp } = report;
+  if (report.duration < 3) notes.push('suspiciously_short_match');
+  if (report.duration > 120) notes.push('match_exceeded_time_limit');
 
-  if (duration < 3) notes.push('suspiciously_short_match');
-  if (duration > 120) notes.push('match_exceeded_time_limit');
-
-  const totalDmg = p1_total_damage + p2_total_damage;
-  const totalHits = p1_total_hits + p2_total_hits;
+  const totalDmg = report.p1_total_damage + report.p2_total_damage;
+  const totalHits = report.p1_total_hits + report.p2_total_hits;
 
   if (totalHits === 0 && !report.disconnected) notes.push('zero_hits_no_disconnect');
   if (totalDmg > 1000) notes.push('abnormally_high_damage');
   if (totalHits > 0 && totalDmg / totalHits > 80) notes.push('damage_per_hit_too_high');
 
-  const loserHp = report.winner_username === match.player1_username ? p2_final_hp : p1_final_hp;
-  const winnerHp = report.winner_username === match.player1_username ? p1_final_hp : p2_final_hp;
+  const loserHp = report.winner_username === match.player1_username ? report.p2_final_hp : report.p1_final_hp;
+  const winnerHp = report.winner_username === match.player1_username ? report.p1_final_hp : report.p2_final_hp;
   if (loserHp > 0 && winnerHp <= loserHp && !report.disconnected) notes.push('winner_hp_inconsistent');
 
   return notes;
@@ -46,6 +52,10 @@ export default async function handler(req, res) {
   Object.entries(CORS).forEach(([k, v]) => res.setHeader(k, v));
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+
+  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY) {
+    return res.status(500).json({ error: 'Supabase not configured' });
+  }
 
   const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
   const {
@@ -61,15 +71,12 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Invalid matchId format' });
   }
 
-  const { data: match, error: fetchErr } = await supabase
-    .from('matches')
-    .select('player1_username, player2_username, status, verification_status')
-    .eq('id', matchId)
-    .single();
+  // Fetch match
+  const matchRes = await sb(`matches?id=eq.${matchId}&select=player1_username,player2_username,status,verification_status&limit=1`);
+  const matches = await matchRes.json();
+  const match = Array.isArray(matches) ? matches[0] : null;
 
-  if (fetchErr || !match) {
-    return res.status(404).json({ error: 'Match not found' });
-  }
+  if (!match) return res.status(404).json({ error: 'Match not found' });
 
   if (reporter !== match.player1_username && reporter !== match.player2_username) {
     return res.status(403).json({ error: 'Reporter is not a match participant' });
@@ -77,18 +84,14 @@ export default async function handler(req, res) {
   if (winnerUsername !== match.player1_username && winnerUsername !== match.player2_username) {
     return res.status(403).json({ error: 'Winner is not a match participant' });
   }
-
   if (match.verification_status === 'verified' || match.verification_status === 'disputed') {
     return res.status(409).json({ error: 'Match already resolved', status: match.verification_status });
   }
 
-  const { data: existing } = await supabase
-    .from('match_reports')
-    .select('id, reporter')
-    .eq('match_id', matchId)
-    .eq('reporter', reporter);
-
-  if (existing && existing.length > 0) {
+  // Check for duplicate report
+  const dupRes = await sb(`match_reports?match_id=eq.${matchId}&reporter=eq.${encodeURIComponent(reporter)}&select=id&limit=1`);
+  const dups = await dupRes.json();
+  if (Array.isArray(dups) && dups.length > 0) {
     return res.status(409).json({ error: 'Report already submitted by this player' });
   }
 
@@ -107,22 +110,26 @@ export default async function handler(req, res) {
     disconnected: !!disconnected,
   };
 
-  const { error: insertErr } = await supabase.from('match_reports').insert(reportRow);
-  if (insertErr) {
-    console.error('match-report insert error:', insertErr.message);
+  // Insert report
+  const insertRes = await sb('match_reports', {
+    method: 'POST',
+    headers: { Prefer: 'return=minimal' },
+    body: JSON.stringify(reportRow),
+  });
+  if (!insertRes.ok) {
+    console.error('match-report insert error:', await insertRes.text());
     return res.status(500).json({ error: 'Failed to save report' });
   }
 
-  const { data: allReports } = await supabase
-    .from('match_reports')
-    .select('*')
-    .eq('match_id', matchId);
+  // Fetch all reports for this match
+  const allRes = await sb(`match_reports?match_id=eq.${matchId}&select=*`);
+  const allReports = await allRes.json();
 
-  if (!allReports || allReports.length < 2) {
-    await supabase
-      .from('matches')
-      .update({ verification_status: 'waiting', updated_at: new Date().toISOString() })
-      .eq('id', matchId);
+  if (!Array.isArray(allReports) || allReports.length < 2) {
+    await sb(`matches?id=eq.${matchId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ verification_status: 'waiting', updated_at: new Date().toISOString() }),
+    });
     return res.status(200).json({ ok: true, status: 'waiting', message: 'Report received, waiting for opponent' });
   }
 
@@ -130,15 +137,15 @@ export default async function handler(req, res) {
   const winnersAgree = r1.winner_username === r2.winner_username;
 
   if (!winnersAgree) {
-    await supabase
-      .from('matches')
-      .update({
+    await sb(`matches?id=eq.${matchId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({
         status: 'finished',
         verification_status: 'disputed',
         verification_notes: 'Players disagree on winner',
         updated_at: new Date().toISOString(),
-      })
-      .eq('id', matchId);
+      }),
+    });
     return res.status(200).json({ ok: true, status: 'disputed', message: 'Reports conflict — match disputed' });
   }
 
@@ -149,21 +156,20 @@ export default async function handler(req, res) {
 
   const hasSuspicious = heuristicNotes.length > 0;
   const signature = signMatch(matchId, agreedWinner, r1.duration);
-
   const finalStatus = hasSuspicious ? 'flagged' : 'verified';
   const notes = hasSuspicious ? heuristicNotes.join(', ') : 'consensus_verified';
 
-  await supabase
-    .from('matches')
-    .update({
+  await sb(`matches?id=eq.${matchId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({
       status: 'finished',
       winner_username: agreedWinner,
       verification_status: finalStatus,
       verified_signature: signature,
       verification_notes: notes,
       updated_at: new Date().toISOString(),
-    })
-    .eq('id', matchId);
+    }),
+  });
 
   return res.status(200).json({
     ok: true,
