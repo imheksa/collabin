@@ -1,5 +1,5 @@
 const CORS = {
-  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Origin': process.env.ALLOWED_ORIGIN || 'https://exarena.vercel.app',
   'Access-Control-Allow-Headers': 'Content-Type',
   'Access-Control-Allow-Methods': 'GET, OPTIONS',
 };
@@ -14,7 +14,9 @@ export default async function handler(req, res) {
   const supabaseKey = process.env.SUPABASE_SERVICE_KEY;
 
   const username = req.query?.username;
-  if (!username) return res.status(400).json({ error: 'username required' });
+  if (!username || typeof username !== 'string' || !/^[a-zA-Z0-9_]{1,50}$/.test(username)) {
+    return res.status(400).json({ error: 'Invalid username' });
+  }
 
   if (!supabaseUrl || !supabaseKey) {
     return res.status(200).json({ profile: null, configured: false });

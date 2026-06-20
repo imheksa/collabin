@@ -13,11 +13,15 @@ export default async function handler(req, res) {
   const key = process.env.SUPABASE_SERVICE_KEY;
   if (!url || !key) return res.status(500).json({ ok: true });
 
-  const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-  const { queueId } = body ?? {};
+  let body;
+  try { body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body; } catch (e) { return res.status(400).json({ error: 'Invalid JSON' }); }
+  const { queueId, username } = body ?? {};
   if (!queueId) return res.status(400).json({ error: 'queueId required' });
+  if (!/^[0-9a-f-]{36}$/i.test(queueId)) return res.status(400).json({ error: 'Invalid queueId format' });
 
-  await fetch(`${url}/rest/v1/match_queue?id=eq.${queueId}&status=eq.waiting`, {
+  const filter = `${url}/rest/v1/match_queue?id=eq.${encodeURIComponent(queueId)}&status=eq.waiting` +
+    (username ? `&username=eq.${encodeURIComponent(username)}` : '');
+  await fetch(filter, {
     method: 'DELETE',
     headers: {
       apikey: key,

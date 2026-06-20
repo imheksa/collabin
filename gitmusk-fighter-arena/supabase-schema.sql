@@ -11,7 +11,8 @@ CREATE TABLE IF NOT EXISTS match_queue (
 );
 
 ALTER TABLE match_queue ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Allow all on match_queue" ON match_queue FOR ALL USING (true);
+DROP POLICY IF EXISTS "Allow all on match_queue" ON match_queue;
+CREATE POLICY "Read only on match_queue" ON match_queue FOR SELECT USING (true);
 
 -- Matches: active and completed matches
 CREATE TABLE IF NOT EXISTS matches (
@@ -27,7 +28,8 @@ CREATE TABLE IF NOT EXISTS matches (
 );
 
 ALTER TABLE matches ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Allow all on matches" ON matches FOR ALL USING (true);
+DROP POLICY IF EXISTS "Allow all on matches" ON matches;
+CREATE POLICY "Read only on matches" ON matches FOR SELECT USING (true);
 
 -- Player Stats: global leaderboard, upserted after every match
 CREATE TABLE IF NOT EXISTS player_stats (
@@ -50,7 +52,8 @@ CREATE TABLE IF NOT EXISTS player_stats (
 );
 
 ALTER TABLE player_stats ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Allow all on player_stats" ON player_stats FOR ALL USING (true);
+DROP POLICY IF EXISTS "Allow all on player_stats" ON player_stats;
+CREATE POLICY "Read only on player_stats" ON player_stats FOR SELECT USING (true);
 
 -- Season columns (add if upgrading existing table)
 ALTER TABLE player_stats ADD COLUMN IF NOT EXISTS season_number  INTEGER     NOT NULL DEFAULT 1;
@@ -111,8 +114,9 @@ CREATE TABLE IF NOT EXISTS match_reports (
 CREATE INDEX IF NOT EXISTS idx_match_reports_match_id ON match_reports(match_id);
 
 ALTER TABLE match_reports ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Allow insert on match_reports" ON match_reports FOR INSERT WITH CHECK (true);
-CREATE POLICY "Allow read on match_reports" ON match_reports FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Allow insert on match_reports" ON match_reports;
+DROP POLICY IF EXISTS "Allow read on match_reports" ON match_reports;
+-- No public policies — match_reports accessible only via service_role (API endpoints)
 
 -- Verification columns on matches table
 ALTER TABLE matches ADD COLUMN IF NOT EXISTS verification_status TEXT NOT NULL DEFAULT 'pending';

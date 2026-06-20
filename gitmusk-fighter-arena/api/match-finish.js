@@ -5,7 +5,7 @@ var CORS = {
   'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
 };
 
-var SIGNING_SECRET = process.env.MATCH_SIGNING_SECRET || 'dev-secret-change-me';
+var SIGNING_SECRET = process.env.MATCH_SIGNING_SECRET;
 
 function sb(path, opts) {
   var url = process.env.SUPABASE_URL;
@@ -76,11 +76,17 @@ async function handleMatchReport(body, res) {
   if (!/^[0-9a-f-]{36}$/i.test(matchId)) {
     return res.status(400).json({ error: 'Invalid matchId format' });
   }
+  if (!/^[a-zA-Z0-9_]{1,50}$/.test(reporter) || !/^[a-zA-Z0-9_]{1,50}$/.test(winnerUsername)) {
+    return res.status(400).json({ error: 'Invalid username format' });
+  }
 
-  var matchRes = await sb('matches?id=eq.' + matchId + '&select=player1_username,player2_username,status,verification_status&limit=1');
+  var matchRes = await sb('matches?id=eq.' + matchId + '&select=player1_username,player2_username,status,verification_status,created_at&limit=1');
   var matches = await matchRes.json();
   var match = Array.isArray(matches) ? matches[0] : null;
   if (!match) return res.status(404).json({ error: 'Match not found' });
+
+  var matchAge = (Date.now() - new Date(match.created_at).getTime()) / 1000;
+  if (matchAge > 600) return res.status(410).json({ error: 'Match report window expired' });
 
   if (reporter !== match.player1_username && reporter !== match.player2_username) {
     return res.status(403).json({ error: 'Reporter is not a match participant' });
@@ -158,6 +164,7 @@ async function handleMatchReport(body, res) {
   }
 
   var hasSuspicious = heuristicNotes.length > 0;
+  if (!SIGNING_SECRET) return res.status(500).json({ error: 'Signing not configured' });
   var signature = await signMatch(matchId, agreedWinner, r1.duration);
   var finalStatus = hasSuspicious ? 'flagged' : 'verified';
   var notes = hasSuspicious ? heuristicNotes.join(', ') : 'consensus_verified';
@@ -193,6 +200,9 @@ async function handleLegacyFinish(body, res) {
   }
   if (!/^[0-9a-f-]{36}$/i.test(matchId)) {
     return res.status(400).json({ error: 'Invalid matchId format' });
+  }
+  if (!/^[a-zA-Z0-9_]{1,50}$/.test(winnerUsername)) {
+    return res.status(400).json({ error: 'Invalid username format' });
   }
 
   var matchRes = await sb('matches?id=eq.' + matchId + '&select=player1_username,player2_username,status&limit=1');
@@ -231,7 +241,8 @@ export default async function handler(req, res) {
 
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  var body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+  var body;
+  try { body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body; } catch (e) { return res.status(400).json({ error: 'Invalid JSON' }); }
 
   // POST with reporter → dual-client match report
   if (body && body.reporter) return handleMatchReport(body, res);

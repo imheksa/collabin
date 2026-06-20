@@ -127,7 +127,7 @@ export function useMatchmaking() {
       await fetch('/api/queue-leave', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ queueId: qId }),
+        body: JSON.stringify({ queueId: qId, username: player1?.profile.username }),
       });
     } catch (err) {
       console.error('Queue leave error:', err);

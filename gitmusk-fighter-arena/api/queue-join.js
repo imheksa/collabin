@@ -13,9 +13,12 @@ export default async function handler(req, res) {
   const key = process.env.SUPABASE_SERVICE_KEY;
   if (!url || !key) return res.status(500).json({ error: 'Supabase not configured' });
 
-  const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+  let body;
+  try { body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body; } catch (e) { return res.status(400).json({ error: 'Invalid JSON' }); }
   const { username, fighterData, mmr: myMmr, ranked = false } = body ?? {};
   if (!username || !fighterData) return res.status(400).json({ error: 'username and fighterData required' });
+  if (typeof username !== 'string' || !/^[a-zA-Z0-9_]{1,50}$/.test(username)) return res.status(400).json({ error: 'Invalid username' });
+  if (JSON.stringify(fighterData).length > 5000) return res.status(400).json({ error: 'fighterData too large' });
 
   const headers = {
     'Content-Type': 'application/json',

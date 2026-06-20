@@ -14,8 +14,7 @@ export default async function handler(req, res) {
     return res.status(503).json({ error: 'CRON_SECRET not configured' });
   }
   const auth = req.headers['authorization'];
-  const querySecret = req.query?.secret;
-  if (auth !== `Bearer ${cronSecret}` && querySecret !== cronSecret) {
+  if (auth !== `Bearer ${cronSecret}`) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
@@ -45,7 +44,7 @@ export default async function handler(req, res) {
     const endsAt = new Date(cfg.ends_at);
     if (!forceReset && Date.now() < endsAt.getTime()) {
       const daysLeft = Math.ceil((endsAt.getTime() - Date.now()) / 86400000);
-      return res.status(200).json({ ok: false, reason: 'season not over', daysLeft, hint: 'Add ?force=true to reset immediately' });
+      return res.status(200).json({ ok: false, reason: 'season not over', daysLeft });
     }
 
     const seasonNumber = cfg.season_number;
@@ -119,14 +118,8 @@ export default async function handler(req, res) {
     });
 
     if (!patchRes.ok) {
-      const errText = await patchRes.text();
-      console.error('season_config PATCH failed:', patchRes.status, errText);
-      return res.status(500).json({
-        error: 'Failed to advance season_config',
-        status: patchRes.status,
-        detail: errText,
-        hint: `Run SQL: UPDATE season_config SET season_number=${newSeasonNumber}, started_at=NOW(), ends_at=NOW()+INTERVAL '30 days' WHERE id=1;`,
-      });
+      console.error('season_config PATCH failed:', patchRes.status, await patchRes.text());
+      return res.status(500).json({ error: 'Failed to advance season' });
     }
 
     return res.status(200).json({
