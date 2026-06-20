@@ -630,6 +630,10 @@ export function FightingArena({ player1, player2, onMatchEnd, p2AI = true, p2pMo
   const startTimeRef = useRef(Date.now());
   const matchStartRef = useRef(Date.now());
   const maxComboRef = useRef(0);
+  const p1TotalDamageRef = useRef(0);
+  const p2TotalDamageRef = useRef(0);
+  const p1TotalHitsRef = useRef(0);
+  const p2TotalHitsRef = useRef(0);
   const gameOverRef = useRef(false);
   const koFiredRef = useRef(false);
   const aiRef = useRef<{ think: number; intent: 'idle' | 'approach' | 'retreat' | 'block' }>({ think: 0, intent: 'idle' });
@@ -696,7 +700,7 @@ export function FightingArena({ player1, player2, onMatchEnd, p2AI = true, p2pMo
         if (payload.p2) Object.assign(p2Ref.current, payload.p2);
         lastRemoteSignalRef.current = Date.now();
       });
-      ch.on('broadcast', { event: 'game_over' }, ({ payload }: { payload: { winnerSide: 'left' | 'right'; maxCombo: number; duration: number; disconnected?: boolean } }) => {
+      ch.on('broadcast', { event: 'game_over' }, ({ payload }: { payload: { winnerSide: 'left' | 'right'; maxCombo: number; duration: number; disconnected?: boolean; p1TotalDamage?: number; p2TotalDamage?: number; p1TotalHits?: number; p2TotalHits?: number; p1FinalHp?: number; p2FinalHp?: number } }) => {
         if (gameOverRef.current || koFiredRef.current) return;
         gameOverRef.current = true;
         koFiredRef.current = true;
@@ -706,7 +710,15 @@ export function FightingArena({ player1, player2, onMatchEnd, p2AI = true, p2pMo
         playKO();
         screenFlashRef.current = { alpha: 0.7, color: '#ffffff' };
         setTimeout(() => {
-          onMatchEnd({ winner, loser, rounds: 1, duration: payload.duration, maxCombo: payload.maxCombo, mode: 'free', disconnected: payload.disconnected });
+          onMatchEnd({
+            winner, loser, rounds: 1, duration: payload.duration, maxCombo: payload.maxCombo, mode: 'free', disconnected: payload.disconnected,
+            p1TotalDamage: payload.p1TotalDamage ?? p1TotalDamageRef.current,
+            p2TotalDamage: payload.p2TotalDamage ?? p2TotalDamageRef.current,
+            p1TotalHits: payload.p1TotalHits ?? p1TotalHitsRef.current,
+            p2TotalHits: payload.p2TotalHits ?? p2TotalHitsRef.current,
+            p1FinalHp: payload.p1FinalHp ?? p1Ref.current.hp,
+            p2FinalHp: payload.p2FinalHp ?? p2Ref.current.hp,
+          });
         }, 2200);
       });
     }
@@ -768,6 +780,8 @@ export function FightingArena({ player1, player2, onMatchEnd, p2AI = true, p2pMo
       }
       if (res.damage > 0) {
         defender.hp = Math.max(0, defender.hp - res.damage);
+        if (attacker.side === 'left') { p1TotalDamageRef.current += res.damage; p1TotalHitsRef.current++; }
+        else { p2TotalDamageRef.current += res.damage; p2TotalHitsRef.current++; }
         defender.comboCount = 0;
         if (defender.state !== 'dead') { defender.state = 'hurt'; defender.stateTimer = 25; }
         hitTextRef.current.push({ x: hitX + (Math.random() - 0.5) * 20, y: hitY - 10, text: `💥${res.damage}!`, timer: 50, color: '#ffff00', size: 16 });
@@ -813,6 +827,8 @@ export function FightingArena({ player1, player2, onMatchEnd, p2AI = true, p2pMo
       );
 
       defender.hp = Math.max(0, defender.hp - dmg);
+      if (attacker.side === 'left') { p1TotalDamageRef.current += dmg; p1TotalHitsRef.current++; }
+      else { p2TotalDamageRef.current += dmg; p2TotalHitsRef.current++; }
 
       if (defender.state !== 'block') {
         defender.state = 'hurt';
@@ -989,7 +1005,12 @@ export function FightingArena({ player1, player2, onMatchEnd, p2AI = true, p2pMo
         ));
       }
       setTimeout(() => {
-        onMatchEnd({ winner, loser, rounds: 1, duration: Math.floor(elapsed), maxCombo: maxComboRef.current, mode: 'free', disconnected });
+        onMatchEnd({
+          winner, loser, rounds: 1, duration: Math.floor(elapsed), maxCombo: maxComboRef.current, mode: 'free', disconnected,
+          p1TotalDamage: p1TotalDamageRef.current, p2TotalDamage: p2TotalDamageRef.current,
+          p1TotalHits: p1TotalHitsRef.current, p2TotalHits: p2TotalHitsRef.current,
+          p1FinalHp: p1Ref.current.hp, p2FinalHp: p2Ref.current.hp,
+        });
       }, disconnected ? 1500 : 2200);
     };
 
@@ -1014,7 +1035,12 @@ export function FightingArena({ player1, player2, onMatchEnd, p2AI = true, p2pMo
               fightChannelRef.current.send({
                 type: 'broadcast',
                 event: 'game_over',
-                payload: { winnerSide: p1.hp > p2.hp ? 'left' : 'right', maxCombo: maxComboRef.current, duration: Math.floor(elapsed), disconnected: false },
+                payload: {
+                  winnerSide: p1.hp > p2.hp ? 'left' : 'right', maxCombo: maxComboRef.current, duration: Math.floor(elapsed), disconnected: false,
+                  p1TotalDamage: p1TotalDamageRef.current, p2TotalDamage: p2TotalDamageRef.current,
+                  p1TotalHits: p1TotalHitsRef.current, p2TotalHits: p2TotalHitsRef.current,
+                  p1FinalHp: p1.hp, p2FinalHp: p2.hp,
+                },
               });
             }
             firKO(winner, loser, elapsed);
@@ -1159,7 +1185,12 @@ export function FightingArena({ player1, player2, onMatchEnd, p2AI = true, p2pMo
         fightChannelRef.current?.send({
           type: 'broadcast',
           event: 'game_over',
-          payload: { winnerSide: 'left', maxCombo: maxComboRef.current, duration: Math.floor(elapsed), disconnected: true },
+          payload: {
+            winnerSide: 'left', maxCombo: maxComboRef.current, duration: Math.floor(elapsed), disconnected: true,
+            p1TotalDamage: p1TotalDamageRef.current, p2TotalDamage: p2TotalDamageRef.current,
+            p1TotalHits: p1TotalHitsRef.current, p2TotalHits: p2TotalHitsRef.current,
+            p1FinalHp: p1Ref.current.hp, p2FinalHp: p2Ref.current.hp,
+          },
         });
         firKO(player1, player2, elapsed, true);
       }
@@ -1327,7 +1358,12 @@ export function FightingArena({ player1, player2, onMatchEnd, p2AI = true, p2pMo
           fightChannelRef.current?.send({
             type: 'broadcast',
             event: 'game_over',
-            payload: { winnerSide: 'left', maxCombo: maxComboRef.current, duration: Math.floor(elapsed), disconnected: true },
+            payload: {
+              winnerSide: 'left', maxCombo: maxComboRef.current, duration: Math.floor(elapsed), disconnected: true,
+              p1TotalDamage: p1TotalDamageRef.current, p2TotalDamage: p2TotalDamageRef.current,
+              p1TotalHits: p1TotalHitsRef.current, p2TotalHits: p2TotalHitsRef.current,
+              p1FinalHp: p1Ref.current.hp, p2FinalHp: p2Ref.current.hp,
+            },
           });
           firKO(player1, player2, elapsed, true);
         } else if (p2pMode === 'client') {

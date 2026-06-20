@@ -89,3 +89,32 @@ CREATE TABLE IF NOT EXISTS season_history (
 );
 ALTER TABLE season_history ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Allow read on season_history" ON season_history FOR SELECT USING (true);
+
+-- Match reports: dual-client match result submissions for anti-cheat consensus
+CREATE TABLE IF NOT EXISTS match_reports (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  match_id        UUID NOT NULL REFERENCES matches(id),
+  reporter        TEXT NOT NULL,
+  winner_username TEXT NOT NULL,
+  duration        INTEGER NOT NULL,
+  max_combo       INTEGER NOT NULL DEFAULT 0,
+  p1_total_damage INTEGER NOT NULL DEFAULT 0,
+  p2_total_damage INTEGER NOT NULL DEFAULT 0,
+  p1_total_hits   INTEGER NOT NULL DEFAULT 0,
+  p2_total_hits   INTEGER NOT NULL DEFAULT 0,
+  p1_final_hp     REAL NOT NULL DEFAULT 0,
+  p2_final_hp     REAL NOT NULL DEFAULT 0,
+  disconnected    BOOLEAN NOT NULL DEFAULT false,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_match_reports_match_id ON match_reports(match_id);
+
+ALTER TABLE match_reports ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow insert on match_reports" ON match_reports FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow read on match_reports" ON match_reports FOR SELECT USING (true);
+
+-- Verification columns on matches table
+ALTER TABLE matches ADD COLUMN IF NOT EXISTS verification_status TEXT NOT NULL DEFAULT 'pending';
+ALTER TABLE matches ADD COLUMN IF NOT EXISTS verified_signature  TEXT;
+ALTER TABLE matches ADD COLUMN IF NOT EXISTS verification_notes  TEXT;

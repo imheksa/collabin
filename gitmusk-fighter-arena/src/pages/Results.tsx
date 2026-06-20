@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import html2canvas from 'html2canvas';
 import { useGameStore } from '../stores/gameStore';
-import { Fighter } from '../types';
+import { Fighter, MatchReport } from '../types';
 import { recordMatch, getProfile, getLevelTier, getMmrTier, ACHIEVEMENT_RARITY_COLORS } from '../utils/playerProfile';
 import { syncProfile, fetchSeasonInfo } from '../utils/cloudSync';
 import { supabase } from '../lib/supabase';
@@ -93,6 +93,8 @@ export function Results() {
   const [generatingCard, setGeneratingCard] = useState(false);
   const fighterPanelRef = useRef<HTMLDivElement>(null);
 
+  const [verificationStatus, setVerificationStatus] = useState<string | null>(null);
+
   // Rematch state
   const [rematchOffer, setRematchOffer] = useState<string | null>(null);
   const [waitingRematch, setWaitingRematch] = useState(false);
@@ -182,6 +184,21 @@ export function Results() {
   useEffect(() => { const t = setTimeout(() => setShow(true), 300); return () => clearTimeout(t); }, []);
 
   useEffect(() => {
+    if (!matchId || verificationStatus !== 'waiting') return;
+    const poll = setInterval(async () => {
+      try {
+        const r = await fetch(`/api/match-status?matchId=${matchId}`);
+        const data = await r.json();
+        if (data.status && data.status !== 'waiting' && data.status !== 'pending') {
+          setVerificationStatus(data.status);
+          clearInterval(poll);
+        }
+      } catch { /* ignore */ }
+    }, 5000);
+    return () => clearInterval(poll);
+  }, [matchId, verificationStatus]);
+
+  useEffect(() => {
     if (!matchResult || !player1 || !player2) return;
     (async () => {
       const seasonInfo = await fetchSeasonInfo();
@@ -199,12 +216,31 @@ export function Results() {
       const updated = getProfile(player1.profile.username);
       setPlayerProfile(updated);
       if (!player1.profile.isDemo) syncProfile(updated, player1).catch(() => {});
-      if (isPvP) {
-        fetch('/api/match-finish', {
+      if (isPvP && matchId) {
+        const report: MatchReport = {
+          matchId,
+          reporter: player1.profile.username,
+          winnerUsername: matchResult.winner.profile.username,
+          duration: matchResult.duration,
+          maxCombo: matchResult.maxCombo,
+          p1TotalDamage: matchResult.p1TotalDamage ?? 0,
+          p2TotalDamage: matchResult.p2TotalDamage ?? 0,
+          p1TotalHits: matchResult.p1TotalHits ?? 0,
+          p2TotalHits: matchResult.p2TotalHits ?? 0,
+          p1FinalHp: matchResult.p1FinalHp ?? 0,
+          p2FinalHp: matchResult.p2FinalHp ?? 0,
+          disconnected: matchResult.disconnected ?? false,
+        };
+        fetch('/api/match-report', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ matchId, winnerUsername: matchResult.winner.profile.username }),
-        }).catch(() => {});
+          body: JSON.stringify(report),
+        })
+          .then(r => r.json())
+          .then(data => {
+            if (data.status) setVerificationStatus(data.status);
+          })
+          .catch(() => {});
       }
     })();
   }, []);
@@ -333,6 +369,24 @@ export function Results() {
             </div>
           ))}
         </div>
+
+        {/* Verification status badge (PvP only) */}
+        {matchId && verificationStatus && (
+          <div className="mb-5 text-center" style={{ opacity: show ? 1 : 0, transition: 'opacity .6s .18s' }}>
+            <div style={{
+              display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 14px',
+              fontFamily: 'var(--pixel)', fontSize: '8px', letterSpacing: '.1em',
+              background: verificationStatus === 'verified' ? 'rgba(0,255,157,.08)' : verificationStatus === 'disputed' ? 'rgba(255,45,117,.08)' : verificationStatus === 'flagged' ? 'rgba(255,200,0,.08)' : 'rgba(176,38,255,.08)',
+              border: `2px solid ${verificationStatus === 'verified' ? 'var(--neon-grn)' : verificationStatus === 'disputed' ? 'var(--neon-pink)' : verificationStatus === 'flagged' ? '#ffcc00' : 'var(--neon-p)'}`,
+              color: verificationStatus === 'verified' ? 'var(--neon-grn)' : verificationStatus === 'disputed' ? 'var(--neon-pink)' : verificationStatus === 'flagged' ? '#ffcc00' : 'var(--neon-p)',
+            }}>
+              {verificationStatus === 'verified' && '✓ VERIFIED'}
+              {verificationStatus === 'waiting' && '⏳ AWAITING OPPONENT REPORT'}
+              {verificationStatus === 'disputed' && '⚠ DISPUTED'}
+              {verificationStatus === 'flagged' && '⚠ UNDER REVIEW'}
+            </div>
+          </div>
+        )}
 
         {/* XP Reward panel */}
         {lastMatchReward && (

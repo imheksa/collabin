@@ -74,6 +74,27 @@ export interface MatchResult {
   maxCombo: number;
   mode: GameMode;
   disconnected?: boolean;
+  p1TotalDamage?: number;
+  p2TotalDamage?: number;
+  p1TotalHits?: number;
+  p2TotalHits?: number;
+  p1FinalHp?: number;
+  p2FinalHp?: number;
+}
+
+export interface MatchReport {
+  matchId: string;
+  reporter: string;
+  winnerUsername: string;
+  duration: number;
+  maxCombo: number;
+  p1TotalDamage: number;
+  p2TotalDamage: number;
+  p1TotalHits: number;
+  p2TotalHits: number;
+  p1FinalHp: number;
+  p2FinalHp: number;
+  disconnected: boolean;
 }
 
 export type P2PRole = 'host' | 'client';
