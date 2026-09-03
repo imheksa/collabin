@@ -28,13 +28,27 @@
 
 ## 1. Overview & Problem Statement
 
-Meme token creators and large holders on launchpads like Pons.family face a binary choice today: **burn** their tokens (permanently destroy value, no upside for anyone) or **lock** them (freeze value, no upside either — just a promise not to dump). Neither option does anything to grow or stabilize the token; they're purely defensive signals.
+### 1.1 The problem: burn and lock are both dead ends
 
-**Strong Hold Offering (SHO) turns that locked supply into a growth incentive instead of a dead commitment.**
+On launchpads like Pons.family, a creator or large holder who wants to signal commitment has exactly two moves, and both stop working the moment they're used.
 
-Instead of burning or locking unconditionally, a creator or holder deposits tokens into an SHO campaign, which acts as a reward pool for the token's most active traders. The pool only pays out as the token's market cap climbs past pre-defined milestones — and if the token never gets there, the tokens stay locked forever, exactly as if they'd been burned. There is no downside relative to burning; there is only optional upside for the ecosystem.
+**Burn destroys supply but buys nothing.** It's a one-time announcement that fades from a community's memory within days, and it does nothing for the thing that actually keeps a token alive: people showing up to trade it. Supply scarcity without demand is not a growth strategy.
 
-This reframes "supply commitment" from a one-time, static act into an ongoing growth challenge: *"if this token proves it has real trading activity and reaches $X mcap, its most active traders get rewarded."*
+**Lock is worse than neutral — it schedules its own failure.** A vesting lock doesn't prevent a dump, it *calendars* one: the unlock block is public, traders position around it in advance, and the token reliably craters right when the lock expires. The market has seen this pattern enough times that "tokens are locked" barely registers as reassurance anymore — everyone knows what happens next. Lock mechanisms optimize for a promise the team ends up breaking by design, not for the token's actual health.
+
+Neither mechanism rewards the one behavior that determines whether a token survives its first weeks: **sustained, active trading from real participants.** Both are supply-side gestures in a game that's actually won or lost on demand.
+
+### 1.2 What SHO does differently
+
+**Strong Hold Offering (SHO) is the first Pons.family/Robinhood Chain primitive that makes a locked position pay for demand instead of just removing supply.**
+
+A creator or holder deposits tokens into an SHO campaign instead of burning or locking them. That pool only pays out to the token's most active net-buyers, and only as the token's market cap actually climbs past milestones the creator set in advance. If it never gets there, the tokens lock forever — the exact same permanent-loss outcome as a burn. There is no scenario where SHO is riskier than burning; there is only a scenario where, if the token succeeds, the people who drove that success get paid from a pool the team was going to give up anyway.
+
+This is structurally different from a staking or rewards program: it isn't funded by new token emissions or external treasury spend, so it doesn't dilute anyone. It's the same bag a burn or lock would have consumed, just redirected toward the one outcome (real trading activity, real price growth) that a burn or lock can never produce on its own.
+
+### 1.3 Why now
+
+Pons.family already drives roughly 80% of Robinhood Chain's launchpad volume and over half its total transactions, with the chain posting record DEX volume as the meme-coin cycle on Robinhood Chain accelerates. That velocity cuts both ways: launch volume is high, but so is the rate at which tokens are abandoned within days once the initial hype fades and no mechanism gives traders a reason to keep showing up. A commitment signal that's actually tied to sustained activity — rather than one more burn announcement or lock countdown the market has learned to discount — is a differentiator precisely because the ecosystem is this crowded and this fast-moving right now.
 
 **Who can create a campaign:** the token deployer ("dev"), or any large individual holder — anyone who wants to commit their bag toward growing the token instead of burning or passively locking it.
 
