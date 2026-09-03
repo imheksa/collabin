@@ -1,8 +1,22 @@
 # Strong Hold Offering (SHO) — Product & Technical Specification
 
-**Status:** Draft v2
-**Audience:** Engineering team, investors/partners, token creators & communities considering SHO
+**Status:** Draft v3 — full documentation (spec + creator guide + trader guide + contract reference + FAQ)
+**Audience:** Engineering team, investors/partners, token creators, and traders
 **Chain target:** Robinhood Chain (Arbitrum Orbit, chain ID 4663, EVM-equivalent) — integrates with the Pons.family launchpad (bonding-curve tokens that graduate to Uniswap V4)
+
+**Contents**
+1. [Overview & Problem Statement](#1-overview--problem-statement)
+2. [Mechanism / How It Works](#2-mechanism--how-it-works)
+3. [Technical Architecture](#3-technical-architecture)
+4. [Data Model & Contract Interfaces](#4-data-model--contract-interfaces)
+5. [Economics & Parameters](#5-economics--parameters)
+6. [Risks & Mitigations](#6-risks--mitigations)
+7. [Roadmap](#7-roadmap)
+8. [Creator Guide](#8-creator-guide) — how to launch a campaign, step by step
+9. [Trader Guide](#9-trader-guide) — how to earn and claim rewards, step by step
+10. [Smart Contract API Reference](#10-smart-contract-api-reference) — full function/event/error detail
+11. [FAQ & Glossary](#11-faq--glossary)
+12. [Open Questions / Out of Scope](#12-open-questions--out-of-scope)
 
 **Terms used throughout this doc:**
 - **Robinhood Chain** — Robinhood's own Arbitrum Orbit L2 (EVM-equivalent, 100ms blocks, settles to Ethereum).
@@ -247,11 +261,215 @@ If the token's 30-min TWAP mcap crosses 250K on day 6, the keeper snapshots the 
 
 ---
 
-## 8. Open Questions / Out of Scope
+## 8. Creator Guide
+
+This section walks a token deployer or large holder through launching an SHO campaign end to end.
+
+### 8.1 Before you start
+
+- A wallet holding the tokens you intend to lock, connected to Robinhood Chain.
+- The token must be tradable on Pons.family (bonding curve or already graduated to its Uniswap V4 pool) — the keeper only indexes volume from these two venues (§2.2).
+- Enough ETH in your wallet for gas on two transactions: an ERC-20 `approve` and the `createCampaign` call.
+- A clear idea of your milestones and timeline — see §8.4 before locking anything, since **campaign parameters cannot be changed after creation** and unreached milestones lock permanently (§2.4).
+
+### 8.2 Step-by-step
+
+1. **Connect your wallet** on the SHO dApp's Create Campaign page.
+2. **Select the token** you want to run a campaign for. The dApp checks it's indexed from Pons.family and shows its current price/mcap.
+3. **Enter the amount to lock.** The dApp shows the 0.5% fee deduction and the net amount that will actually be escrowed (§2.1).
+4. **Choose reward denomination** — the campaign token itself, ETH, or USDC (§5). Paying in USDC/ETH means your reward payout value doesn't depend on your own token's price; paying in the campaign token costs you nothing extra up front but the reward's real value moves with the token.
+5. **Set the leaderboard window** (24H / 7D / 30D) and **leaderboard size** (Top 50 / 100 / 500) — this defines who counts as an "active trader" when a milestone fires (§2.2).
+6. **Set the campaign duration** (7D / 30D / 90D) — the deadline for milestones to be hit at all.
+7. **Configure milestones.** Pick one or more of the four preset mcap thresholds (100K / 250K / 1M / 5M) and assign each a percentage of the pool. The percentages must sum to 100% — the dApp blocks submission otherwise.
+8. **Review the summary screen** — final locked amount, fee, and a plain-language restatement of what happens if each milestone is or isn't reached.
+9. **Approve token spend** — sign the ERC-20 `approve` transaction for the campaign contract.
+10. **Confirm campaign creation** — sign the `createCampaign` transaction. Once it's mined, the campaign is live and immutable.
+11. **Share and monitor** — your campaign gets a public page with a live leaderboard preview and a milestone progress bar you can link from your own channels.
+
+### 8.3 What you can't do after creation
+
+Once `createCampaign` is confirmed: you cannot change any parameter (window, leaderboard size, duration, milestones, denomination), cannot cancel the campaign, and cannot withdraw locked tokens for a milestone that goes unreached — that portion is locked permanently, identical to a burn (§2.4, §4.2). Treat campaign creation as final before you sign.
+
+### 8.4 Choosing realistic milestones
+
+The risk table in §6 is explicit: an unrealistic milestone just burns that portion of your bag with no upside for anyone. Before setting thresholds, look at the token's current mcap and realistic growth trajectory rather than picking round numbers aspirationally — a 100K→250K first tier is a very different commitment for a token currently at 20K mcap than for one already at 90K.
+
+### 8.5 Common creation errors
+
+| Error | Cause | Fix |
+|---|---|---|
+| `BpsMismatch` revert | Milestone `rewardBps` values don't sum to exactly 10,000 | Adjust percentages so they total 100% |
+| `InvalidRewardToken` revert | `rewardToken` isn't the campaign token, `address(0)` (ETH), or an allowlisted stablecoin | Use USDC, ETH, or the campaign token itself (§5) |
+| `InvalidMilestoneTier` revert | A milestone threshold isn't one of the four presets | Pick only from 100K / 250K / 1M / 5M |
+| `approve` transaction succeeds but `createCampaign` reverts on transfer | Allowance set lower than the lock amount, or insufficient balance | Re-check the approved amount matches the amount you're locking |
+
+---
+
+## 9. Trader Guide
+
+This section explains how to earn and claim SHO rewards as a trader.
+
+### 9.1 How you earn
+
+You don't need to opt in to anything. If you buy a token that has an active SHO campaign, the keeper is already tracking your **net-buy volume** (USD-equivalent bought minus sold, within that campaign's leaderboard window — §2.2) for you automatically. If, at the moment a milestone fires, you're a net buyer and rank in the campaign's configured leaderboard size (Top 50/100/500), you're owed a share of that tier's reward — proportional to your net-buy volume relative to others in the snapshot.
+
+### 9.2 Finding campaigns
+
+The dApp's **Discover** page lists active campaigns per token — locked amount, denomination, current mcap vs. milestone thresholds, leaderboard window/size, and time remaining in the campaign duration.
+
+### 9.3 Checking your standing
+
+On a campaign's detail page, connect your wallet to see a **"your position"** panel: your current net-buy volume in the configured window, your live rank if you're inside the leaderboard size, and how far the token's mcap is from the next milestone. This is an estimate — the leaderboard isn't final until a milestone actually fires and the keeper freezes a snapshot (§2.3).
+
+### 9.4 When a milestone fires
+
+1. The token's mcap sustains a 30-minute TWAP above a threshold — the milestone is confirmed reached.
+2. The keeper freezes the leaderboard and posts a **provisional** reward allocation on-chain.
+3. **Nothing is claimable yet.** A 24-hour challenge window follows, during which the keeper can correct the root if an error is found (§2.3).
+4. Once the window elapses, the allocation **finalizes** and the dApp's Claim button activates for eligible wallets.
+
+### 9.5 Claiming
+
+Go to the campaign's page, connect your wallet, and if you're eligible for a finalized milestone the dApp shows your exact reward amount and a **Claim** button. Behind the scenes it fetches your Merkle proof from the published snapshot data and submits it to `claim()` (§10). You pay gas for this transaction — reward transfers are not gasless.
+
+### 9.6 Things that can affect your eligibility
+
+- **Selling drags down your net-buy volume** — a large sell late in the window can push you to net-negative, which removes you from the leaderboard entirely for that snapshot (§2.2), not just lower your rank.
+- **Trading outside the leaderboard window doesn't count** — only activity within the campaign's configured rolling window (24H/7D/30D), as measured at the moment the milestone fires, is counted.
+- **Volume off Pons.family/Uniswap V4 isn't tracked** — trades on other venues for the same token (if any exist) aren't indexed.
+- **There's no cap protecting your share** — a single large trader can legitimately take most of a tier's pool; this is a known, unaddressed design trade-off (§6), not a bug.
+- **A missed milestone claim doesn't roll over** — each milestone's allocation is specific to that snapshot; there's currently no mechanism to "catch up" for a milestone you weren't ranked in when it fired.
+
+---
+
+## 10. Smart Contract API Reference
+
+This expands the interface summary in §4.2 into full implementation-level detail. All functions live on `SHOCampaign.sol` unless noted.
+
+### 10.1 `SHOFactory.sol`
+
+**`createCampaign(address token, address rewardToken, uint256 amount, LeaderboardWindow window, uint16 leaderboardSize, uint256 duration, Milestone[] calldata milestones) → address campaign`**
+Caller: any address (the creator).
+Deploys an EIP-1167 minimal proxy clone of the `SHOCampaign` implementation, initializes it, and pulls `amount` of `token` from the caller via `transferFrom` (requires prior `approve`).
+
+Reverts:
+| Custom error | Condition |
+|---|---|
+| `InvalidRewardToken()` | `rewardToken` is not `address(0)`, `token`, or on the stablecoin allowlist |
+| `InvalidMilestoneTier()` | Any `milestones[i].tier` is outside the 4-value `MilestoneTier` enum |
+| `BpsMismatch()` | `sum(milestones[i].rewardBps) != 10_000` |
+| `InvalidWindow()` / `InvalidDuration()` / `InvalidLeaderboardSize()` | Value outside the allowed enum/set for that parameter |
+| `InsufficientAllowance()` | `token.allowance(caller, factory) < amount` |
+
+Emits: `CampaignCreated(campaignId, campaign, token, creator, rewardToken, netLocked)`
+
+**`getCampaign(uint256 campaignId) → Campaign` (view)**
+Returns the full `Campaign` struct (§4.1).
+
+**`campaignsByToken(address token) → uint256[]` (view)** / **`campaignsByCreator(address creator) → uint256[]` (view)**
+Registry lookups used by the Discover page.
+
+### 10.2 `SHOCampaign.sol`
+
+**`postMilestoneRoot(uint256 milestoneIndex, bytes32 merkleRoot, bytes32 snapshotHash) → void`**
+Caller: keeper multi-sig only (`onlyKeeper` modifier — reverts with `Unauthorized()` otherwise).
+Sets `milestones[milestoneIndex].merkleRoot`, `snapshotHash`, and `challengeWindowEnds = block.timestamp + 24 hours`. Can be called more than once per milestone — each call overwrites the previous root and restarts the window, **as long as the previous window hasn't already elapsed**.
+
+Reverts:
+| Custom error | Condition |
+|---|---|
+| `Unauthorized()` | Caller isn't the keeper multi-sig |
+| `MilestoneNotReached()` | The milestone's TWAP threshold hasn't been confirmed crossed |
+| `ChallengeWindowElapsed()` | A previous root for this milestone already finalized (window closed) — roots are only correctable, never reopenable after finalization |
+
+Emits: `RootPosted(campaignId, milestoneIndex, merkleRoot, snapshotHash)` on first post, `RootCorrected(campaignId, milestoneIndex, oldRoot, newRoot)` on any subsequent overwrite.
+
+**`claim(uint256 milestoneIndex, uint256 amount, bytes32[] calldata proof) → void`**
+Caller: any address claiming on its own behalf.
+Verifies `block.timestamp >= milestones[milestoneIndex].challengeWindowEnds`, then verifies `MerkleProof.verify(proof, milestones[milestoneIndex].merkleRoot, keccak256(abi.encode(campaignId, milestoneIndex, msg.sender, netBuyVolumeUSD, amount)))`, then checks the leaf hasn't already been claimed, transfers `amount` of `rewardToken` to `msg.sender`, and marks it claimed.
+
+Reverts:
+| Custom error | Condition |
+|---|---|
+| `ChallengeWindowActive()` | Called before `challengeWindowEnds` |
+| `InvalidProof()` | Merkle proof doesn't verify against the finalized root |
+| `AlreadyClaimed()` | This leaf was already claimed |
+
+Emits: `RewardClaimed(campaignId, milestoneIndex, claimant, amount)`
+
+**`getMilestone(uint256 milestoneIndex) → Milestone` (view)** / **`isClaimed(uint256 milestoneIndex, address wallet) → bool` (view)**
+Read helpers used by the dApp's claim UI.
+
+### 10.3 Access control summary
+
+| Action | Who |
+|---|---|
+| `createCampaign` | Anyone with sufficient token balance/allowance |
+| `postMilestoneRoot` | Keeper multi-sig only |
+| `claim` | Anyone, on their own behalf only (`msg.sender` is the claimant) |
+| Parameter changes after creation | **Nobody** — campaigns are immutable once created (§8.3) |
+| Withdraw an unreached milestone's tokens | **Nobody** — no such function exists (§2.4, §4.2) |
+
+### 10.4 Gas notes
+
+Campaigns deploy as EIP-1167 minimal proxy clones (§3.1), keeping `createCampaign` gas close to a single `CREATE` plus initialization storage writes rather than a full contract deployment. Keeper gas for `postMilestoneRoot` calls is funded from the protocol treasury (§2.1), not charged to creators or traders.
+
+---
+
+## 11. FAQ & Glossary
+
+### 11.1 FAQ
+
+**What happens if my campaign's milestone is never reached?**
+That portion of the locked pool stays in the contract permanently — unclaimable by anyone, including you. It behaves exactly like a burn (§2.4).
+
+**Can I cancel a campaign or get my tokens back if I change my mind?**
+No. Campaigns are immutable and irreversible once created (§8.3).
+
+**What's the difference between the leaderboard window and the campaign duration?**
+The window (24H/7D/30D) is how far back trading activity is measured when ranking traders at the moment a milestone fires. The duration (7D/30D/90D) is the overall deadline for the campaign to hit its milestones at all. See the worked example in §5.
+
+**Why was my wallet excluded from the leaderboard even though I traded a lot?**
+Ranking is based on *net-buy* volume, not gross activity — if you sold more (in USD-equivalent) than you bought within the window, you're excluded from that snapshot entirely, not just ranked low (§2.2).
+
+**Can one wallet win an entire milestone's reward pool?**
+Yes, if it legitimately has the largest net-buy volume — there's no per-wallet cap in this version (§5, §6).
+
+**What if the keeper posts a wrong leaderboard?**
+There's a 24-hour challenge window before any root finalizes and `claim()` opens. During that window the keeper can correct it. Full snapshot data is published off-chain so anyone can verify it themselves (§2.3). This is a procedural safeguard, not a cryptographic guarantee — it still depends on the keeper multi-sig.
+
+**Is SHO available on chains other than Robinhood Chain?**
+Not in this version — the MVP is built specifically around Robinhood Chain and the Pons.family/Uniswap V4 venues (§7 Phase 3 covers future expansion).
+
+**Do I pay gas to claim my reward?**
+Yes — `claim()` is a transaction you sign and pay gas for, same as any on-chain action.
+
+**What tokens can rewards be paid in?**
+The campaign token itself, ETH, or USDC (the MVP's only allowlisted stablecoin) — set once by the creator at campaign creation (§5).
+
+### 11.2 Glossary
+
+| Term | Meaning |
+|---|---|
+| **Bonding curve** | A pricing mechanism where a token's price rises algorithmically as more of it is bought directly from the contract, before any external liquidity pool exists. |
+| **Graduation** | The point at which a Pons.family bonding-curve token's liquidity migrates to a standard Uniswap V4 pool. |
+| **TWAP** | Time-weighted average price — smooths short-term price spikes over a window (30 minutes here) so a single flash pump can't falsely trigger a milestone. |
+| **Circulating market cap (mcap)** | Price × total token supply as reported on-chain, per §2.1 — used here without netting out locked/vesting supply. |
+| **Net-buy volume** | Total USD-equivalent bought minus sold by a wallet within a window, each leg priced at its own execution price (§2.2). |
+| **Merkle root / proof** | A cryptographic summary of a large dataset (here, a reward allocation list) that lets any single entry be verified on-chain cheaply, without storing the whole list on-chain. |
+| **Basis points (bps)** | 1/100th of a percent; 10,000 bps = 100%. Used for `rewardBps` splits across milestones. |
+| **Gnosis Safe ("Safe")** | The standard multi-signature wallet contract requiring multiple approvers before an action executes — used here as the keeper's signing mechanism. |
+| **EIP-1167 minimal proxy clone** | A gas-cheap way to deploy many copies of the same contract logic (each campaign) that delegate their code to one shared implementation contract. |
+| **Keeper** | The off-chain service (indexer + oracle + multi-sig signer) that computes leaderboards, tracks mcap, and posts results on-chain (§3.2). |
+| **Challenge window** | The 24-hour period after a root is posted, before it finalizes, during which the keeper can correct it (§2.3). |
+
+---
+
+## 12. Open Questions / Out of Scope
 
 - Should there be a claim deadline after a milestone's challenge window ends, and what happens to rewards nobody claims (revert to creator? stay locked forever, like an unreached milestone)?
 - Who governs the stablecoin allowlist (currently USDC-only) and the process for adding to it?
-- Exact UI/UX flows for campaign creation and claiming — covered in a separate design doc, not here.
+- Exact visual UI/UX mockups for campaign creation and claiming — the guides in §8–§9 describe the flow, not the pixel-level design.
 - Smart contract audit vendor and budget — not yet determined.
 - Legal/regulatory classification of the reward mechanism — not yet reviewed.
 - Whether the protocol fee (0.5%) should be adjustable per-campaign or governance-controlled over time.
