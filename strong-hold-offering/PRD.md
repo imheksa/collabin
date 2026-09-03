@@ -1,10 +1,14 @@
-# Strong Hold Offering (SHO) — Product & Technical Specification
+# Strong Offering Platform — Product & Technical Specification
 
-**Status:** Draft v3 — full documentation (spec + creator guide + trader guide + contract reference + FAQ)
-**Audience:** Engineering team, investors/partners, token creators, and traders
-**Chain target:** Robinhood Chain (Arbitrum Orbit, chain ID 4663, EVM-equivalent) — integrates with the Pons.family launchpad (bonding-curve tokens that graduate to Uniswap V4)
+**Status:** Draft v4 — full documentation (spec + guides + contract reference + FAQ) for both campaign types
+**Audience:** Engineering team, investors/partners, token creators, traders, and social supporters
+**Chain target:** Robinhood Chain (Arbitrum Orbit, chain ID 4663, EVM-equivalent) — integrates with the Pons.family launchpad (bonding-curve tokens that graduate to Uniswap V4) and, for Part B, the X/Twitter API
+
+The **Strong Offering** platform locks tokens as reward pools for behavior that actually grows a token, instead of burning or locking them unconditionally. It ships with two campaign types: **Strong Hold Offering (SHO)** rewards active traders; **Strong Shill Offering (SSO)** rewards active social supporters. Both share the same core promise — reach the target, the pool pays out; miss it, the pool locks forever, exactly like a burn.
 
 **Contents**
+
+*Part A — Strong Hold Offering (SHO)*
 1. [Overview & Problem Statement](#1-overview--problem-statement)
 2. [Mechanism / How It Works](#2-mechanism--how-it-works)
 3. [Technical Architecture](#3-technical-architecture)
@@ -16,7 +20,12 @@
 9. [Trader Guide](#9-trader-guide) — how to earn and claim rewards, step by step
 10. [Smart Contract API Reference](#10-smart-contract-api-reference) — full function/event/error detail
 11. [FAQ & Glossary](#11-faq--glossary)
-12. [Open Questions / Out of Scope](#12-open-questions--out-of-scope)
+
+*Part B — Strong Shill Offering (SSO)*
+12. [Strong Shill Offering (SSO)](#12-strong-shill-offering-sso) — mechanism, architecture, data model, economics, risks, guide, FAQ
+
+*Shared*
+13. [Open Questions / Out of Scope](#13-open-questions--out-of-scope)
 
 **Terms used throughout this doc:**
 - **Robinhood Chain** — Robinhood's own Arbitrum Orbit L2 (EVM-equivalent, 100ms blocks, settles to Ethereum).
@@ -25,6 +34,8 @@
 - **Gnosis Safe ("Safe")** — the standard multi-signature wallet contract used to require multiple approvers before an on-chain action executes; referenced here as the keeper's signing mechanism.
 
 ---
+
+# Part A — Strong Hold Offering (SHO)
 
 ## 1. Overview & Problem Statement
 
@@ -482,12 +493,143 @@ The campaign token itself, ETH, or USDC (the MVP's only allowlisted stablecoin) 
 
 ---
 
-## 12. Open Questions / Out of Scope
+# Part B — Strong Shill Offering (SSO)
 
+## 12. Strong Shill Offering (SSO)
+
+### 12.1 Overview
+
+Strong Hold Offering rewards buying. **Strong Shill Offering rewards talking about it well.** Same platform, same core promise (pay out on success, lock forever on failure), different growth lever: instead of ranking net-buy volume, SSO ranks social amplification — posts on X/Twitter that use a keyword, hashtag, or cashtag the campaign creator defines, scored by real engagement. A creator or holder locks a pool; the platform's most effective shillers earn from it, on a recurring schedule, for as long as the campaign runs.
+
+### 12.2 Mechanism / How It Works
+
+**Creating a campaign.** A creator locks tokens and configures:
+
+| Parameter | Options |
+|---|---|
+| Tracked keyword | One string — a hashtag, cashtag, or phrase — set at creation and immutable after |
+| Reward denomination | Campaign token, ETH, or USDC (same allowlist as SHO) |
+| Epoch length | 24H / 7D / 30D — how often the pool pays out |
+| Leaderboard size | Top 50 / 100 / 500 accounts per epoch |
+| Campaign duration | 7D / 30D / 90D — determines how many epochs run |
+
+Unlike SHO's milestone tiers, SSO doesn't wait on price — **the pool pays out on a fixed schedule.** The locked pool is split across every epoch in the campaign (evenly by default; creators can weight epochs unevenly, same mechanic as SHO's per-milestone `rewardBps`). The same 0.5% protocol fee is deducted at creation.
+
+**Registering as a shiller.** Before any post counts, an account connects its X account (OAuth) to a wallet once, via the dApp. This is how the platform knows where to send a reward, and it's the base gate against anonymous bot accounts. One registration covers every SSO campaign that wallet ever participates in.
+
+**What counts as a qualifying post.** A post counts toward an epoch only if it's from a registered account, contains the campaign's exact tracked keyword, was posted inside that epoch's window, and the account clears the platform's minimum bar: **account age ≥ 30 days, followers ≥ 25** (MVP protocol-wide defaults — see §12.5). To blunt spam-flooding, only an account's best 5 qualifying posts count per epoch.
+
+**Scoring.** Each qualifying post gets an engagement score: `2×(retweets + quote tweets) + 1×replies + 0.5×likes` (an MVP default weighting — heavier on retweets/quotes since they're harder to fake cheaply than a like, lighter on likes; not yet creator-configurable). An account's epoch score is the sum of its counted posts' scores.
+
+**Payout.** At the end of each epoch, the keeper freezes the top-N accounts by score, allocates that epoch's share of the pool proportionally, and posts a Merkle root — following **the exact same provisional-root → 24-hour challenge window → finalize → claim pattern as SHO** (§2.3), reused without modification.
+
+**Failure.** If an epoch closes with zero qualifying posts, that epoch's share is never allocated and locks permanently — the same no-refund philosophy as an unreached SHO milestone (§2.4).
+
+### 12.3 Technical Architecture
+
+SSO reuses SHO's architecture (§3) with the components that depend on price/trading swapped for social-data equivalents:
+
+- **Social Indexer** (replaces the Chain Indexer) — polls the X API for posts matching a campaign's tracked keyword, resolves each poster's wallet via the registration table, and pulls engagement metrics per post.
+- **No Price/TWAP Oracle** — SSO doesn't depend on token price or mcap at all, only on epoch boundaries (the calendar).
+- **Registration Service** (new) — handles X OAuth and stores `(x_handle, wallet_address)` links; the Social Indexer checks this before counting any post.
+- Everything downstream — Leaderboard & Epoch Engine, published snapshot data, multi-sig on-chain poster, challenge window — is structurally identical to SHO's keeper (§3.2).
+
+Contracts ship as a **separate sibling pair, `SSOFactory.sol` / `SSOCampaign.sol`**, rather than overloading `SHOCampaign.sol`: milestones (one-way, permanent) and epochs (recurring, scheduled) are different enough state machines that forcing them into one contract would make both harder to reason about and audit. Both factories share the same underlying Merkle-claim and fee-treasury library code so that logic is audited once, not twice.
+
+### 12.4 Data Model & Contract Interfaces (delta from SHO)
+
+```solidity
+struct Epoch {
+    uint256 epochIndex;
+    uint16  rewardBps;
+    bool    finalized;
+    bytes32 merkleRoot;         // provisional until challengeWindowEnds, then final
+    bytes32 snapshotHash;
+    uint256 endsAt;              // epoch window close
+    uint256 challengeWindowEnds; // endsAt (or last correction) + 24h
+    uint256 totalClaimed;
+}
+
+struct ShillCampaign {
+    uint256 id;
+    address token;
+    address creator;
+    address rewardToken;         // token itself, address(0) for ETH, or an allowlisted stablecoin
+    uint256 totalLocked;         // net of the 0.5% protocol fee
+    string  keyword;              // tracked keyword/hashtag/cashtag, immutable after creation
+    EpochLength epochLength;      // 24H | 7D | 30D
+    uint16  leaderboardSize;      // 50 | 100 | 500
+    uint256 duration;             // 7D | 30D | 90D
+    uint256 createdAt;
+    Epoch[] epochs;               // rewardBps across all epochs must sum to 10,000
+    CampaignStatus status;
+}
+```
+
+Functions mirror §10 directly: `createCampaign(token, rewardToken, amount, keyword, epochLength, leaderboardSize, duration, epochs[])`, `postEpochRoot(campaignId, epochIndex, merkleRoot, snapshotHash)` (keeper-only, identical challenge-window semantics to `postMilestoneRoot`), `claim(campaignId, epochIndex, amount, proof[])` (identical semantics to SHO's `claim`). Registration is a standalone call, not per-campaign: `registerHandle(xHandle, oauthProof)` links a wallet once and is reusable everywhere.
+
+### 12.5 Economics & Parameters
+
+| Parameter | Value(s) |
+|---|---|
+| Tracked keyword | One per campaign, creator-defined, immutable after creation |
+| Epoch length | 24H / 7D / 30D |
+| Leaderboard size | Top 50 / Top 100 / Top 500 |
+| Campaign duration | 7D / 30D / 90D |
+| Reward denomination | Campaign token, ETH, or USDC |
+| Minimum account age | 30 days (MVP protocol-wide default) |
+| Minimum followers | 25 (MVP protocol-wide default) |
+| Max counted posts / account / epoch | 5 |
+| Engagement score formula | `2×(retweets+quotes) + 1×replies + 0.5×likes` (MVP protocol-wide default, not yet per-campaign configurable) |
+| Protocol fee | 0.5% of locked pool, taken at creation |
+| Root challenge window | 24 hours, identical mechanism to SHO |
+
+### 12.6 Risks & Mitigations (delta from §6)
+
+| Risk | Description | Mitigation (MVP) | Future work |
+|---|---|---|---|
+| **Bot / fake-engagement farms** | A moderately resourced bot farm can still clear a 30-day/25-follower bar — the minimums are a floor, not a wall. | Minimum account age + followers; engagement weighted toward retweets/quotes over likes | Posting-cadence anomaly detection; incorporate platform-level bot signals if the X API exposes them |
+| **Keyword squatting / collision** | An overly generic tracked keyword pulls in unrelated posts, diluting or gaming the leaderboard. | dApp warns the creator at campaign creation if the keyword matches an unusually high rate of unrelated existing posts | Keyword moderation/review tooling |
+| **Registration spoofing** | A flawed OAuth/wallet-linking flow could misattribute a shiller's rewards. | Standard OAuth for the X side, on-chain signature confirmation for the wallet side | N/A — considered adequately mitigated for MVP |
+| **Deleted/edited posts after scoring** | Not yet designed — see §13. | None | To be resolved before launch |
+| **Keeper centralization, no-refund design** | Identical trade-offs to SHO (§6) | Same mitigations (published snapshot, challenge window) | Same roadmap (§7 Phase 2) |
+
+### 12.7 Guide: Running & Participating in an SSO Campaign
+
+**For creators:** pick a keyword specific enough to be attributable to your campaign but natural enough that people would actually use it unprompted — an overly obscure tag nobody adopts organically wastes the pool the same way an unrealistic SHO milestone does. Campaigns are immutable once created, same as SHO (§8.3).
+
+**For shillers:** connect your X account and wallet once via the dApp — this covers every SSO campaign you ever participate in, not just one. Post using the campaign's exact keyword while it's active; check your live epoch score and rank on the campaign page. After each epoch closes and its 24-hour challenge window elapses, claim exactly as you would an SHO reward (§9.5) — connect wallet, dApp fetches your Merkle proof, submit `claim()`.
+
+### 12.8 FAQ additions
+
+**Do I need to re-link my X account for every campaign?**
+No — one registration covers every SSO campaign your wallet participates in.
+
+**What if I posted the keyword before the campaign existed?**
+It doesn't count. Only posts inside an active epoch's window are scored.
+
+**Can a campaign track more than one keyword?**
+No, one keyword per campaign in this version — run multiple campaigns if you want to track variants.
+
+---
+
+# Shared
+
+## 13. Open Questions / Out of Scope
+
+**SHO**
 - Should there be a claim deadline after a milestone's challenge window ends, and what happens to rewards nobody claims (revert to creator? stay locked forever, like an unreached milestone)?
 - Who governs the stablecoin allowlist (currently USDC-only) and the process for adding to it?
 - Exact visual UI/UX mockups for campaign creation and claiming — the guides in §8–§9 describe the flow, not the pixel-level design.
-- Smart contract audit vendor and budget — not yet determined.
-- Legal/regulatory classification of the reward mechanism — not yet reviewed.
 - Whether the protocol fee (0.5%) should be adjustable per-campaign or governance-controlled over time.
 - Multi-wallet (sybil) wash trading is explicitly unmitigated in the MVP (§6) — what threshold of abuse would justify prioritizing Phase 2's clustering heuristics sooner?
+
+**SSO**
+- What happens if a qualifying post is deleted, edited, or made private after the epoch snapshot is taken but before the challenge window closes? (§12.6)
+- Should the engagement scoring formula, or the minimum account age/follower thresholds, become creator-configurable rather than protocol-wide?
+- Multi-platform expansion (Telegram, Discord, etc.) beyond X/Twitter — deferred, not designed.
+- Same claim-deadline question as SHO applies to unclaimed epoch rewards.
+
+**Shared across both**
+- Smart contract audit vendor and budget — not yet determined for either `SHOCampaign.sol`/`SHOFactory.sol` or `SSOCampaign.sol`/`SSOFactory.sol`.
+- Legal/regulatory classification of the reward mechanism — not yet reviewed, and SSO's "reward for promotion" framing may raise different (securities/advertising-disclosure-adjacent) questions than SHO's trading-based framing.
