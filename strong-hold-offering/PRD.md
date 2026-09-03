@@ -53,9 +53,12 @@ Pons.family already drives roughly 80% of Robinhood Chain's launchpad volume and
 **Who can create a campaign:** the token deployer ("dev"), or any large individual holder — anyone who wants to commit their bag toward growing the token instead of burning or passively locking it.
 
 **Who benefits:**
-- **Traders** — earn a share of the pool, weighted by their net-buy volume, if they rank in the campaign's leaderboard when a milestone is confirmed.
-- **The token** — gains sustained trading activity and a public, verifiable growth narrative ("9.95M tokens locked, first unlock at $250K mcap"); if the campaign fails, the outcome is identical to a burn.
-- **The creator/holder** — has zero additional downside versus burning (locked tokens they'd have burned anyway), with optional upside if the token performs.
+
+- **Traders — trade with a bounty on it.** Buying and holding conviction isn't just a bet on price anymore; it's a bet with a payout attached. Rank in the leaderboard when a milestone hits and you get paid straight from the pool, in USDC, ETH, or the token itself — real, quantifiable upside for being early and active, not just goodwill toward a project.
+
+- **The token/community — a growth story that pays for itself.** Instead of a static "X tokens burned" headline that means nothing a week later, the token gets a live, public number the community can rally around ("9.95M locked, first unlock at $250K mcap") that only grows more compelling as trading activity does. And if it fails, the community hasn't lost anything a burn wouldn't have already cost them.
+
+- **The creator/holder — all the credibility of a burn, none of the wasted upside.** Same permanent-loss downside as torching your bag for a headline, but if the token actually takes off, that same commitment turns into a marketing engine and a direct reward to the people who made it happen — instead of just ash.
 
 ---
 
