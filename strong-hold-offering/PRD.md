@@ -4,7 +4,7 @@
 **Audience:** Engineering team, investors/partners, token creators, traders, and social supporters
 **Chain target:** Robinhood Chain (Arbitrum Orbit, chain ID 4663, EVM-equivalent) — integrates with the Pons.family launchpad (bonding-curve tokens that graduate to Uniswap V4) and, for Part B, the X/Twitter API
 
-The **Strong Offering** platform locks tokens as reward pools for behavior that actually grows a token, instead of burning or locking them unconditionally. It ships with two campaign types: **Strong Hold Offering (SHO)** rewards active traders; **Strong Shill Offering (SSO)** rewards active social supporters. Both share the same core promise — reach the target, the pool pays out; miss it, the pool locks forever, exactly like a burn.
+The **Strong Offering** platform turns a cost every token creator already pays, burning or locking part of their bag, into a performance-based growth budget instead. Tokens go into a reward pool that only pays out for behavior that actually grows the token: no growth, no payout, and the pool stays locked forever, exactly as if it had been burned in the first place. It ships with two campaign types: **Strong Hold Offering (SHO)** pays active traders, and **Strong Shill Offering (SSO)** pays active social supporters. Neither issues a new token or dilutes existing holders. the reward pool is money creators were already writing off, simply redirected toward the outcome they wanted all along.
 
 **Contents**
 
